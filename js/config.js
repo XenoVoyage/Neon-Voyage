@@ -62,7 +62,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "1.1.0",
+    version: "1.2.0",
 
     world: {
       fixedStep: 1 / 60,
@@ -98,6 +98,10 @@
       spawnShipClearance: 48,
       threatBoundaryPadding: 8,
       threatBoundaryBounce: 0.32,
+      asteroidRestitution: 0.72,
+      asteroidImpactDamageScale: 0.038,
+      asteroidImpactMinimumSpeed: 34,
+      asteroidCollisionGraceSeconds: 0.22,
       waveSpawnRetrySeconds: 0.08,
       interWaveSeconds: 0.7
     },
@@ -139,18 +143,18 @@
     },
 
     sector: {
-      encountersPerSector: 5,
+      encountersPerSector: 9,
       bossRotation: ["harrower"],
       encounters: [
         {
           index: 1,
-          id: "beltBreach",
-          label: "CLEAR THE BELT",
+          id: "earthOrbit",
+          label: "LEAVE EARTH ORBIT",
           completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
-              label: "FIRST CONTACT",
+              label: "ORBITAL DEBRIS",
               required: [
                 { family: "asteroid", kinds: ["rock"], count: 3, cap: 3 }
               ]
@@ -171,8 +175,8 @@
         },
         {
           index: 2,
-          id: "deepBelt",
-          label: "BREAK THE DEEP BELT",
+          id: "innerBelt",
+          label: "CROSS THE INNER BELT",
           completion: "waves",
           goal: { type: "waves" },
           guaranteedReward: "moduleUpgrade",
@@ -202,47 +206,58 @@
         },
         {
           index: 3,
-          id: "alienRaid",
-          label: "BREAK THE RAID",
+          id: "deepDrift",
+          label: "ENTER THE DEEP DRIFT",
           completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
-              label: "SCOUT SCREEN",
+              label: "RESONANT SHARDS",
               required: [
-                { family: "alien", kinds: ["scout"], count: 3, sectorStep: 0.5, cap: 5 }
-              ],
-              hazards: [
-                { family: "asteroid", kinds: ["rock"], count: 2, sectorStep: 0.3, cap: 3 }
+                { family: "asteroid", kinds: ["crystal", "volatile"], count: 4, sectorStep: 0.5, cap: 6 }
               ]
             },
             {
-              label: "STRIKE WING",
+              label: "VOLATILE LATTICE",
               required: [
-                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.4, cap: 3 },
-                { family: "alien", kinds: ["striker"], count: 2, sectorStep: 0.5, cap: 4 }
-              ],
-              hazards: [
-                { family: "asteroid", kinds: ["rock", "volatile"], count: 2, cap: 2 }
+                { family: "asteroid", kinds: ["volatile", "armored"], count: 5, sectorStep: 0.6, cap: 7 }
               ]
             },
             {
-              label: "RAID COMMAND",
+              label: "ANOMALY CORE",
               required: [
-                { family: "alien", kinds: ["scout", "striker"], count: 3, sectorStep: 0.6, cap: 5 },
-                { family: "alien", kinds: ["bomber"], count: 1, sectorStep: 0.35, cap: 2 },
-                { family: "alien", kinds: ["carrier"], count: 1, cap: 1 }
-              ],
-              hazards: [
-                { family: "asteroid", kinds: ["rock", "crystal"], count: 2, sectorStep: 0.25, cap: 3 }
+                { family: "asteroid", kinds: ["crystal", "volatile", "armored"], count: 6, sectorStep: 0.7, cap: 9 }
               ]
             }
           ]
         },
         {
           index: 4,
-          id: "titanEvent",
-          label: "SHATTER THE TITAN",
+          id: "shatteredFrontier",
+          label: "CROSS THE SHATTERED FRONTIER",
+          completion: "waves",
+          goal: { type: "waves" },
+          waves: [
+            {
+              label: "COLOSSAL WAKE",
+              required: [
+                { family: "asteroid", kinds: ["colossal"], count: 1, sectorStep: 0.25, cap: 2 },
+                { family: "asteroid", kinds: ["armored"], count: 2, sectorStep: 0.4, cap: 3 }
+              ]
+            },
+            {
+              label: "RESONANT STORM",
+              required: [
+                { family: "asteroid", kinds: ["crystal", "volatile"], count: 5, sectorStep: 0.6, cap: 8 },
+                { family: "asteroid", kinds: ["colossal"], count: 1, cap: 1 }
+              ]
+            }
+          ]
+        },
+        {
+          index: 5,
+          id: "titanGate",
+          label: "SHATTER THE TITAN GATE",
           completion: "waves",
           goal: { type: "titan" },
           waves: [
@@ -258,7 +273,83 @@
           ]
         },
         {
-          index: 5,
+          index: 6,
+          id: "firstContact",
+          label: "SURVIVE FIRST CONTACT",
+          completion: "waves",
+          goal: { type: "waves" },
+          waves: [
+            {
+              label: "UNKNOWN SIGNALS",
+              required: [
+                { family: "alien", kinds: ["scout"], count: 3, sectorStep: 0.5, cap: 5 }
+              ],
+              hazards: [
+                { family: "asteroid", kinds: ["crystal"], count: 2, cap: 2 }
+              ]
+            },
+            {
+              label: "SCOUT SCREEN",
+              required: [
+                { family: "alien", kinds: ["scout"], count: 4, sectorStep: 0.6, cap: 6 }
+              ]
+            }
+          ]
+        },
+        {
+          index: 7,
+          id: "strikeWing",
+          label: "BREAK THE STRIKE WING",
+          completion: "waves",
+          goal: { type: "waves" },
+          waves: [
+            {
+              label: "INTERCEPTORS",
+              required: [
+                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.4, cap: 3 },
+                { family: "alien", kinds: ["striker"], count: 2, sectorStep: 0.5, cap: 4 }
+              ],
+              hazards: [
+                { family: "asteroid", kinds: ["rock", "volatile"], count: 2, cap: 2 }
+              ]
+            },
+            {
+              label: "BOMBER LINE",
+              required: [
+                { family: "alien", kinds: ["striker"], count: 3, sectorStep: 0.5, cap: 5 },
+                { family: "alien", kinds: ["bomber"], count: 2, sectorStep: 0.35, cap: 3 }
+              ]
+            }
+          ]
+        },
+        {
+          index: 8,
+          id: "raidFleet",
+          label: "BREAK THE RAID FLEET",
+          completion: "waves",
+          goal: { type: "waves" },
+          waves: [
+            {
+              label: "ESCORT WALL",
+              required: [
+                { family: "alien", kinds: ["scout", "striker"], count: 4, sectorStep: 0.6, cap: 6 },
+                { family: "alien", kinds: ["bomber"], count: 2, sectorStep: 0.35, cap: 3 }
+              ]
+            },
+            {
+              label: "RAID COMMAND",
+              required: [
+                { family: "alien", kinds: ["striker", "bomber"], count: 4, sectorStep: 0.65, cap: 7 },
+                { family: "alien", kinds: ["carrier"], count: 1, sectorStep: 0.25, cap: 2 }
+              ],
+              hazards: [
+                { family: "asteroid", kinds: ["armored"], count: 2, cap: 2 }
+              ]
+            }
+          ]
+        },
+        {
+          index: 9,
           id: "boss",
           label: "CAPITAL SHIP DETECTED",
           completion: "bossDefeated",
@@ -533,6 +624,29 @@
         weight: 12,
         duration: 10,
         bonusPierce: 2
+      },
+      arcBurst: {
+        label: "ARC BURST",
+        weight: 14,
+        duration: 9,
+        cooldown: 0.34,
+        damage: 0.72,
+        projectiles: 7,
+        speed: 610,
+        life: 0.68,
+        spread: 0.92,
+        color: "#9d8cff"
+      },
+      novaLance: {
+        label: "NOVA LANCE",
+        weight: 10,
+        duration: 12,
+        cooldown: 0.78,
+        damage: 4.8,
+        speed: 1180,
+        life: 1.05,
+        pierce: 3,
+        color: "#ffef9f"
       },
       pulseCharge: {
         label: "PULSE CHARGE",

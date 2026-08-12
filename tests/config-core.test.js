@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage 1.1 configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "1.1.0");
+  test("Neon Voyage 1.2 configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "1.2.0");
     collectFrozen(CONFIG, new Set());
   });
 
@@ -31,14 +31,26 @@ module.exports = function register(test) {
     assert.ok(CONFIG.caps.activeAudioNodes <= 24);
   });
 
-  test("five stages expose finite waves and goals in the required order", () => {
+  test("nine stages keep the Titan before first contact and the alien boss last", () => {
     const stages = CONFIG.sector.encounters;
-    assert.equal(CONFIG.sector.encountersPerSector, 5);
-    assert.equal(stages.length, 5);
+    assert.equal(CONFIG.sector.encountersPerSector, 9);
+    assert.equal(stages.length, 9);
     stages.forEach((stage, index) => assert.equal(stage.index, index + 1));
-    assert.deepEqual(Array.from(stages, (stage) => stage.id), ["beltBreach", "deepBelt", "alienRaid", "titanEvent", "boss"]);
-    assert.deepEqual(Array.from(stages, (stage) => stage.goal.type), ["waves", "waves", "waves", "titan", "boss"]);
-    for (const stage of stages.slice(0, 4)) {
+    assert.deepEqual(Array.from(stages, (stage) => stage.id), [
+      "earthOrbit",
+      "innerBelt",
+      "deepDrift",
+      "shatteredFrontier",
+      "titanGate",
+      "firstContact",
+      "strikeWing",
+      "raidFleet",
+      "boss"
+    ]);
+    assert.deepEqual(Array.from(stages, (stage) => stage.goal.type), [
+      "waves", "waves", "waves", "waves", "titan", "waves", "waves", "waves", "boss"
+    ]);
+    for (const stage of stages.slice(0, 8)) {
       assert.equal(stage.completion, "waves", `${stage.id} must use finite wave completion`);
       assert.ok(Array.isArray(stage.waves) && stage.waves.length > 0, `${stage.id} needs waves`);
       for (const wave of stage.waves) {
@@ -51,14 +63,27 @@ module.exports = function register(test) {
         }
       }
     }
+    for (const stage of stages.slice(0, 5)) {
+      assert.ok(!/alien|scout|strike|raid|fleet|carrier|bomber/i.test(stage.label), `${stage.id} label foreshadows alien spacecraft too early`);
+      for (const wave of stage.waves) {
+        assert.ok(!/alien|scout|strike|raid|fleet|carrier|bomber/i.test(wave.label), `${stage.id}/${wave.label} uses a stale alien label`);
+        for (const group of wave.required.concat(wave.hazards || [])) {
+          assert.equal(group.family, "asteroid", `${stage.id} introduces aliens before First Contact`);
+        }
+      }
+    }
+    for (const stage of stages.slice(5, 8)) {
+      assert.ok(stage.waves.some((wave) => wave.required.some((group) => group.family === "alien")), `${stage.id} lacks required alien spacecraft`);
+    }
     const firstWave = stages[0].waves[0];
     assert.equal(firstWave.required.length, 1);
     assert.equal(firstWave.required[0].family, "asteroid");
     assert.deepEqual(Array.from(firstWave.required[0].kinds), ["rock"]);
     assert.equal(firstWave.required[0].count, 3, "first wave must contain exactly three asteroids");
     assert.equal(firstWave.required[0].cap, 3, "first wave must not scale above three asteroids");
-    assert.equal("minimumSeconds" in stages[3].goal, false, "Titan victory must not be time-gated");
-    assert.equal(stages[4].suspendWorldStreaming, true);
+    assert.equal("minimumSeconds" in stages[4].goal, false, "Titan victory must not be time-gated");
+    assert.ok(stages[4].waves.some((wave) => wave.required.some((group) => group.kinds.includes("titan"))), "Stage 5 lacks its Titan");
+    assert.equal(stages[8].suspendWorldStreaming, true);
     assert.ok(CONFIG.bossArena.warningSeconds > 0);
   });
 
@@ -87,16 +112,21 @@ module.exports = function register(test) {
     assert.ok(Object.values(CONFIG.bosses).every((boss) => boss.faction === "alien"));
   });
 
-  test("frequent independent field buffs include ten-second Rapid and Tri-Shot", () => {
+  test("field buffs include independent timed weapons and a rare permanent run upgrade", () => {
     const powerups = CONFIG.powerups;
     assert.ok(powerups.dropChance >= 0.15, "field drops are too rare for the arcade target");
     assert.ok(powerups.pityKills <= 10, "pickup pity counter must guarantee a drop within ten kills");
     assert.equal(powerups.rapid.duration, 10);
     assert.equal(powerups.triShot.duration, 10);
-    for (const kind of ["shield", "rapid", "triShot", "repair", "piercing", "pulseCharge", "moduleUpgrade"]) {
+    for (const kind of ["shield", "rapid", "triShot", "arcBurst", "novaLance", "repair", "piercing", "pulseCharge", "moduleUpgrade"]) {
       assert.ok(powerups[kind] && powerups[kind].weight > 0, `${kind} must appear in the weighted pool`);
     }
-    assert.equal("salvage" in powerups, false, "collectible salvage progression was removed in 1.1");
+    for (const kind of ["arcBurst", "novaLance"]) {
+      assert.ok(powerups[kind].duration >= 6 && powerups[kind].duration <= 20, `${kind} duration is not a useful finite interval`);
+    }
+    assert.equal(powerups.moduleUpgrade.persistsForRun, true);
+    assert.ok(powerups.moduleUpgrade.weight < powerups.arcBurst.weight && powerups.moduleUpgrade.weight < powerups.novaLance.weight, "permanent upgrades are not rare");
+    assert.equal("salvage" in powerups, false, "collectible salvage progression must remain removed");
   });
 
   test("difficulty scaling is monotonic, sublinear, finite, and capped", () => {

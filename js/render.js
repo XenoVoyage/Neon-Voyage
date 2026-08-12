@@ -6,37 +6,153 @@
   const mod = (value, span) => ((value % span) + span) % span;
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const DEFAULT_TRAVEL_DIRECTION = Object.freeze({ x: 0, y: -1 });
-  const PLANET_KEYFRAMES = Object.freeze([
-    Object.freeze({ earth: Object.freeze({ x: 0.91, y: 0.22, size: 0.16, alpha: 0.24 }), mars: Object.freeze({ x: 0.08, y: 0.78, size: 0.08, alpha: 0.06 }) }),
-    Object.freeze({ earth: Object.freeze({ x: 0.84, y: 0.28, size: 0.24, alpha: 0.4 }), mars: Object.freeze({ x: 0.14, y: 0.72, size: 0.12, alpha: 0.16 }) }),
-    Object.freeze({ earth: Object.freeze({ x: 0.75, y: 0.36, size: 0.34, alpha: 0.58 }), mars: Object.freeze({ x: 0.2, y: 0.63, size: 0.17, alpha: 0.29 }) }),
-    Object.freeze({ earth: Object.freeze({ x: 0.63, y: 0.47, size: 0.48, alpha: 0.74 }), mars: Object.freeze({ x: 0.22, y: 0.45, size: 0.23, alpha: 0.44 }) }),
-    Object.freeze({ earth: Object.freeze({ x: 0.45, y: 0.61, size: 0.66, alpha: 0.82 }), mars: Object.freeze({ x: 0.18, y: 0.24, size: 0.3, alpha: 0.6 }) })
+  const SCENE_KEYFRAMES = Object.freeze([
+    Object.freeze({ depth: 0.08, hue: 205, bodies: Object.freeze([
+      Object.freeze({ id: "earth", type: "earth", x: 0.88, y: 0.58, size: 0.62, alpha: 0.92, hue: 205, rings: 0 }),
+      Object.freeze({ id: "mars", type: "mars", x: 0.07, y: 0.16, size: 0.025, alpha: 0.025, hue: 18, rings: 0 })
+    ]) }),
+    Object.freeze({ depth: 0.18, hue: 25, bodies: Object.freeze([
+      Object.freeze({ id: "earth", type: "earth", x: 0.08, y: 0.82, size: 0.14, alpha: 0.28, hue: 205, rings: 0 }),
+      Object.freeze({ id: "mars", type: "mars", x: 0.8, y: 0.25, size: 0.27, alpha: 0.72, hue: 18, rings: 0 })
+    ]) }),
+    Object.freeze({ depth: 0.32, hue: 238, bodies: Object.freeze([
+      Object.freeze({ id: "earth", type: "earth", x: 0.015, y: 0.9, size: 0.052, alpha: 0.1, hue: 205, rings: 0 }),
+      Object.freeze({ id: "mars", type: "mars", x: 0.965, y: 0.1, size: 0.072, alpha: 0.16, hue: 18, rings: 0 })
+    ]) }),
+    Object.freeze({ depth: 0.47, hue: 174, bodies: Object.freeze([
+      Object.freeze({ id: "frontier", type: "exotic", x: 0.82, y: 0.72, size: 0.33, alpha: 0.56, hue: 174, rings: 0.18 })
+    ]) }),
+    Object.freeze({ depth: 0.6, hue: 36, bodies: Object.freeze([
+      Object.freeze({ id: "titan-gate", type: "exotic", x: 0.16, y: 0.33, size: 0.5, alpha: 0.68, hue: 36, rings: 0.88 })
+    ]) }),
+    Object.freeze({ depth: 0.71, hue: 142, bodies: Object.freeze([
+      Object.freeze({ id: "signal-moon", type: "exotic", x: 0.84, y: 0.22, size: 0.22, alpha: 0.5, hue: 142, rings: 0.08 })
+    ]) }),
+    Object.freeze({ depth: 0.8, hue: 304, bodies: Object.freeze([
+      Object.freeze({ id: "shard-world", type: "exotic", x: 0.12, y: 0.76, size: 0.31, alpha: 0.58, hue: 304, rings: 0.42 })
+    ]) }),
+    Object.freeze({ depth: 0.9, hue: 256, bodies: Object.freeze([
+      Object.freeze({ id: "fleet-world", type: "exotic", x: 0.74, y: 0.63, size: 0.46, alpha: 0.64, hue: 256, rings: 0.92 })
+    ]) }),
+    Object.freeze({ depth: 1, hue: 344, bodies: Object.freeze([
+      Object.freeze({ id: "command-world", type: "exotic", x: 0.52, y: 0.16, size: 0.39, alpha: 0.74, hue: 344, rings: 0.34 })
+    ]) })
   ]);
 
   function stageNumber(value) {
-    return clamp(Math.floor(Number(value) || 1), 1, PLANET_KEYFRAMES.length);
+    return clamp(Math.floor(Number(value) || 1), 1, SCENE_KEYFRAMES.length);
   }
 
-  function interpolatePlanet(from, to, progress) {
-    const amount = clamp(Number(progress) || 0, 0, 1);
+  function sectorNumber(value) {
+    return Math.max(1, Math.floor(Number(value) || 1));
+  }
+
+  function copyBody(body) {
     return {
-      x: from.x + (to.x - from.x) * amount,
-      y: from.y + (to.y - from.y) * amount,
-      size: from.size + (to.size - from.size) * amount,
-      alpha: from.alpha + (to.alpha - from.alpha) * amount
+      id: body.id,
+      type: body.type,
+      x: body.x,
+      y: body.y,
+      size: body.size,
+      alpha: body.alpha,
+      hue: body.hue,
+      rings: body.rings
     };
   }
 
-  function planetFrame(stage, transitionProgress) {
-    const currentStage = stageNumber(stage);
-    const current = PLANET_KEYFRAMES[currentStage - 1];
-    const next = PLANET_KEYFRAMES[currentStage % PLANET_KEYFRAMES.length];
+  function authoredScene(stage, sector) {
+    const safeStage = stageNumber(stage);
+    const safeSector = sectorNumber(sector);
+    const source = SCENE_KEYFRAMES[safeStage - 1];
+    const hueShift = (safeSector - 1) * 29;
+    const bodies = source.bodies.map(copyBody);
+    if (safeSector > 1) {
+      for (const body of bodies) {
+        if (body.id === "earth" || body.id === "mars") body.alpha = 0;
+        else body.hue = mod(body.hue + hueShift, 360);
+      }
+      if (safeStage <= 3) {
+        const waypoint = [
+          { x: 0.86, y: 0.68, size: 0.25, alpha: 0.46 },
+          { x: 0.2, y: 0.25, size: 0.17, alpha: 0.32 },
+          { x: 0.045, y: 0.84, size: 0.07, alpha: 0.13 }
+        ][safeStage - 1];
+        bodies.push({ id: "waypoint", type: "exotic", ...waypoint, hue: mod(188 + hueShift, 360), rings: 0.24 });
+      }
+    }
     return {
-      stage: currentStage,
-      progress: clamp(Number(transitionProgress) || 0, 0, 1),
-      earth: interpolatePlanet(current.earth, next.earth, transitionProgress),
-      mars: interpolatePlanet(current.mars, next.mars, transitionProgress)
+      stage: safeStage,
+      sector: safeSector,
+      depth: source.depth + Math.min(0.18, (safeSector - 1) * 0.025),
+      hue: mod(source.hue + hueShift, 360),
+      bodies
+    };
+  }
+
+  function bodyMap(bodies) {
+    const result = Object.create(null);
+    for (const body of bodies) result[body.id] = body;
+    return result;
+  }
+
+  function interpolateBody(from, to, amount) {
+    if (amount <= 0) return from ? copyBody(from) : { ...to, alpha: 0 };
+    if (amount >= 1) return to ? copyBody(to) : { ...from, alpha: 0 };
+    const source = from || { ...to, alpha: 0 };
+    const target = to || { ...from, alpha: 0 };
+    return {
+      id: source.id || target.id,
+      type: amount < 0.5 ? source.type : target.type,
+      x: source.x + (target.x - source.x) * amount,
+      y: source.y + (target.y - source.y) * amount,
+      size: source.size + (target.size - source.size) * amount,
+      alpha: source.alpha + (target.alpha - source.alpha) * amount,
+      hue: source.hue + (target.hue - source.hue) * amount,
+      rings: source.rings + (target.rings - source.rings) * amount
+    };
+  }
+
+  function sceneFrame(stage, sector, transitionProgress, toStage, toSector) {
+    const fromStage = stageNumber(stage);
+    const fromSector = sectorNumber(sector);
+    const nextStage = toStage == null ? (fromStage < SCENE_KEYFRAMES.length ? fromStage + 1 : 1) : stageNumber(toStage);
+    const nextSector = toSector == null ? (fromStage < SCENE_KEYFRAMES.length ? fromSector : fromSector + 1) : sectorNumber(toSector);
+    const amount = clamp(Number(transitionProgress) || 0, 0, 1);
+    const from = authoredScene(fromStage, fromSector);
+    const to = authoredScene(nextStage, nextSector);
+    const fromBodies = bodyMap(from.bodies);
+    const toBodies = bodyMap(to.bodies);
+    const ids = from.bodies.map((body) => body.id);
+    for (const body of to.bodies) if (!fromBodies[body.id]) ids.push(body.id);
+    const bodies = ids.map((id) => interpolateBody(fromBodies[id], toBodies[id], amount));
+    const visibleBodies = bodies.filter((body) => body.alpha > 0.002 && body.size > 0.002);
+    return {
+      fromStage,
+      toStage: nextStage,
+      fromSector,
+      toSector: nextSector,
+      progress: amount,
+      depth: from.depth + (to.depth - from.depth) * amount,
+      hue: from.hue + (to.hue - from.hue) * amount,
+      bodies,
+      visibleBodies
+    };
+  }
+
+  function bodyById(scene, id) {
+    return scene.bodies.find((body) => body.id === id) || {
+      id, type: id, x: 0, y: 0, size: 0, alpha: 0, hue: id === "earth" ? 205 : 18, rings: 0
+    };
+  }
+
+  function planetFrame(stage, transitionProgress, sector) {
+    const scene = sceneFrame(stage, sector, transitionProgress);
+    return {
+      stage: scene.fromStage,
+      sector: scene.fromSector,
+      progress: scene.progress,
+      earth: bodyById(scene, "earth"),
+      mars: bodyById(scene, "mars")
     };
   }
 
@@ -95,9 +211,35 @@
     };
   }
 
+  function screenAnchor(state, viewport) {
+    const width = Math.max(1, Number(viewport && viewport.width) || 1);
+    const height = Math.max(1, Number(viewport && viewport.height) || 1);
+    const ship = state && state.ship;
+    const camera = state && state.camera;
+    if (!ship || !camera) return null;
+    const cinematic = state && state.cinematic;
+    const hasCapturedAnchor = Boolean(
+      state.mode === "transition" &&
+      cinematic &&
+      cinematic.active &&
+      Number.isFinite(Number(cinematic.anchorX)) &&
+      Number.isFinite(Number(cinematic.anchorY))
+    );
+    const x = hasCapturedAnchor
+      ? width * 0.5 + Number(cinematic.anchorX)
+      : Number(ship.x) - Number(camera.x) + width * 0.5;
+    const y = hasCapturedAnchor
+      ? height * 0.5 + Number(cinematic.anchorY)
+      : Number(ship.y) - Number(camera.y) + height * 0.5;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return { x, y, normalizedX: x / width, normalizedY: y / height };
+  }
+
   ND.RenderDebug = Object.freeze({
+    sceneFrame,
     planetFrame,
-    cinematicProfile
+    cinematicProfile,
+    screenAnchor
   });
 
   class Renderer {
@@ -187,10 +329,14 @@
     buildEncounterWashes() {
       const themes = [
         ["rgba(25,92,160,0.15)", "rgba(68,211,255,0.09)"],
-        ["rgba(24,123,132,0.14)", "rgba(84,255,208,0.085)"],
-        ["rgba(102,54,160,0.15)", "rgba(196,103,255,0.09)"],
-        ["rgba(158,93,31,0.145)", "rgba(255,190,75,0.085)"],
-        ["rgba(156,39,70,0.16)", "rgba(255,74,177,0.095)"]
+        ["rgba(150,72,28,0.14)", "rgba(255,151,75,0.085)"],
+        ["rgba(54,61,145,0.15)", "rgba(117,121,255,0.09)"],
+        ["rgba(20,117,109,0.15)", "rgba(70,255,211,0.085)"],
+        ["rgba(155,91,25,0.15)", "rgba(255,194,78,0.09)"],
+        ["rgba(27,123,80,0.145)", "rgba(85,255,163,0.085)"],
+        ["rgba(126,39,137,0.155)", "rgba(255,87,226,0.095)"],
+        ["rgba(55,42,148,0.16)", "rgba(137,109,255,0.095)"],
+        ["rgba(156,39,70,0.17)", "rgba(255,74,177,0.1)"]
       ];
       this.encounterWashes = themes.map((colors, index) => {
         const mirrored = index % 2 === 1;
@@ -258,7 +404,7 @@
         this.drawProjectiles(state.playerBullets, state.camera, false);
         this.drawDrones(state);
       }
-      this.drawShip(state.ship, state.camera, time, cinematic.streaks);
+      this.drawShip(state.ship, state.camera, time, cinematic.streaks, state);
       if (!cinematic.streaks) {
         this.drawEffects(state.effects, state.camera, "front");
         this.drawFloaters(state.floaters, state.camera);
@@ -300,7 +446,18 @@
         ctx.fillRect(0, 0, this.width, this.height);
       }
 
-      this.drawEncounterWash(state, time);
+      const stage = stageNumber(state.encounter || state.stage);
+      const sector = sectorNumber(state.sector);
+      const toStage = state.cinematic && state.cinematic.active ? state.cinematic.toEncounter : undefined;
+      const toSector = state.cinematic && state.cinematic.active ? state.cinematic.toSector : undefined;
+      const scene = sceneFrame(
+        stage,
+        sector,
+        cinematic.streaks ? smoothstep(cinematic.progress) : 0,
+        toStage,
+        toSector
+      );
+      this.drawEncounterWash(state, time, scene);
       const duration = state.cinematic && Number.isFinite(Number(state.cinematic.duration)) ? Math.max(0, Number(state.cinematic.duration)) : 0;
       const elapsed = state.cinematic && Number.isFinite(Number(state.cinematic.elapsed))
         ? Math.max(0, Number(state.cinematic.elapsed))
@@ -310,6 +467,8 @@
         : 0;
       const directionX = cinematic.direction.x;
       const directionY = cinematic.direction.y;
+      const cameraX = !cinematic.streaks && state.camera && Number.isFinite(Number(state.camera.x)) ? Number(state.camera.x) : 0;
+      const cameraY = !cinematic.streaks && state.camera && Number.isFinite(Number(state.camera.y)) ? Number(state.camera.y) : 0;
       const streakCount = cinematic.streaks
         ? Math.floor(this.stars.length * cinematic.density * cinematic.intensity)
         : 0;
@@ -318,8 +477,8 @@
       for (let index = 0; index < this.stars.length; index += 1) {
         const star = this.stars[index];
         const parallax = 0.12 + star.depth * 3;
-        const x = mod(star.x + directionX * flowDistance * parallax, this.width);
-        const y = mod(star.y + directionY * flowDistance * parallax, this.height);
+        const x = mod(star.x - cameraX * star.depth + directionX * flowDistance * parallax, this.width);
+        const y = mod(star.y - cameraY * star.depth + directionY * flowDistance * parallax, this.height);
         ctx.globalAlpha = star.alpha * (0.82 + Math.sin(time * 0.7 + star.phase) * 0.18);
         const color = star.blue ? "#a7e9ff" : "#ffffff";
         const streak = (4 + cinematic.intensity * (24 + star.depth * 260)) * cinematic.lengthScale;
@@ -337,27 +496,33 @@
       }
       ctx.restore();
       this.drawSpeedDust(flowDistance, cinematic, time);
-      this.drawCelestials(state, cinematic);
+      this.drawCelestials(scene, time);
 
       ctx.fillStyle = this.vignetteGradient;
       ctx.fillRect(0, 0, this.width, this.height);
     }
 
-    drawEncounterWash(state, time) {
+    drawEncounterWash(state, time, scene) {
       if (!state.ship || state.mode === "menu") return;
-      const encounter = stageNumber(state.stage || state.encounter);
-      const wash = this.encounterWashes[encounter - 1];
-      if (!wash) return;
+      const fromStage = scene ? scene.fromStage : stageNumber(state.encounter || state.stage);
+      const toStage = scene ? scene.toStage : fromStage;
+      const progress = scene ? scene.progress : 0;
       const ctx = this.ctx;
-      ctx.save();
-      ctx.globalCompositeOperation = "screen";
-      ctx.globalAlpha = this.reduced ? 0.38 : 0.55 + Math.sin(time * 0.12 + encounter) * 0.035;
-      ctx.fillStyle = wash.base;
-      ctx.fillRect(0, 0, this.width, this.height);
-      ctx.globalAlpha *= 0.72;
-      ctx.fillStyle = wash.accent;
-      ctx.fillRect(0, 0, this.width, this.height);
-      ctx.restore();
+      const renderWash = (stageIndex, alpha) => {
+        const wash = this.encounterWashes[stageIndex - 1];
+        if (!wash || alpha <= 0.001) return;
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        ctx.globalAlpha = (this.reduced ? 0.38 : 0.55 + Math.sin(time * 0.12 + stageIndex) * 0.035) * alpha;
+        ctx.fillStyle = wash.base;
+        ctx.fillRect(0, 0, this.width, this.height);
+        ctx.globalAlpha *= 0.72;
+        ctx.fillStyle = wash.accent;
+        ctx.fillRect(0, 0, this.width, this.height);
+        ctx.restore();
+      };
+      renderWash(fromStage, 1 - progress);
+      renderWash(toStage, progress);
     }
 
     drawSpeedDust(flowDistance, cinematic, time) {
@@ -388,39 +553,100 @@
       ctx.restore();
     }
 
-    drawCelestials(state, cinematic) {
-      const stage = stageNumber(state.stage || state.encounter);
-      const transitionProgress = cinematic.streaks ? cinematic.progress : 0;
-      const frame = planetFrame(stage, transitionProgress);
+    drawCelestials(scene, time) {
       const unit = Math.min(this.width, this.height);
-      const objects = [
-        { asset: "earth", ...frame.earth },
-        { asset: "mars", ...frame.mars }
-      ];
-      for (const item of objects) {
+      for (const item of scene.visibleBodies) {
         const screenX = item.x * this.width;
         const screenY = item.y * this.height;
         const width = item.size * unit;
         if (!this.onScreen(screenX, screenY, width)) continue;
-        const image = this.assets[item.asset];
-        if (!image || !image.complete || !image.naturalWidth) continue;
-        const height = width * (image.naturalHeight / image.naturalWidth);
-        this.ctx.save();
-        this.ctx.globalAlpha = item.alpha;
-        const radius = Math.min(width, height) * 0.49;
-        this.ctx.beginPath();
-        this.ctx.arc(screenX, screenY, radius, 0, TAU);
-        this.ctx.clip();
-        this.ctx.drawImage(image, screenX - width / 2, screenY - height / 2, width, height);
-        this.ctx.restore();
+        if (item.type === "earth" || item.type === "mars") this.drawAssetPlanet(item, screenX, screenY, width);
+        else this.drawExoticPlanet(item, screenX, screenY, width, time);
       }
     }
 
+    drawAssetPlanet(item, screenX, screenY, width) {
+      const image = this.assets[item.type];
+      if (!image || !image.complete || !image.naturalWidth) return;
+      const height = width * (image.naturalHeight / image.naturalWidth);
+      const ctx = this.ctx;
+      ctx.save();
+      ctx.globalAlpha = item.alpha;
+      const radius = Math.min(width, height) * 0.49;
+      ctx.beginPath();
+      ctx.arc(screenX, screenY, radius, 0, TAU);
+      ctx.clip();
+      ctx.drawImage(image, screenX - width / 2, screenY - height / 2, width, height);
+      ctx.restore();
+    }
+
+    drawExoticPlanet(item, screenX, screenY, width, time) {
+      const ctx = this.ctx;
+      const radius = width * 0.5;
+      const hue = mod(item.hue, 360);
+      ctx.save();
+      ctx.translate(screenX, screenY);
+      ctx.globalAlpha = item.alpha;
+      if (item.rings > 0.03) {
+        ctx.save();
+        ctx.rotate(-0.2 + item.rings * 0.34);
+        ctx.strokeStyle = `hsla(${mod(hue + 28, 360)},80%,72%,${0.16 + item.rings * 0.38})`;
+        ctx.lineWidth = Math.max(1.2, radius * (0.035 + item.rings * 0.025));
+        ctx.beginPath();
+        ctx.ellipse(0, 0, radius * (1.24 + item.rings * 0.42), radius * (0.2 + item.rings * 0.08), 0, 0, TAU);
+        ctx.stroke();
+        ctx.restore();
+      }
+      const surface = ctx.createRadialGradient(-radius * 0.34, -radius * 0.38, radius * 0.04, 0, 0, radius);
+      surface.addColorStop(0, `hsl(${mod(hue + 22, 360)},82%,72%)`);
+      surface.addColorStop(0.38, `hsl(${hue},62%,40%)`);
+      surface.addColorStop(0.78, `hsl(${mod(hue - 18, 360)},58%,20%)`);
+      surface.addColorStop(1, "#030610");
+      ctx.fillStyle = surface;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, TAU);
+      ctx.fill();
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.98, 0, TAU);
+      ctx.clip();
+      ctx.globalAlpha *= 0.22;
+      ctx.strokeStyle = `hsl(${mod(hue + 64, 360)},85%,75%)`;
+      ctx.lineWidth = Math.max(1, radius * 0.055);
+      for (let band = -2; band <= 2; band += 1) {
+        ctx.beginPath();
+        ctx.ellipse(
+          Math.sin(time * 0.015 + band * 2.1) * radius * 0.08,
+          band * radius * 0.27,
+          radius * 0.88,
+          radius * (0.08 + (band & 1) * 0.025),
+          -0.12,
+          0,
+          TAU
+        );
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.strokeStyle = `hsla(${mod(hue + 18, 360)},90%,78%,0.55)`;
+      ctx.lineWidth = Math.max(1, radius * 0.018);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 1.015, 0, TAU);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     encounterAccent(encounter) {
-      if (encounter === 2) return "#ffd36b";
-      if (encounter === 3) return "#ff67d9";
-      if (encounter === 4) return "#ff845f";
-      return "#66f7ff";
+      return [
+        "#66f7ff",
+        "#ffb267",
+        "#9298ff",
+        "#62f7c8",
+        "#ffd166",
+        "#72ffa5",
+        "#ff67d9",
+        "#9f8cff",
+        "#ff5f9e"
+      ][stageNumber(encounter) - 1];
     }
 
     drawCombatField(state, time) {
@@ -526,8 +752,10 @@
       ctx.restore();
     }
 
-    drawShip(ship, camera, time, cinematic) {
-      const point = this.worldToScreen(ship.x, ship.y, camera);
+    drawShip(ship, camera, time, cinematic, state) {
+      const point = cinematic
+        ? screenAnchor(state, { width: this.width, height: this.height }) || this.worldToScreen(ship.x, ship.y, camera)
+        : this.worldToScreen(ship.x, ship.y, camera);
       const ctx = this.ctx;
       ctx.save();
       ctx.translate(point.x, point.y);
@@ -827,14 +1055,30 @@
         if (!this.onScreen(point.x, point.y, 20)) continue;
         const color = bullet.color || (hostile ? "#ff5da9" : "#91ffff");
         const angle = Math.atan2(bullet.vy || 0, bullet.vx || 1);
-        const length = bullet.kind === "rail" ? 30 : bullet.kind === "missile" ? 13 : 10;
+        const isLance = bullet.kind === "lance";
+        const isArc = bullet.kind === "arc";
+        const length = isLance ? 38 : bullet.kind === "rail" ? 30 : bullet.kind === "missile" ? 13 : isArc ? 15 : 10;
         ctx.strokeStyle = color;
-        ctx.lineWidth = bullet.kind === "rail" ? 4 : 2.5;
+        ctx.lineWidth = isLance ? 5 : bullet.kind === "rail" ? 4 : isArc ? 3 : 2.5;
         ctx.globalAlpha = 0.82;
         ctx.beginPath();
         ctx.moveTo(point.x - Math.cos(angle) * length, point.y - Math.sin(angle) * length);
         ctx.lineTo(point.x, point.y);
         ctx.stroke();
+        if (isArc) {
+          ctx.globalAlpha = 0.48;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 7, angle - 1.2, angle + 1.2);
+          ctx.stroke();
+        } else if (isLance) {
+          ctx.globalAlpha = 0.34;
+          ctx.lineWidth = 9;
+          ctx.beginPath();
+          ctx.moveTo(point.x - Math.cos(angle) * length * 0.72, point.y - Math.sin(angle) * length * 0.72);
+          ctx.lineTo(point.x, point.y);
+          ctx.stroke();
+        }
         ctx.fillStyle = "#ffffff";
         ctx.globalAlpha = 0.95;
         ctx.beginPath();
@@ -876,9 +1120,21 @@
         module: "#ff4fd8",
         triShot: "#ff9a62",
         piercing: "#ff6b7d",
-        pulseCharge: "#bca4ff"
+        pulseCharge: "#bca4ff",
+        arcBurst: "#65ffbd",
+        novaLance: "#ff75ef"
       };
-      const labels = { shield: "S", rapid: "R", repair: "+", module: "M", triShot: "3", piercing: "P", pulseCharge: "E" };
+      const labels = {
+        shield: "S",
+        rapid: "R",
+        repair: "+",
+        module: "M",
+        triShot: "3",
+        piercing: "P",
+        pulseCharge: "E",
+        arcBurst: "A",
+        novaLance: "N"
+      };
       const color = colors[pickup.kind] || "#ffffff";
       const ctx = this.ctx;
       ctx.save();

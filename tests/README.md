@@ -6,20 +6,19 @@ Run from the repository root with Node.js installed on the auditing machine:
 node tests/run.js
 ```
 
-Observed for Neon Voyage 1.1.0 on 2026-08-12: **39/39 tests passed** with Node v24.14.0 on Linux x64.
+Observed for Neon Voyage 1.2.0 on 2026-08-12: **50/50 tests passed** with Node v24.14.0 on Linux x64.
 
 The browser game does not require Node or any dependency. This harness uses only Node built-ins and verifies:
 
-- immutable Neon Voyage 1.1 configuration, five ordered finite-stage plans, exact first-wave composition, bounded difficulty, weapon progression, pickup frequency, and entity caps;
-- deterministic core math, collision, seeded randomness, safe storage, pooling, and cleanup;
-- strict CSP, local resources, repository-subpath-relative URLs, no network/dynamic code/dependencies, JavaScript syntax, symlinks, and payload limits;
+- immutable 1.2 configuration, nine ordered finite stages, asteroid-only pre-contact progression, Titan at Stage 5, first aliens at Stage 6, and the boss at Stage 9;
+- exact opening composition, capped finite waves, no premature clear, dynamically counted required descendants, full-tree objective completion, and exact hard-cull objective-state restoration;
+- deterministic core math, seeded randomness, safe storage, pooling, cleanup, bounded difficulty, and every entity cap;
+- asteroid pair separation, bounce, approach-only damage, initial fragment safety, boundary response, exactly-once environmental destruction, and deterministic asteroid-alien co-location recovery without reward duplication;
+- captured-direction hyperspace, locked input, clean world handoff, preserved screen anchors across desktop, portrait, and landscape viewports, and all four narrow-screen arena edges through the boss-to-next-sector wrap;
+- temporary Arc Burst and Nova Lance projectile behavior, independent timers and expiry, broad weighted pickup coverage, pity drops, and bounded permanent run upgrades;
+- point-only normal stars, transition-only streaks, Earth-to-Mars departure, continuously interpolated exotic deep-space scenes, and no Earth reset on sector wrap;
+- strict CSP, local repository-subpath resources, no network/dynamic code/dependencies, JavaScript syntax, symlinks, payload limits, and GitHub Pages workflow safety;
 - dependency-free browser-VM boot, menu launch, Canvas frames, DOM integration, and a single animation loop;
-- ballistic non-shooting asteroids, attacking alien spacecraft, and asteroid-versus-alien environmental destruction with exactly-once goals and no farming reward;
-- an exact three-rock opening, configured four-threat second wave, no finite-wave overrun, and no advancement or stage clear while a required threat survives;
-- immediate Titan completion and hyperspace input lock, normalized autopilot, world cleanup, finite progress, and centered clean stage handoff;
-- visible wave pressure, independent Rapid Fire and Tri-Shot timers, broad pickup distribution, caps, and pity drops;
-- stage-clear damage protection, rectangular player/dash containment, and a fully visible locked boss arena across desktop and narrow portrait/landscape layouts;
-- point-only stars with no normal-play travel or line streaks, deterministic Earth/Mars stage keyframes, and transition-only hyperspace streak profiles with bounded reduced-effects behavior;
-- a deterministic 20-minute fixed-step stress expedition for finite state, stage cycling, finite waves, hyperspace, projectiles, effects, and every configured cap.
+- a deterministic 20-minute fixed-step expedition covering all nine stages, finite waves, boss combat, effects, environmental kills, repeatability, and every configured cap.
 
-The test harness intentionally exercises private gameplay through the deterministic `ND.game` debug contract exposed by the local runtime. Release CI and Pages deployment both run this same command without installing packages.
+The harness intentionally exercises private gameplay through the deterministic `ND.game` and `ND.RenderDebug` contracts exposed by the local runtime. Release CI and Pages deployment run this same command without installing packages.

@@ -27,9 +27,11 @@ Read this file before changing the project. Read the related runtime, tests, and
 
 - A non-boss stage is a finite sequence of configured waves followed by a controlled hyperspace transition. The boss stage uses its direct configured defeat goal. Do not reintroduce endless replenishment disguised as progression.
 - Do not hardcode stage-specific branches when the stage/wave configuration can express the rule clearly.
-- Stage clear requires the configured finite wave to be fully spawned and all required living objectives to be resolved. Optional hazards must not corrupt objective counts.
-- During hyperspace, gameplay input is locked, autopilot and cinematic state are finite, and old combat entities are cleaned before the next stage begins.
-- Asteroids remain ballistic physical hazards; normal ranged attacks belong to alien spacecraft.
+- Keep the authored journey legible: the first five stages progress from Earth orbit through increasingly unfamiliar asteroid space and the Titan Gate; ordinary alien spacecraft do not appear before Stage 6, and the alien command arena remains Stage 9.
+- Stage clear requires the configured finite wave to be fully spawned and all required living objectives to be resolved. Required asteroid descendants dynamically join that objective and must be destroyed; optional hazards must not corrupt objective counts.
+- During hyperspace, gameplay input is locked, autopilot and cinematic state are finite, old combat entities are cleaned, and the ship keeps its pre-transition screen anchor and travel direction through the stage handoff. Never hide a discontinuity with a world-position teleport.
+- Asteroids remain ballistic physical hazards; normal ranged attacks belong to alien spacecraft. Asteroid impacts use separation and bounce, damage only on a genuine approaching collision, and can destroy other asteroids or aliens without duplicate objective credit or farming rewards.
+- Temporary weapon pickups use independent finite timers and must visibly change firing behavior while active. Rare permanent module upgrades remain bounded and persist only for the current run.
 - Add deterministic regression coverage for every gameplay fix. Fixed seed plus fixed input must reproduce equivalent state.
 - Keep the 20-minute stress audit finite and under every configured cap. Never weaken a release test merely to hide an application defect.
 - Run targeted tests while iterating, then `node tests/run.js` for a coherent release candidate.

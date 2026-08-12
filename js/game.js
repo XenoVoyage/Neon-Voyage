@@ -228,6 +228,8 @@
       rapidTimer: 0,
       triShotTimer: 0,
       piercingTimer: 0,
+      arcBurstTimer: 0,
+      novaLanceTimer: 0,
       modules: { pulse: 1 },
       weaponTimers: Object.create(null),
       drones: []
@@ -549,16 +551,23 @@
     const field = state.combatField;
     field.halfWidth = Math.max(CONFIG.combatField.minHalfWidth, renderer.width * CONFIG.combatField.halfWidthViewportRatio);
     field.halfHeight = Math.max(CONFIG.combatField.minHalfHeight, renderer.height * CONFIG.combatField.halfHeightViewportRatio);
+    if (!state.ship || !field.active) return;
+    field.halfWidth = Math.max(field.halfWidth, Math.abs(state.ship.x - field.x) + state.ship.radius);
+    field.halfHeight = Math.max(field.halfHeight, Math.abs(state.ship.y - field.y) + state.ship.radius);
   }
 
   function openCombatField() {
     const field = state.combatField;
+    const ship = state.ship;
     field.active = true;
-    field.x = 0;
-    field.y = 0;
+    field.x = state.camera.x;
+    field.y = state.camera.y;
     resizeCombatField();
-    state.ship.x = clamp(state.ship.x, -field.halfWidth + state.ship.radius, field.halfWidth - state.ship.radius);
-    state.ship.y = clamp(state.ship.y, -field.halfHeight + state.ship.radius, field.halfHeight - state.ship.radius);
+    // A carried hyperspace anchor can be slightly wider than the default
+    // rectangle after leaving the circular boss arena. The shared resize path
+    // grows this field around the camera instead of moving the ship.
+    ship.x = clamp(ship.x, field.x - field.halfWidth + ship.radius, field.x + field.halfWidth - ship.radius);
+    ship.y = clamp(ship.y, field.y - field.halfHeight + ship.radius, field.y + field.halfHeight - ship.radius);
   }
 
   function beginEncounter() {
@@ -679,6 +688,8 @@
     ship.rapidTimer = Math.max(0, ship.rapidTimer - dt);
     ship.triShotTimer = Math.max(0, ship.triShotTimer - dt);
     ship.piercingTimer = Math.max(0, ship.piercingTimer - dt);
+    ship.arcBurstTimer = Math.max(0, ship.arcBurstTimer - dt);
+    ship.novaLanceTimer = Math.max(0, ship.novaLanceTimer - dt);
     ship.pulse = clamp(ship.pulse + dt * 4.2, 0, 100);
 
     if ((input.pressed.shift || input.pressed.dash) && ship.dashCooldown <= 0) {
@@ -746,6 +757,58 @@
       }
       audio.shoot(id === "massDriver" ? "rail" : id === "prism" ? "scatter" : id === "seeker" ? "plasma" : "pulse");
     }
+    fireTemporaryWeapons(dt);
+  }
+
+  function fireTemporaryWeapons(dt) {
+    const ship = state.ship;
+    if (ship.arcBurstTimer > 0) {
+      ship.weaponTimers.arcBurst = Math.max(0, (ship.weaponTimers.arcBurst || 0) - dt);
+      if (ship.weaponTimers.arcBurst <= 0) {
+        const values = CONFIG.powerups.arcBurst;
+        ship.weaponTimers.arcBurst = values.cooldown;
+        for (let index = 0; index < values.projectiles; index += 1) {
+          const offset = values.projectiles === 1 ? 0 : (index / (values.projectiles - 1) - 0.5) * values.spread;
+          spawnTemporaryBullet("arc", ship.angle + offset, values);
+        }
+        audio.shoot("scatter");
+      }
+    }
+    if (ship.novaLanceTimer > 0) {
+      ship.weaponTimers.novaLance = Math.max(0, (ship.weaponTimers.novaLance || 0) - dt);
+      if (ship.weaponTimers.novaLance <= 0) {
+        const values = CONFIG.powerups.novaLance;
+        ship.weaponTimers.novaLance = values.cooldown;
+        spawnTemporaryBullet("lance", ship.angle, values);
+        audio.shoot("rail");
+      }
+    }
+  }
+
+  function spawnTemporaryBullet(kind, angle, values) {
+    if (state.playerBullets.length >= CONFIG.caps.playerProjectiles) return null;
+    const ship = state.ship;
+    const x = ship.x + Math.cos(angle) * 23;
+    const y = ship.y + Math.sin(angle) * 23;
+    const bullet = {
+      id: nextEntityId++, x, y, px: x, py: y,
+      vx: Math.cos(angle) * values.speed,
+      vy: Math.sin(angle) * values.speed,
+      radius: kind === "lance" ? 4 : 3,
+      damage: values.damage,
+      life: values.life,
+      maxLife: values.life,
+      kind,
+      color: values.color,
+      pierce: values.pierce || 0,
+      turnRate: 0,
+      blastRadius: 0,
+      droneShot: false,
+      hits: [],
+      dead: false
+    };
+    state.playerBullets.push(bullet);
+    return bullet;
   }
 
   function spawnPlayerBullet(moduleId, x, y, angle, values, droneShot) {
@@ -928,7 +991,9 @@
     const baseSpeed = Number(settingsValue.speed) || rng.range(definition.speed[0], definition.speed[1]);
     const speed = baseSpeed * CONFIG.difficulty.speedScale(state.sector);
     const healthScale = CONFIG.difficulty.healthScale(state.sector);
-    const health = Math.max(1, (Number(settingsValue.health) || definition.baseHealth * healthScale) * (radius / definition.radius));
+    const health = Number.isFinite(settingsValue.health) ? Math.max(0.01, settingsValue.health) :
+      Math.max(1, definition.baseHealth * healthScale * (radius / definition.radius));
+    const maxHealth = Number.isFinite(settingsValue.maxHealth) ? Math.max(health, settingsValue.maxHealth) : health;
     const asteroid = {
       id: nextEntityId++,
       x: position.x,
@@ -939,7 +1004,7 @@
       radius,
       kind,
       health,
-      maxHealth: health,
+      maxHealth,
       damage: definition.contactDamage * CONFIG.difficulty.damageScale(state.sector),
       score: Number.isFinite(settingsValue.score) ? settingsValue.score : settingsValue.noScore ? 0 : definition.score,
       noDrops: Boolean(settingsValue.noDrops),
@@ -949,11 +1014,12 @@
       rotation: rng.range(0, TAU),
       rotationSpeed: rng.range(-0.65, 0.65) * (48 / Math.max(24, radius)),
       phase: rng.range(0, TAU),
-      gateIndex: 0,
+      gateIndex: Math.max(0, Math.floor(Number(settingsValue.gateIndex) || 0)),
       points: makeAsteroidPoints(radius),
       fragment: Boolean(settingsValue.fragment),
       ballisticFragment: Boolean(settingsValue.ballisticFragment),
       required: settingsValue.required !== false,
+      collisionGrace: Math.max(0, Number(settingsValue.collisionGrace) || 0),
       dead: false
     };
     state.asteroids.push(asteroid);
@@ -968,7 +1034,9 @@
     const automaticPosition = !Number.isFinite(settingsValue.x);
     const position = automaticPosition ? spawnPosition(0.75, 1.1) : settingsValue;
     if (automaticPosition) applySpawnClearance(position, definition.radius);
-    const health = definition.baseHealth * CONFIG.difficulty.healthScale(state.sector);
+    const health = Number.isFinite(settingsValue.health) ? Math.max(0.01, settingsValue.health) :
+      definition.baseHealth * CONFIG.difficulty.healthScale(state.sector);
+    const maxHealth = Number.isFinite(settingsValue.maxHealth) ? Math.max(health, settingsValue.maxHealth) : health;
     const alien = {
       id: nextEntityId++,
       x: position.x,
@@ -978,7 +1046,7 @@
       radius: definition.radius,
       type,
       health,
-      maxHealth: health,
+      maxHealth,
       speed: definition.baseSpeed * CONFIG.difficulty.speedScale(state.sector),
       damage: definition.contactDamage * CONFIG.difficulty.damageScale(state.sector),
       score: Number.isFinite(settingsValue.score) ? settingsValue.score : definition.score,
@@ -1062,7 +1130,17 @@
     const options = {
       generation: data.generation,
       required: entry.required,
-      waveIndex: entry.waveIndex
+      waveIndex: entry.waveIndex,
+      health: entry.health,
+      maxHealth: entry.maxHealth,
+      radius: entry.radius,
+      score: entry.score,
+      noDrops: entry.noDrops,
+      threatCost: entry.threatCost,
+      fragment: entry.fragment,
+      ballisticFragment: entry.ballisticFragment,
+      collisionGrace: entry.collisionGrace,
+      gateIndex: entry.gateIndex
     };
     return entry.family === "alien" ? spawnAlien(entry.kind, options) : spawnAsteroid(entry.kind, options);
   }
@@ -1125,7 +1203,24 @@
   function startCinematic(message) {
     const nextEncounter = state.encounter < CONFIG.sector.encountersPerSector ? state.encounter + 1 : 1;
     const nextSector = state.encounter < CONFIG.sector.encountersPerSector ? state.sector : state.sector + 1;
-    const directionLength = Math.hypot(CONFIG.cinematic.directionX, CONFIG.cinematic.directionY) || 1;
+    const ship = state.ship;
+    let directionX = ship.vx;
+    let directionY = ship.vy;
+    let directionLength = Math.hypot(directionX, directionY);
+    if (directionLength < 24) {
+      directionX = state.aimWorld.x - ship.x;
+      directionY = state.aimWorld.y - ship.y;
+      directionLength = Math.hypot(directionX, directionY);
+    }
+    if (directionLength < 0.001) {
+      directionX = CONFIG.cinematic.directionX;
+      directionY = CONFIG.cinematic.directionY;
+      directionLength = Math.hypot(directionX, directionY) || 1;
+    }
+    directionX /= directionLength;
+    directionY /= directionLength;
+    const anchorX = ship.x - state.camera.x;
+    const anchorY = ship.y - state.camera.y;
     clearCombatWorld();
     resetTransientInput();
     state.boss = null;
@@ -1138,20 +1233,26 @@
       elapsed: 0,
       duration: CONFIG.cinematic.duration,
       progress: 0,
-      directionX: CONFIG.cinematic.directionX / directionLength,
-      directionY: CONFIG.cinematic.directionY / directionLength,
+      directionX,
+      directionY,
       speed: CONFIG.cinematic.speed,
+      anchorX,
+      anchorY,
+      startX: ship.x,
+      startY: ship.y,
+      entryX: ship.x,
+      entryY: ship.y,
       fromEncounter: state.encounter,
       toEncounter: nextEncounter,
       fromSector: state.sector,
       toSector: nextSector
     };
-    state.ship.invulnerable = Math.max(state.ship.invulnerable, CONFIG.cinematic.duration + CONFIG.cinematic.exitInvulnerability);
-    state.ship.vx = state.cinematic.directionX * state.cinematic.speed;
-    state.ship.vy = state.cinematic.directionY * state.cinematic.speed;
-    state.ship.angle = Math.atan2(state.cinematic.directionY, state.cinematic.directionX);
-    state.ship.dashTime = 0;
-    state.ship.engine = 1.6;
+    ship.invulnerable = Math.max(ship.invulnerable, CONFIG.cinematic.duration + CONFIG.cinematic.exitInvulnerability);
+    ship.vx = directionX * state.cinematic.speed;
+    ship.vy = directionY * state.cinematic.speed;
+    ship.angle = Math.atan2(directionY, directionX);
+    ship.dashTime = 0;
+    ship.engine = 1.6;
     setMode("transition");
     announce(message || "Stage clear", Math.min(1.45, CONFIG.cinematic.duration));
   }
@@ -1166,10 +1267,15 @@
       grantModuleUpgrade("ARMORY LINK");
     }
     state.score += Math.round(300 * state.sector * CONFIG.difficulty.scoreScale(state.sector));
-    startCinematic(message || (data.spec.id === "titanEvent" ? "Titan shattered" : "Stage clear"));
+    startCinematic(message || (data.spec.id === "titanGate" ? "Titan shattered" : "Stage clear"));
   }
 
   function advanceEncounter() {
+    const cinematic = state.cinematic;
+    const shipX = state.ship.x;
+    const shipY = state.ship.y;
+    const anchorX = cinematic.anchorX || 0;
+    const anchorY = cinematic.anchorY || 0;
     clearCombatWorld();
     if (state.encounter < CONFIG.sector.encountersPerSector) {
       state.encounter += 1;
@@ -1177,18 +1283,20 @@
       state.sector += 1;
       state.encounter = 1;
     }
-    state.ship.x = 0;
-    state.ship.y = 0;
+    state.ship.x = shipX;
+    state.ship.y = shipY;
     state.ship.vx = 0;
     state.ship.vy = 0;
-    state.ship.angle = 0;
+    state.ship.angle = Math.atan2(cinematic.directionY, cinematic.directionX);
     state.ship.engine = 0;
     state.ship.dashTime = 0;
     state.ship.invulnerable = Math.max(state.ship.invulnerable, CONFIG.cinematic.exitInvulnerability);
-    state.camera.x = 0;
-    state.camera.y = 0;
-    state.aimWorld.x = 200;
-    state.aimWorld.y = 0;
+    state.camera.x = shipX - anchorX;
+    state.camera.y = shipY - anchorY;
+    state.aimWorld.x = shipX + cinematic.directionX * 400;
+    state.aimWorld.y = shipY + cinematic.directionY * 400;
+    cinematic.entryX = shipX;
+    cinematic.entryY = shipY;
     state.cinematic.active = false;
     state.cinematic.progress = 1;
     resetTransientInput();
@@ -1206,6 +1314,8 @@
     ship.vy = cinematic.directionY * cinematic.speed;
     ship.x += ship.vx * dt;
     ship.y += ship.vy * dt;
+    state.camera.x = ship.x - (cinematic.anchorX || 0);
+    state.camera.y = ship.y - (cinematic.anchorY || 0);
     ship.angle = Math.atan2(cinematic.directionY, cinematic.directionX);
     ship.engine = 1.6;
     ship.dashTime = 0;
@@ -1221,6 +1331,7 @@
       asteroid.x += asteroid.vx * dt;
       asteroid.y += asteroid.vy * dt;
       asteroid.rotation += asteroid.rotationSpeed * dt;
+      asteroid.collisionGrace = Math.max(0, (asteroid.collisionGrace || 0) - dt);
       if (state.arena.locked) Core.constrainToCircle(asteroid, state.arena.x, state.arena.y, state.arena.radius - 8, 0.55);
       else constrainThreatToCombatField(asteroid);
     }
@@ -1366,6 +1477,7 @@
   }
 
   function collideAsteroidsAndAliens() {
+    collideAsteroidPairs();
     for (const asteroid of state.asteroids) {
       if (asteroid.dead) continue;
       for (const alien of state.aliens) {
@@ -1373,17 +1485,69 @@
         if (!Core.circlesOverlap(asteroid.x, asteroid.y, asteroid.radius * 0.78, alien.x, alien.y, alien.radius * 0.82)) continue;
         const dx = alien.x - asteroid.x;
         const dy = alien.y - asteroid.y;
-        const distance = Math.hypot(dx, dy) || 1;
-        const impactX = dx / distance;
-        const impactY = dy / distance;
-        alien.x = asteroid.x + impactX * (asteroid.radius + alien.radius);
-        alien.y = asteroid.y + impactY * (asteroid.radius + alien.radius);
+        const distance = Math.hypot(dx, dy);
+        const impactX = distance > 0.001 ? dx / distance : (asteroid.id < alien.id ? 1 : -1);
+        const impactY = distance > 0.001 ? dy / distance : 0;
+        const overlap = asteroid.radius + alien.radius - distance;
+        if (overlap > 0) {
+          alien.x += impactX * overlap;
+          alien.y += impactY * overlap;
+        }
+        const relativeVx = alien.vx - asteroid.vx;
+        const relativeVy = alien.vy - asteroid.vy;
+        const closingSpeed = -(relativeVx * impactX + relativeVy * impactY);
+        if (closingSpeed <= 0) continue;
         killThreat(alien, "asteroid");
         damageThreat(asteroid, Math.max(0.6, alien.maxHealth * 0.16), null, "environment");
         asteroid.vx -= impactX * Math.min(45, alien.radius * 1.2);
         asteroid.vy -= impactY * Math.min(45, alien.radius * 1.2);
         addRing(alien.x, alien.y, "#ffd166", 3, 0.28, alien.radius * 2.2);
         if (asteroid.dead) break;
+      }
+    }
+  }
+
+  function collideAsteroidPairs() {
+    const asteroids = state.asteroids;
+    const restitution = CONFIG.combatField.asteroidRestitution;
+    for (let firstIndex = 0; firstIndex < asteroids.length; firstIndex += 1) {
+      const first = asteroids[firstIndex];
+      if (first.dead) continue;
+      for (let secondIndex = firstIndex + 1; secondIndex < asteroids.length; secondIndex += 1) {
+        const second = asteroids[secondIndex];
+        if (second.dead) continue;
+        const dx = second.x - first.x;
+        const dy = second.y - first.y;
+        const minimum = first.radius + second.radius;
+        const squared = dx * dx + dy * dy;
+        if (squared >= minimum * minimum) continue;
+        const distance = Math.sqrt(squared);
+        const normalX = distance > 0.001 ? dx / distance : (first.id < second.id ? 1 : -1);
+        const normalY = distance > 0.001 ? dy / distance : 0;
+        const overlap = minimum - distance;
+        const firstMass = Math.max(1, first.radius * first.radius);
+        const secondMass = Math.max(1, second.radius * second.radius);
+        const totalMass = firstMass + secondMass;
+        first.x -= normalX * overlap * secondMass / totalMass;
+        first.y -= normalY * overlap * secondMass / totalMass;
+        second.x += normalX * overlap * firstMass / totalMass;
+        second.y += normalY * overlap * firstMass / totalMass;
+        const relativeNormalSpeed = (second.vx - first.vx) * normalX + (second.vy - first.vy) * normalY;
+        if (relativeNormalSpeed >= 0) continue;
+        const impulse = -(1 + restitution) * relativeNormalSpeed / (1 / firstMass + 1 / secondMass);
+        first.vx -= impulse / firstMass * normalX;
+        first.vy -= impulse / firstMass * normalY;
+        second.vx += impulse / secondMass * normalX;
+        second.vy += impulse / secondMass * normalY;
+        if (first.collisionGrace > 0 || second.collisionGrace > 0) continue;
+        const impactSpeed = -relativeNormalSpeed;
+        if (impactSpeed < CONFIG.combatField.asteroidImpactMinimumSpeed) continue;
+        const scale = CONFIG.combatField.asteroidImpactDamageScale;
+        const firstDamage = impactSpeed * scale * Math.min(2.4, second.radius / Math.max(12, first.radius));
+        const secondDamage = impactSpeed * scale * Math.min(2.4, first.radius / Math.max(12, second.radius));
+        damageThreat(first, firstDamage, null, "asteroid");
+        damageThreat(second, secondDamage, null, "asteroid");
+        addRing((first.x + second.x) * 0.5, (first.y + second.y) * 0.5, "#ffd166", 2, 0.2, 24);
       }
     }
   }
@@ -1951,11 +2115,13 @@
     const available = Math.max(0, CONFIG.caps.asteroids - state.asteroids.length);
     const total = Math.min(count, available);
     const offset = rng.range(0, TAU);
+    let spawned = 0;
     for (let index = 0; index < total; index += 1) {
       const angle = circular ? offset + index / total * TAU : offset + index / Math.max(1, total) * TAU + rng.range(-0.2, 0.2);
-      spawnAsteroid(kind, {
-        x: parent.x + Math.cos(angle) * Math.max(8, radius * 0.6),
-        y: parent.y + Math.sin(angle) * Math.max(8, radius * 0.6),
+      const spawnDistance = Math.max(parent.radius + radius + 3, radius * (total > 4 ? 2.25 : 1.35));
+      const child = spawnAsteroid(kind, {
+        x: parent.x + Math.cos(angle) * spawnDistance,
+        y: parent.y + Math.sin(angle) * spawnDistance,
         velocityAngle: angle,
         speed: speed * rng.range(circular ? 0.96 : 0.72, circular ? 1.04 : 1.22),
         radius,
@@ -1965,10 +2131,18 @@
         noDrops: true,
         fragment: true,
         ballisticFragment: circular,
-        required: false,
-        generation: parent.generation
+        required: parent.required,
+        generation: parent.generation,
+        waveIndex: parent.waveIndex,
+        collisionGrace: CONFIG.combatField.asteroidCollisionGraceSeconds
       });
+      if (child) spawned += 1;
     }
+    if (spawned && parent.required && state.encounterData && parent.generation === state.encounterData.generation) {
+      state.encounterData.waveRequiredTotal += spawned;
+      state.encounterData.stageRequiredTotal += spawned;
+    }
+    return spawned;
   }
 
   function killThreat(entity, cause) {
@@ -2063,6 +2237,8 @@
         ["repair", CONFIG.powerups.repair.weight],
         ["triShot", CONFIG.powerups.triShot.weight],
         ["piercing", CONFIG.powerups.piercing.weight],
+        ["arcBurst", CONFIG.powerups.arcBurst.weight],
+        ["novaLance", CONFIG.powerups.novaLance.weight],
         ["pulseCharge", CONFIG.powerups.pulseCharge.weight],
         ["module", CONFIG.powerups.moduleUpgrade.weight]
       ];
@@ -2109,6 +2285,12 @@
     } else if (pickup.kind === "piercing") {
       ship.piercingTimer = Math.max(ship.piercingTimer, CONFIG.powerups.piercing.duration);
       showPowerup("PHASE ROUNDS ACTIVE");
+    } else if (pickup.kind === "arcBurst") {
+      ship.arcBurstTimer = Math.max(ship.arcBurstTimer, CONFIG.powerups.arcBurst.duration);
+      showPowerup("ARC BURST ACTIVE");
+    } else if (pickup.kind === "novaLance") {
+      ship.novaLanceTimer = Math.max(ship.novaLanceTimer, CONFIG.powerups.novaLance.duration);
+      showPowerup("NOVA LANCE ACTIVE");
     } else if (pickup.kind === "repair") {
       ship.hull = Math.min(ship.maxHull, ship.hull + CONFIG.powerups.repair.amount);
       showPowerup("HULL REPAIRED");
@@ -2262,7 +2444,17 @@
               family: entity.type ? "alien" : "asteroid",
               kind: entity.type || entity.kind,
               required: true,
-              waveIndex: entity.waveIndex
+              waveIndex: entity.waveIndex,
+              health: entity.health,
+              maxHealth: entity.maxHealth,
+              radius: entity.radius,
+              score: entity.score,
+              noDrops: entity.noDrops,
+              threatCost: entity.threatCost,
+              fragment: entity.fragment,
+              ballisticFragment: entity.ballisticFragment,
+              collisionGrace: entity.collisionGrace,
+              gateIndex: entity.gateIndex
             });
             data.waveSpawned = false;
             data.waveDelay = 0;
@@ -2295,8 +2487,8 @@
     let targetY = ship.y + ship.vy * lookScale;
     let sharpness = CONFIG.camera.followSharpness;
     if (state.mode === "transition" && state.cinematic.active) {
-      targetX = ship.x;
-      targetY = ship.y;
+      targetX = ship.x - (state.cinematic.anchorX || 0);
+      targetY = ship.y - (state.cinematic.anchorY || 0);
       sharpness = CONFIG.cinematic.cameraSharpness;
     } else if (state.combatField.active && !state.arena.active) {
       targetX = state.combatField.x;
@@ -2348,7 +2540,7 @@
     state.runTime += dt;
     if (state.mode === "transition") {
       updateCinematic(dt);
-      updateCamera(dt);
+      if (state.mode === "transition") updateCamera(dt);
       state.shake = Math.max(0, state.shake - dt * 24);
       state.flash = Math.max(0, state.flash - dt * 2.8);
       if (state.announcementTimer > 0) {
@@ -2529,7 +2721,9 @@
         shield: state.ship.shield,
         rapidTimer: state.ship.rapidTimer,
         triShotTimer: state.ship.triShotTimer,
-        piercingTimer: state.ship.piercingTimer
+        piercingTimer: state.ship.piercingTimer,
+        arcBurstTimer: state.ship.arcBurstTimer,
+        novaLanceTimer: state.ship.novaLanceTimer
       } : null,
       objective: state.encounterData ? {
         type: state.encounterData.goalType,

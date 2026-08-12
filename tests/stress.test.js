@@ -66,7 +66,7 @@ function stress(seed, seconds) {
         }
       }
     }
-    if (state.encounter === 5 && state.boss) game.damageBoss(state.boss.maxHealth * 0.2);
+    if (state.encounter === 9 && state.boss) game.damageBoss(state.boss.maxHealth * 0.2);
 
     game.step(CONFIG.world.fixedStep);
     if (state.ship.hull <= 0) {
@@ -86,7 +86,7 @@ function stress(seed, seconds) {
 module.exports = function register(test) {
   test("twenty-minute deterministic arcade stress stays finite and within every cap", () => {
     const run = stress(440044, 1200);
-    assert.ok(run.stageChanges >= 5, `stress run exercised only ${run.stageChanges} stage changes`);
+    assert.ok(run.stageChanges >= 9, `stress run exercised only ${run.stageChanges} stage changes`);
     assert.ok(run.runtime.game.state.stats.spawned > 100, "stress run did not exercise enough spawning");
     assert.ok(run.peaks.asteroids >= 3, "stress run never produced asteroid pressure");
     assert.ok(run.peaks.aliens >= 1, "stress run never produced alien pressure");
