@@ -1,8 +1,8 @@
-# Neon Voyage 1.2.0 — release audit
+# Neon Voyage 1.2.1 — release audit
 
 Audited: 2026-08-12  
 Targets: direct `file://` launch and GitHub Pages repository-subpath hosting  
-Result: **PASS — 50/50 automated checks**
+Result: **PASS — 64/64 automated checks**
 
 Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game.
 
@@ -37,7 +37,7 @@ Passed:
 - Approaching asteroid pairs separate, bounce, and exchange one impact-damage event. A repeated or already-separating overlap cannot farm damage.
 - Exact asteroid-alien co-location resolves to deterministic separation and one approaching impact, with exactly-once objective credit and no duplicate score, combo, or pickup reward.
 - Asteroid impacts can destroy required asteroids or aliens. Objective counters advance exactly once, while environmental destruction grants no duplicate score, combo, or pickup reward.
-- Asteroids, alien spacecraft, the player, and outward dashes remain contained by their relevant rectangular stage boundaries. The locked boss arena contains extreme positions and keeps its complete circle visible on desktop, narrow portrait, and narrow landscape viewports.
+- Asteroids, alien spacecraft, the player, and outward dashes remain contained by their relevant rectangular stage boundaries. The locked boss arena contains extreme positions and keeps its complete circle visible across desktop and narrow viewport geometry; the touch shell blocks active play in portrait.
 
 ## Hyperspace and scenery verification
 
@@ -51,6 +51,21 @@ Passed:
 - The Stage 9 boss-to-Sector 2 wrap preserves the exact ship anchor from all four legal arena edges at 320×568 and 568×320.
 - Menu, normal play, and pause keep stars as point sprites. Line streaks activate only for an active hyperspace transition and remain bounded in full and reduced-effects modes.
 - Authored scenery begins with a prominent Earth, shifts toward Mars, recedes from both familiar planets, and progresses through exotic distant worlds. All nine transitions interpolate continuously; a sector wrap stays in deep space rather than returning visibly to Earth.
+
+## Mobile input and lifecycle verification
+
+Passed:
+
+- Touch capability is detected from `maxTouchPoints`, any available coarse pointer, or an observed touch gesture. Hybrid iPads and other fine-primary-pointer tablets retain the touch-control shell.
+- Real Pointer Event sequences keep the move and aim sticks assigned to independent pointer IDs. Holding the aim stick fires without stealing movement; releasing one stick does not clear the other.
+- Stick input is calculated from each visible circular ring rather than its larger labeled capture zone. Exact ring-center touches remain neutral and cannot fire; edge touches reach full deflection while capture stays on the larger zone.
+- Pointer up, pointer cancel, lost pointer capture, document hiding, and portrait blocking return the relevant stick and transient actions to neutral, preventing stuck movement or fire after interruption.
+- Touch Dash and Void Pulse activate gameplay without opening pause. Ordinary mobile browser focus loss no longer pauses a visible run, while hiding or switching away from the document still pauses safely and clears captured touch ownership.
+- Desktop focus loss retains automatic pause behavior.
+- Portrait touch play presents an accessible blocking rotate prompt, freezes fixed-step simulation without changing the run mode, and resumes the same state after a landscape resize or orientation change.
+- The portrait gate owns covered buttons, dialogs, pointer input, keyboard shortcuts, and gamepad state. No covered action can start, reset, pause, configure, or leave a run; held gamepad buttons are sampled without replaying an edge after landscape resumes.
+- Landscape locking is requested only as a best-effort browser capability. A missing API, synchronous failure, or rejected lock cannot break startup or input; the runtime does not claim to force orientation on iOS Safari.
+- The local shell declares display-safe-area handling, a narrow-landscape layout, `touch-action` protection, and both CSS and JavaScript fallbacks for touch controls.
 
 ## Weapons and progression verification
 
@@ -69,7 +84,7 @@ Passed:
 - Runtime source contains no remote URL, network API, telemetry, dynamic code, worker, service worker, module loader, package manifest, lockfile, or `node_modules`.
 - Every runtime resource is local, relative, and valid beneath the `/Neon-Voyage/` GitHub Pages repository subpath. No `<base>` tag or root-relative runtime path is present.
 - Runtime JavaScript passes syntax checking. The release tree contains no symlinks and stays below conservative offline payload limits.
-- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version 1.2.0.
+- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version 1.2.1.
 - The dependency-free browser VM loads every local script, draws Canvas frames, launches a run, exposes the HUD, and maintains one animation loop.
 - CI and Pages workflows use the unchanged repository root without installing dependencies or running a production build.
 
@@ -87,7 +102,7 @@ Passed:
 node tests/run.js
 ```
 
-Expected result for this source snapshot: `50/50 tests passed`.
+Expected result for this source snapshot: `64/64 tests passed`.
 
 ## Acceptance and publication boundary
 

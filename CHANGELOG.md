@@ -2,6 +2,27 @@
 
 All notable user-facing changes to Neon Voyage are documented here. Versions follow semantic versioning.
 
+## [1.2.1] — 2026-08-12
+
+### Fixed
+
+- Prevented ordinary mobile browser focus changes from opening the pause menu when a player touches the movement controls; switching away or hiding the page still pauses safely.
+- Made the two touch sticks retain independent pointer ownership and reliably return to neutral after pointer release, cancellation, lost capture, visibility loss, or an orientation change.
+- Corrected joystick geometry so the center of each visible ring is truly neutral and cannot create upward drift or accidental aim-fire input.
+- Kept the touch Dash and Pulse controls inside gameplay instead of allowing their gestures to leak into pause behavior.
+- Prevented covered controls, dialogs, keyboard shortcuts, and gamepad buttons from bypassing the portrait orientation gate or replaying held input after rotation.
+
+### Changed
+
+- Added a blocking portrait-mode gate for touch devices. The simulation and transient input freeze without changing the run state, then continue seamlessly when the device returns to landscape.
+- Added best-effort Screen Orientation locking where the browser permits it. Browsers such as iOS Safari that do not provide a usable lock receive the same rotate-to-landscape gate and require the player to rotate manually.
+- Improved touch detection for hybrid iPads and other tablet/trackpad combinations, and tightened the narrow-landscape layout around display safe areas.
+
+### Quality
+
+- Added real dual-pointer browser regressions for hybrid touch detection, move/aim/fire independence, Dash and Pulse, pointer cancellation, lost capture, mobile focus changes, document visibility, portrait freezing, seamless landscape resume, and missing or rejected orientation locks.
+- Expanded the dependency-free audit to 64 automated checks while retaining the strict offline runtime, restrictive Content Security Policy, fixed-step simulation, entity caps, and zero runtime network surface.
+
 ## [1.2.0] — 2026-08-12
 
 ### Fixed

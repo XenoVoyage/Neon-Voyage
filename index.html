@@ -34,6 +34,24 @@
     <div class="scanlines" aria-hidden="true"></div>
     <div class="vignette" aria-hidden="true"></div>
 
+    <section
+      id="orientation-overlay"
+      class="orientation-overlay"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-hidden="true"
+      aria-labelledby="orientation-title"
+    >
+      <div class="orientation-message">
+        <div class="orientation-symbol" aria-hidden="true">
+          <span class="orientation-device"></span>
+        </div>
+        <strong id="orientation-title">Rotate to landscape</strong>
+        <span>Neon Voyage is designed for two-thumb play.</span>
+      </div>
+    </section>
+
     <section id="hud" class="hud is-hidden" aria-label="Run status">
       <div class="hud-left">
         <span class="hud-label">Score</span>
@@ -133,7 +151,7 @@
 
         <div class="menu-meta">
           <span>Local record <strong id="menu-high-score">000000</strong></span>
-          <span>Version 1.2.0</span>
+          <span>Version 1.2.1</span>
         </div>
       </div>
     </section>

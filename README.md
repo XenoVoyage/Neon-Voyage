@@ -1,9 +1,9 @@
 # Neon Voyage
 
-[![Version 1.2.0](https://img.shields.io/badge/version-1.2.0-63f7f0)](CHANGELOG.md)
+[![Version 1.2.1](https://img.shields.io/badge/version-1.2.1-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
-[![Local audit: 50/50](https://img.shields.io/badge/local_audit-50%2F50_pass-78ff9f)](AUDIT.md)
+[![Local audit: 64/64](https://img.shields.io/badge/local_audit-64%2F64_pass-78ff9f)](AUDIT.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
 
 Neon Voyage is a fast, fixed-screen 2D space shooter built for a local browser. Leave Earth behind through finite asteroid waves, discover increasingly unfamiliar space, shatter a Titan, and survive first contact before confronting an alien command ship.
@@ -25,6 +25,14 @@ Audio begins after the first click or key press because browsers require a user 
 | Void Pulse | `E` | Tertiary button / Pulse |
 | Pause | `P` or `Esc` | Gamepad menu / HUD Pause |
 | Sound | `M` or Settings | HUD Sound |
+
+### Mobile and tablet play
+
+Touch devices use two independent on-screen sticks: move with the left thumb, and aim and fire with the right. Each stick uses its visible ring as the neutral point, while the larger surrounding area remains available for reliable pointer capture. Dash and Void Pulse remain separate action buttons. Touch capability is detected from the device, any available coarse pointer, or an actual touch, so an iPad with a connected trackpad keeps the finger controls available.
+
+Touch play is landscape-only. In portrait, a blocking rotate prompt owns all button, keyboard, pointer, and gamepad input; it freezes the simulation and clears held actions without opening the pause menu or discarding the run. Rotating back to landscape continues from the same state without replaying buttons held during portrait. Neon Voyage requests a landscape orientation lock when the browser permits it, but iPhone and iPad browsers do not reliably expose that capability to an ordinary web page, so the player may need to rotate the device manually and turn off the system orientation lock.
+
+Mobile browser-chrome focus changes do not pause an active touch run. Moving the page into the background or switching away still pauses through the document visibility lifecycle, and clears captured touch input before play resumes.
 
 ## Expedition
 
@@ -80,7 +88,8 @@ The runtime uses a small `window.ND` namespace and classic deferred scripts so i
 - Explicit caps and cleanup for every entity and effect family
 - Swept projectile collision and radius-aware stage/arena containment
 - Reduced-effects mode for lower particle density during play and fewer, shorter hyperspace streaks
-- Keyboard, mouse, touch, and gamepad controls with accessible menus and live status
+- Keyboard, mouse, independent dual-touch, and gamepad controls with accessible menus and live status
+- Landscape touch gate, display-safe-area layout, hybrid tablet detection, and visibility-safe input cleanup
 - Restrictive Content Security Policy and local relative resources
 - No runtime network APIs, analytics, telemetry, ads, external fonts, workers, or service workers
 - Size-limited, schema-validated local high-score and preference storage
@@ -95,7 +104,7 @@ Node.js is optional and used only by the audit harness:
 node tests/run.js
 ```
 
-The Neon Voyage 1.2.0 source snapshot passes **50/50** dependency-free automated checks. The linked CI and Pages badges report the public workflows independently.
+The Neon Voyage 1.2.1 source snapshot passes **64/64** dependency-free automated checks. The linked CI and Pages badges report the public workflows independently.
 
 A coherent release update includes a semantic version bump, [changelog](CHANGELOG.md), synchronized README/audit, deterministic regression coverage, regenerated checksums after files are frozen, one clean public `main` publish, and observed CI, Pages, and live-site verification. See [AUDIT.md](AUDIT.md) and [tests/README.md](tests/README.md) for the current evidence and scope.
 

@@ -5,6 +5,7 @@ const suites = [
   require("./config-core.test"),
   require("./offline.test"),
   require("./browser-smoke.test"),
+  require("./mobile-input.test"),
   require("./gameplay.test"),
   require("./visuals.test"),
   require("./stress.test")

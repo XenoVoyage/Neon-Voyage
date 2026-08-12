@@ -22,6 +22,8 @@ Read this file before changing the project. Read the related runtime, tests, and
 - Keep hot fixed-step and render paths allocation-conscious. Reuse state, enforce caps, expire transient objects, and clean inactive world state.
 - Preserve restrictive CSP, relative local resource paths, safe optional storage, and zero runtime network surface.
 - Keep input, dialogs, live status, progress indicators, focus behavior, and reduced-effects support accessible across keyboard, pointer, touch, and gamepad paths.
+- Detect touch capability from device signals and observed touch input, not only the primary pointer; hybrid tablets with a trackpad must retain their touch controls.
+- Treat document visibility as the touch lifecycle boundary: browser-chrome focus changes must not pause a touch run, while a hidden document must pause and clear transient input. Preserve desktop blur-to-pause behavior.
 
 ## Gameplay and verification
 
@@ -33,6 +35,8 @@ Read this file before changing the project. Read the related runtime, tests, and
 - Asteroids remain ballistic physical hazards; normal ranged attacks belong to alien spacecraft. Asteroid impacts use separation and bounce, damage only on a genuine approaching collision, and can destroy other asteroids or aliens without duplicate objective credit or farming rewards.
 - Temporary weapon pickups use independent finite timers and must visibly change firing behavior while active. Rare permanent module upgrades remain bounded and persist only for the current run.
 - Add deterministic regression coverage for every gameplay fix. Fixed seed plus fixed input must reproduce equivalent state.
+- Mobile play is landscape-only. Portrait uses a blocking orientation gate that owns covered UI, keyboard, pointer, and gamepad input; it freezes simulation and clears input without changing the run mode. Returning to landscape resumes the same state without replaying held buttons. Screen Orientation locking is best-effort and must never be required for play.
+- Track simultaneous touch sticks by independent pointer IDs, and release each capture on pointer up, pointer cancel, lost capture, visibility loss, and orientation blocking. Cover these paths, hybrid detection, focus/visibility behavior, and rejected orientation locks with browser-VM regressions.
 - Keep the 20-minute stress audit finite and under every configured cap. Never weaken a release test merely to hide an application defect.
 - Run targeted tests while iterating, then `node tests/run.js` for a coherent release candidate.
 - Automated checks establish contracts and regressions. Never claim that visuals, balance, difficulty, responsiveness, or overall game feel were manually accepted unless a human reviewer actually accepted them.

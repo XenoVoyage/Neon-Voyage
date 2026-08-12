@@ -73,6 +73,7 @@ function makeElement(id, className) {
     innerHTML: "",
     value: "",
     disabled: false,
+    inert: false,
     hidden: false,
     open: false,
     width: id === "game" ? 1280 : 0,
@@ -97,13 +98,28 @@ function makeElement(id, className) {
     click() { this.dispatchEvent({ type: "click", preventDefault() {} }); },
     focus() {},
     blur() {},
-    setPointerCapture() {},
-    releasePointerCapture() {},
+    _capturedPointers: new Set(),
+    setPointerCapture(pointerId) { this._capturedPointers.add(pointerId); },
+    releasePointerCapture(pointerId) { this._capturedPointers.delete(pointerId); },
+    hasPointerCapture(pointerId) { return this._capturedPointers.has(pointerId); },
     getContext: () => context,
-    getBoundingClientRect: () => ({ left: 0, top: 0, right: 1280, bottom: 720, width: 1280, height: 720 }),
-    setAttribute(name, value) { attributes.set(name, String(value)); },
+    _bounds: { left: 0, top: 0, right: 1280, bottom: 720, width: 1280, height: 720 },
+    getBoundingClientRect() { return Object.assign({}, this._bounds); },
+    setBoundingClientRect(bounds) {
+      const next = Object.assign({}, this._bounds, bounds || {});
+      if (Number.isFinite(next.left) && Number.isFinite(next.width)) next.right = next.left + next.width;
+      if (Number.isFinite(next.top) && Number.isFinite(next.height)) next.bottom = next.top + next.height;
+      this._bounds = next;
+    },
+    setAttribute(name, value) {
+      attributes.set(name, String(value));
+      if (name === "inert") this.inert = true;
+    },
     getAttribute(name) { return attributes.has(name) ? attributes.get(name) : null; },
-    removeAttribute(name) { attributes.delete(name); },
+    removeAttribute(name) {
+      attributes.delete(name);
+      if (name === "inert") this.inert = false;
+    },
     hasAttribute(name) { return attributes.has(name); },
     querySelector() { return null; },
     querySelectorAll() { return []; },
@@ -127,6 +143,26 @@ function buildBrowser(options) {
     elementClasses.set(match[1], classMatch ? classMatch[1] : "");
   }
   const elements = new Map(Array.from(elementClasses, ([id, className]) => [id, makeElement(id, className)]));
+  const shell = elements.get("game-shell");
+  if (shell) {
+    const topLevelIds = [
+      "game", "canvas-instructions", "orientation-overlay", "hud", "boss-hud",
+      "objective-hud", "meters", "announcement", "menu-overlay", "pause-overlay",
+      "gameover-overlay", "controls-modal", "settings-modal", "touch-controls"
+    ];
+    shell.children = topLevelIds.map((id) => elements.get(id)).filter(Boolean);
+    for (const child of shell.children) child.parentElement = shell;
+  }
+  for (const [zoneId, knobId] of [["move-zone", "move-knob"], ["aim-zone", "aim-knob"]]) {
+    const zone = elements.get(zoneId);
+    const knob = elements.get(knobId);
+    if (!zone || !knob) continue;
+    const ring = makeElement(`${zoneId}-ring`, "stick-ring");
+    knob.parentElement = ring;
+    ring.parentElement = zone;
+    zone.querySelector = (selector) => selector === ".stick-ring" ? ring : null;
+    zone._stickRing = ring;
+  }
   const listeners = new Map();
   const frameQueue = [];
   let now = 0;
@@ -181,6 +217,12 @@ function buildBrowser(options) {
     static now() { return Number.isFinite(settings.now) ? settings.now : 1700000000000; }
   }
 
+  const mediaMatches = Object.assign({}, settings.mediaMatches || {});
+  const orientation = settings.orientation === false ? undefined : Object.assign({
+    type: "landscape-primary",
+    angle: 90,
+    lock: () => Promise.resolve()
+  }, settings.orientation || {});
   const window = {
     ND: {},
     document,
@@ -190,10 +232,11 @@ function buildBrowser(options) {
     devicePixelRatio: 1,
     Image: FakeImage,
     navigator: {
-      maxTouchPoints: 0,
-      userAgent: "NeonVoyageTest",
+      maxTouchPoints: Number.isFinite(settings.maxTouchPoints) ? settings.maxTouchPoints : 0,
+      userAgent: settings.userAgent || "NeonVoyageTest",
       getGamepads: () => []
     },
+    screen: orientation ? { orientation } : {},
     location: { href: "file:///Neon-Voyage/index.html", protocol: "file:" },
     performance: { now: () => now },
     Date: FixedDate,
@@ -202,7 +245,14 @@ function buildBrowser(options) {
       setItem: (key, value) => storage.set(key, String(value)),
       removeItem: (key) => storage.delete(key)
     },
-    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    matchMedia(query) {
+      return {
+        matches: Boolean(mediaMatches[query]),
+        media: query,
+        addEventListener() {},
+        removeEventListener() {}
+      };
+    },
     getComputedStyle: () => ({ getPropertyValue: () => "" }),
     addEventListener(type, listener) {
       if (!windowListeners.has(type)) windowListeners.set(type, []);

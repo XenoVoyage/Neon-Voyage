@@ -64,6 +64,7 @@
     settingsFullscreenButton: byId("settings-fullscreen-button"),
     controlsModal: byId("controls-modal"),
     settingsModal: byId("settings-modal"),
+    orientationOverlay: byId("orientation-overlay"),
     touchControls: byId("touch-controls"),
     moveZone: byId("move-zone"),
     aimZone: byId("aim-zone"),
@@ -111,6 +112,81 @@
     gamepadFire: false,
     lastGamepadButtons: []
   };
+  const stickCleanups = [];
+  let touchCapable = false;
+  let orientationBlocked = false;
+
+  function mediaMatches(query) {
+    try {
+      return Boolean(global.matchMedia && global.matchMedia(query).matches);
+    } catch {
+      return false;
+    }
+  }
+
+  function detectTouchCapability() {
+    const navigator = global.navigator || {};
+    return Number(navigator.maxTouchPoints || navigator.msMaxTouchPoints || 0) > 0 ||
+      mediaMatches("(pointer: coarse)") || mediaMatches("(any-pointer: coarse)");
+  }
+
+  function isPortraitViewport() {
+    const width = Number(global.innerWidth) || renderer.width;
+    const height = Number(global.innerHeight) || renderer.height;
+    return height > width;
+  }
+
+  function setTouchCapable(value) {
+    touchCapable = Boolean(value);
+    if (global.document.body) global.document.body.classList.toggle("is-touch-capable", touchCapable);
+  }
+
+  function updateOrientationState() {
+    if (!touchCapable && detectTouchCapability()) setTouchCapable(true);
+    const nextBlocked = touchCapable && isPortraitViewport();
+    if (nextBlocked !== orientationBlocked) {
+      const heldGamepadButtons = nextBlocked ? null : input.lastGamepadButtons.slice();
+      orientationBlocked = nextBlocked;
+      resetTransientInput();
+      if (heldGamepadButtons) input.lastGamepadButtons = heldGamepadButtons;
+      if (orientationBlocked) {
+        closeDialog(dom.controlsModal);
+        closeDialog(dom.settingsModal);
+      }
+    }
+    if (dom.orientationOverlay) {
+      dom.orientationOverlay.classList.toggle("is-visible", orientationBlocked);
+      dom.orientationOverlay.setAttribute("aria-hidden", String(!orientationBlocked));
+      const shell = dom.orientationOverlay.parentElement;
+      if (shell && shell.children) {
+        for (const child of Array.from(shell.children)) {
+          if (child === dom.orientationOverlay) continue;
+          if (orientationBlocked) child.setAttribute("inert", "");
+          else child.removeAttribute("inert");
+        }
+      }
+    }
+    return orientationBlocked;
+  }
+
+  function noteTouchInteraction(event) {
+    if (!event || event.pointerType !== "touch") return;
+    if (!touchCapable) setTouchCapable(true);
+    updateOrientationState();
+  }
+
+  function requestLandscapeLock() {
+    if (!touchCapable) return;
+    try {
+      const orientation = global.screen && global.screen.orientation;
+      const result = orientation && typeof orientation.lock === "function" ? orientation.lock("landscape") : null;
+      if (result && typeof result.catch === "function") result.catch(() => {});
+    } catch {
+      // Screen orientation locking is optional and unsupported by iOS Safari.
+    }
+  }
+
+  setTouchCapable(detectTouchCapability());
 
   const state = {
     mode: "menu",
@@ -272,6 +348,7 @@
 
   function startRun() {
     audio.ensure();
+    requestLandscapeLock();
     resetRun();
     setMode("playing");
     canvas.focus({ preventScroll: true });
@@ -350,6 +427,7 @@
       const result = document.fullscreenElement && document.exitFullscreen ? document.exitFullscreen() :
         document.documentElement.requestFullscreen ? document.documentElement.requestFullscreen() : null;
       if (result && typeof result.catch === "function") result.catch(() => {});
+      requestLandscapeLock();
     } catch {
       // Fullscreen is optional and may be denied when the file is opened locally.
     }
@@ -357,7 +435,13 @@
 
   function bindButton(id, action) {
     const button = byId(id);
-    if (button) button.addEventListener("click", action);
+    if (button) button.addEventListener("click", (event) => {
+      if (orientationBlocked) {
+        event.preventDefault();
+        return;
+      }
+      action(event);
+    });
   }
 
   bindButton("start-button", startRun);
@@ -403,12 +487,24 @@
     input.gamepadAimY = 0;
     input.gamepadFire = false;
     input.lastGamepadButtons = [];
+    for (const resetStick of stickCleanups) resetStick();
     if (dom.moveKnob) dom.moveKnob.style.transform = "translate(-50%, -50%)";
     if (dom.aimKnob) dom.aimKnob.style.transform = "translate(-50%, -50%)";
   }
 
+  function resetBlockedInput() {
+    const heldGamepadButtons = input.lastGamepadButtons;
+    resetTransientInput();
+    input.lastGamepadButtons = heldGamepadButtons;
+  }
+
   global.addEventListener("keydown", (event) => {
     const key = normalizeKey(event);
+    if (orientationBlocked) {
+      resetBlockedInput();
+      event.preventDefault();
+      return;
+    }
     if (!input.keys[key]) input.pressed[key] = true;
     input.keys[key] = true;
     if (["space", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) event.preventDefault();
@@ -421,18 +517,25 @@
   }, { passive: false });
 
   global.addEventListener("keyup", (event) => {
-    input.keys[normalizeKey(event)] = false;
+    const key = normalizeKey(event);
+    if (orientationBlocked) {
+      delete input.keys[key];
+      delete input.pressed[key];
+      return;
+    }
+    input.keys[key] = false;
   });
 
   canvas.addEventListener("pointermove", (event) => {
-    if (event.pointerType === "touch") return;
+    if (orientationBlocked || event.pointerType === "touch") return;
     const bounds = canvas.getBoundingClientRect();
     input.pointerX = event.clientX - bounds.left;
     input.pointerY = event.clientY - bounds.top;
     input.pointerActive = true;
   });
   canvas.addEventListener("pointerdown", (event) => {
-    if (event.pointerType === "touch") return;
+    noteTouchInteraction(event);
+    if (orientationBlocked || event.pointerType === "touch") return;
     audio.ensure();
     input.pointerFire = true;
     input.pointerActive = true;
@@ -442,13 +545,15 @@
     if (event.pointerType !== "touch") input.pointerFire = false;
   });
   canvas.addEventListener("pointercancel", () => { input.pointerFire = false; });
+  canvas.addEventListener("lostpointercapture", () => { input.pointerFire = false; });
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 
   function bindStick(zone, knob, kind) {
     if (!zone || !knob) return;
     let activeId = null;
     const update = (event) => {
-      const bounds = zone.getBoundingClientRect();
+      const ring = knob.parentElement || zone.querySelector(".stick-ring") || zone;
+      const bounds = ring.getBoundingClientRect();
       const dx = event.clientX - (bounds.left + bounds.width / 2);
       const dy = event.clientY - (bounds.top + bounds.height / 2);
       const limit = Math.max(24, Math.min(bounds.width, bounds.height) * 0.29);
@@ -467,18 +572,20 @@
       }
     };
     zone.addEventListener("pointerdown", (event) => {
+      noteTouchInteraction(event);
+      if (orientationBlocked) return;
       if (activeId !== null) return;
       activeId = event.pointerId;
       zone.setPointerCapture?.(activeId);
       audio.ensure();
+      requestLandscapeLock();
       update(event);
       event.preventDefault();
     });
     zone.addEventListener("pointermove", (event) => {
       if (event.pointerId === activeId) update(event);
     });
-    const end = (event) => {
-      if (event.pointerId !== activeId) return;
+    const clear = () => {
       activeId = null;
       knob.style.transform = "translate(-50%, -50%)";
       if (kind === "move") input.touchMoveX = input.touchMoveY = 0;
@@ -487,8 +594,14 @@
         input.touchFire = false;
       }
     };
+    const end = (event) => {
+      if (event.pointerId !== activeId) return;
+      clear();
+    };
+    stickCleanups.push(clear);
     zone.addEventListener("pointerup", end);
     zone.addEventListener("pointercancel", end);
+    zone.addEventListener("lostpointercapture", end);
   }
 
   bindStick(dom.moveZone, dom.moveKnob, "move");
@@ -498,7 +611,10 @@
     renderer.resize();
     if (state.arena.active) state.arena.radius = arenaRadius();
     if (state.combatField.active) resizeCombatField();
+    updateOrientationState();
   });
+  global.addEventListener("orientationchange", updateOrientationState);
+  global.addEventListener("pointerdown", noteTouchInteraction, { capture: true, passive: true });
   global.document.addEventListener("fullscreenchange", updateSettingsUI);
   global.document.addEventListener("visibilitychange", () => {
     if (global.document.hidden && (state.mode === "playing" || state.mode === "transition")) {
@@ -507,7 +623,7 @@
     }
   });
   global.addEventListener("blur", () => {
-    if (state.mode === "playing" || state.mode === "transition") {
+    if (!touchCapable && (state.mode === "playing" || state.mode === "transition")) {
       state.pausedByVisibility = true;
       togglePause(true);
     }
@@ -526,6 +642,15 @@
     if (!pad) {
       input.gamepadMoveX = input.gamepadMoveY = input.gamepadAimX = input.gamepadAimY = 0;
       input.gamepadFire = false;
+      if (orientationBlocked) input.lastGamepadButtons = [];
+      return;
+    }
+    const nowButtons = pad.buttons.map((button) => Boolean(button.pressed));
+    if (orientationBlocked) {
+      input.gamepadMoveX = input.gamepadMoveY = input.gamepadAimX = input.gamepadAimY = 0;
+      input.gamepadFire = false;
+      for (const key of Object.keys(input.pressed)) delete input.pressed[key];
+      input.lastGamepadButtons = nowButtons;
       return;
     }
     input.gamepadMoveX = deadzone(pad.axes[0] || 0, 0.16);
@@ -533,7 +658,6 @@
     input.gamepadAimX = deadzone(pad.axes[2] || 0, 0.19);
     input.gamepadAimY = deadzone(pad.axes[3] || 0, 0.19);
     input.gamepadFire = Boolean(pad.buttons[0] && pad.buttons[0].pressed) || Math.abs(input.gamepadAimX) + Math.abs(input.gamepadAimY) > 0.32;
-    const nowButtons = pad.buttons.map((button) => Boolean(button.pressed));
     if (nowButtons[1] && !input.lastGamepadButtons[1]) input.pressed.dash = true;
     if (nowButtons[2] && !input.lastGamepadButtons[2]) input.pressed.pulse = true;
     if (nowButtons[9] && !input.lastGamepadButtons[9] && (state.mode === "playing" || state.mode === "transition" || state.mode === "paused")) togglePause();
@@ -2532,6 +2656,10 @@
   }
 
   function update(dt) {
+    if (orientationBlocked) {
+      resetBlockedInput();
+      return;
+    }
     if ((state.mode !== "playing" && state.mode !== "transition") || !state.ship) {
       clearPressed();
       return;
@@ -2805,6 +2933,11 @@
     killThreat: (entity, cause) => killThreat(entity, cause || "player"),
     collideThreats: collideAsteroidsAndAliens,
     damageBoss,
+    mobile: Object.freeze({
+      get touchCapable() { return touchCapable; },
+      get orientationBlocked() { return orientationBlocked; },
+      updateOrientationState
+    }),
     config: CONFIG
   });
   ND.GameDebug = debugApi;
@@ -2818,7 +2951,7 @@
     const frameDelta = clamp(seconds - previousTime, 0, CONFIG.world.maxFrameDelta);
     previousTime = seconds;
     pollGamepad();
-    if (state.mode === "playing" || state.mode === "transition") {
+    if (!orientationBlocked && (state.mode === "playing" || state.mode === "transition")) {
       accumulator += frameDelta;
       let safety = 0;
       while (accumulator >= CONFIG.world.fixedStep && safety < 5) {
@@ -2835,6 +2968,7 @@
   }
 
   setMode("menu");
+  updateOrientationState();
   updateSettingsUI();
   updateUI(true);
   global.requestAnimationFrame(frame);
