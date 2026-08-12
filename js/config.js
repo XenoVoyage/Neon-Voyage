@@ -62,7 +62,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "1.2.1",
+    version: "1.2.2",
 
     world: {
       fixedStep: 1 / 60,
@@ -74,6 +74,17 @@
       playerAcceleration: 1550,
       playerDrag: 2.25,
       spawnSafetyRadius: 260
+    },
+
+    mobileControls: {
+      moveDeadzone: 0.16,
+      moveCurve: 1.45,
+      moveMaxOutput: 0.72,
+      aimDeadzone: 0.24,
+      aimCurve: 1.25,
+      aimMaxOutput: 1,
+      aimFireThreshold: 0.12,
+      aimTurnRate: 8
     },
 
     camera: {
@@ -92,10 +103,13 @@
       minHalfHeight: 100,
       cameraSharpness: 15,
       boundaryBounce: 0.16,
-      spawnEdgeInset: 110,
-      spawnEdgeOutset: 36,
-      spawnEdgeSpan: 0.84,
-      spawnShipClearance: 48,
+      spawnEdgeSpan: 0.96,
+      spawnShipClearance: 72,
+      spawnThreatClearance: 18,
+      spawnCandidateCount: 24,
+      spawnMinimumRadius: 24,
+      spawnMinimumContactSeconds: 2.2,
+      spawnCollisionGraceSeconds: 2.2,
       threatBoundaryPadding: 8,
       threatBoundaryBounce: 0.32,
       asteroidRestitution: 0.72,

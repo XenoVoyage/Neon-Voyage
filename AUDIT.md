@@ -1,8 +1,8 @@
-# Neon Voyage 1.2.1 — release audit
+# Neon Voyage 1.2.2 — release audit
 
-Audited: 2026-08-12  
-Targets: direct `file://` launch and GitHub Pages repository-subpath hosting  
-Result: **PASS — 64/64 automated checks**
+- Audited: 2026-08-13
+- Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
+- Result: **PASS — 73/73 automated checks**
 
 Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game.
 
@@ -24,6 +24,10 @@ Passed:
 - Stages 1–4 contain asteroid and non-sentient anomaly hazards only. The Titan is Stage 5, ordinary alien spacecraft first appear at Stage 6, and the alien Harrower boss remains Stage 9.
 - No pre-contact stage or wave label contains stale scout, strike, raid, fleet, carrier, bomber, or alien terminology.
 - The first Earth Orbit wave contains exactly three required rocks, all visible at entry, and cannot over-spawn its configured total.
+- Across 1,024 fixed seeds at each of six phone, tablet, and desktop viewports, every Earth Orbit opening rock preserves at least 72 px of ship-surface clearance, 18 px of threat separation, and 2.2 seconds of predicted contact time.
+- An additional 10,240 seeded openings cover Stages 1–5 at 568×320 and 667×375. Large automatic asteroids adapt only as far as the configured safe radius floor; if no strict placement exists, the threat remains in the finite pending queue rather than being forced onto the field or discarded.
+- Every compact opening places at least one threat and retains the exact authored total across living and pending threats. A deferred slot keeps `waveSpawned` false and is retried as normal combat frees safe perimeter space.
+- Opening asteroids remain non-overlapping on their first simulation tick and cannot damage a stationary ship during the protected opening window; automatic placements receive 2.2 seconds of collision grace rather than relying on temporary player invulnerability.
 - Each non-boss stage is a finite set of configured, capped waves. A required survivor prevents wave advancement and premature stage clear.
 - Splitting required asteroids create required descendants with the same encounter generation and wave. Both current-wave and stage totals grow by the number successfully spawned; the full descendant tree must be destroyed before progress continues.
 - Fresh fragments spawn separated with collision grace and survive their initial frame instead of self-annihilating.
@@ -58,14 +62,16 @@ Passed:
 
 - Touch capability is detected from `maxTouchPoints`, any available coarse pointer, or an observed touch gesture. Hybrid iPads and other fine-primary-pointer tablets retain the touch-control shell.
 - Real Pointer Event sequences keep the move and aim sticks assigned to independent pointer IDs. Holding the aim stick fires without stealing movement; releasing one stick does not clear the other.
-- Stick input is calculated from each visible circular ring rather than its larger labeled capture zone. Exact ring-center touches remain neutral and cannot fire; edge touches reach full deflection while capture stays on the larger zone.
-- Pointer up, pointer cancel, lost pointer capture, document hiding, and portrait blocking return the relevant stick and transient actions to neutral, preventing stuck movement or fire after interruption.
-- Touch Dash and Void Pulse activate gameplay without opening pause. Ordinary mobile browser focus loss no longer pauses a visible run, while hiding or switching away from the document still pauses safely and clears captured touch ownership.
+- Stick input is calculated radially from each visible circular ring rather than its larger labeled capture zone. Configured deadzones, nonlinear response curves, and output caps are symmetric in eight tested directions; exact ring-center touches remain neutral and cannot fire.
+- Touch aiming follows the requested vector at a configured bounded turn rate. Low-band firing uses that same bounded turn path and emits along the resulting ship heading; barely-active aim uses the same ownership threshold, turns without snapping, and stays below the fire threshold. Releasing the aim stick preserves the chosen heading and reanchors the aim vector as the ship moves instead of snapping toward a stale target.
+- An observed touch clears stale mouse targeting on a hybrid device. Pointer up, pointer cancel, lost pointer capture, document hiding, portrait blocking, and touch pause return the relevant stick and transient actions to neutral, preventing stuck movement or fire after interruption.
+- Touch Dash and Void Pulse activate gameplay without opening pause. Ordinary mobile browser focus loss does not pause a visible run, while hiding or switching away from the document still pauses safely and clears captured touch ownership.
+- A manual mobile pause releases both pointer captures, clears all held touch actions, stops residual ship velocity, and ignores stale movement from the old pointer IDs after resume. Fresh finger input takes ownership normally.
 - Desktop focus loss retains automatic pause behavior.
 - Portrait touch play presents an accessible blocking rotate prompt, freezes fixed-step simulation without changing the run mode, and resumes the same state after a landscape resize or orientation change.
 - The portrait gate owns covered buttons, dialogs, pointer input, keyboard shortcuts, and gamepad state. No covered action can start, reset, pause, configure, or leave a run; held gamepad buttons are sampled without replaying an edge after landscape resumes.
 - Landscape locking is requested only as a best-effort browser capability. A missing API, synchronous failure, or rejected lock cannot break startup or input; the runtime does not claim to force orientation on iOS Safari.
-- The local shell declares display-safe-area handling, a narrow-landscape layout, `touch-action` protection, and both CSS and JavaScript fallbacks for touch controls.
+- The local shell declares display-safe-area handling, a narrow-landscape layout, and CSS/JavaScript fallbacks for touch controls. `touch-action: manipulation` suppresses double-tap zoom across the shell while the viewport avoids `user-scalable=no`, preserving standard pinch accessibility outside canvas-owned gestures; overscroll is contained.
 
 ## Weapons and progression verification
 
@@ -84,7 +90,7 @@ Passed:
 - Runtime source contains no remote URL, network API, telemetry, dynamic code, worker, service worker, module loader, package manifest, lockfile, or `node_modules`.
 - Every runtime resource is local, relative, and valid beneath the `/Neon-Voyage/` GitHub Pages repository subpath. No `<base>` tag or root-relative runtime path is present.
 - Runtime JavaScript passes syntax checking. The release tree contains no symlinks and stays below conservative offline payload limits.
-- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version 1.2.1.
+- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version 1.2.2.
 - The dependency-free browser VM loads every local script, draws Canvas frames, launches a run, exposes the HUD, and maintains one animation loop.
 - CI and Pages workflows use the unchanged repository root without installing dependencies or running a production build.
 
@@ -102,7 +108,7 @@ Passed:
 node tests/run.js
 ```
 
-Expected result for this source snapshot: `64/64 tests passed`.
+Expected result for this source snapshot: `73/73 tests passed`.
 
 ## Acceptance and publication boundary
 

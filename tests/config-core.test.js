@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage 1.2.1 configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "1.2.1");
+  test("Neon Voyage 1.2.2 configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "1.2.2");
     collectFrozen(CONFIG, new Set());
   });
 

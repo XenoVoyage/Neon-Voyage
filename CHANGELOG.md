@@ -2,6 +2,27 @@
 
 All notable user-facing changes to Neon Voyage are documented here. Versions follow semantic versioning.
 
+## [1.2.2] — 2026-08-13
+
+### Fixed
+
+- Suppressed accidental double-tap zoom and browser overscroll across the fullscreen game shell without adding a blanket viewport zoom restriction; standard pinch zoom remains available outside direct canvas gestures.
+- Removed irregular touch heading changes caused by stale hybrid mouse targets. Releasing the aim stick now preserves the selected heading and keeps the aim anchor aligned as the ship moves.
+- Made mobile pause reliably release both stick captures, clear held actions, and stop residual ship velocity. Old pointer events cannot regain control after resume; fresh finger input is required.
+- Prevented opening threats from appearing beside the player or delivering an immediate unavoidable hit on compact phone, tablet, and desktop viewports.
+
+### Changed
+
+- Reworked mobile sticks around configurable radial deadzones and response curves, with a lower movement-output cap and bounded touch-aim turn rate for more deliberate control in every direction.
+- Automatic combat spawns now compare multiple visible perimeter candidates and require 72 px of ship-surface clearance, 18 px of threat separation, and at least 2.2 seconds of predicted contact time. Newly placed asteroids receive matching collision grace.
+- Large automatic asteroids can adapt toward a safe configured radius floor on compact viewports. A threat that still cannot fit remains in its finite wave queue and is retried as normal combat frees a safe slot, rather than being forced into an unsafe placement or silently discarded.
+
+### Quality
+
+- Added deterministic mobile regressions for radial symmetry, deadzones, response caps, bounded turn rate, barely-active aim ownership, low-band shot alignment, heading preservation, hybrid pointer handoff, pointer-capture release, and stationary pause/resume behavior.
+- Retained the 1,024-seed, six-viewport Earth Orbit sweep and added 10,240 compact-screen openings across Stages 1–5, verifying safe radius adaptation or strict deferral, exact objective retention, visibility, clearances, minimum contact time, and a protected opening window.
+- Expanded the dependency-free audit to 73 automated checks while retaining the strict offline runtime, restrictive Content Security Policy, fixed-step simulation, entity caps, and zero runtime network surface.
+
 ## [1.2.1] — 2026-08-12
 
 ### Fixed

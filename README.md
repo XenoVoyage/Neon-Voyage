@@ -1,9 +1,9 @@
 # Neon Voyage
 
-[![Version 1.2.1](https://img.shields.io/badge/version-1.2.1-63f7f0)](CHANGELOG.md)
+[![Version 1.2.2](https://img.shields.io/badge/version-1.2.2-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
-[![Local audit: 64/64](https://img.shields.io/badge/local_audit-64%2F64_pass-78ff9f)](AUDIT.md)
+[![Local audit: 73/73](https://img.shields.io/badge/local_audit-73%2F73_pass-78ff9f)](AUDIT.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
 
 Neon Voyage is a fast, fixed-screen 2D space shooter built for a local browser. Leave Earth behind through finite asteroid waves, discover increasingly unfamiliar space, shatter a Titan, and survive first contact before confronting an alien command ship.
@@ -28,11 +28,13 @@ Audio begins after the first click or key press because browsers require a user 
 
 ### Mobile and tablet play
 
-Touch devices use two independent on-screen sticks: move with the left thumb, and aim and fire with the right. Each stick uses its visible ring as the neutral point, while the larger surrounding area remains available for reliable pointer capture. Dash and Void Pulse remain separate action buttons. Touch capability is detected from the device, any available coarse pointer, or an actual touch, so an iPad with a connected trackpad keeps the finger controls available.
+Touch devices use two independent on-screen sticks: move with the left thumb, and aim and fire with the right. Each stick uses a radial deadzone and response curve around its visible neutral point, while the larger surrounding area remains available for reliable pointer capture. Movement output is capped for finer control, touch aiming turns at a bounded rate, and releasing the aim stick preserves the selected heading. Small intentional aim input and low-band firing share the same direction logic, so a shot cannot leave along the ship's old heading while the ship turns elsewhere. Dash and Void Pulse remain separate action buttons. Touch capability is detected from the device, any available coarse pointer, or an actual touch, so an iPad with a connected trackpad keeps the finger controls available without retaining a stale mouse target.
+
+The fullscreen shell suppresses accidental double-tap zoom and browser overscroll during direct game interaction. It does not add a blanket `user-scalable=no` viewport restriction, so standard pinch zoom remains available outside the canvas gestures that the game must own.
 
 Touch play is landscape-only. In portrait, a blocking rotate prompt owns all button, keyboard, pointer, and gamepad input; it freezes the simulation and clears held actions without opening the pause menu or discarding the run. Rotating back to landscape continues from the same state without replaying buttons held during portrait. Neon Voyage requests a landscape orientation lock when the browser permits it, but iPhone and iPad browsers do not reliably expose that capability to an ordinary web page, so the player may need to rotate the device manually and turn off the system orientation lock.
 
-Mobile browser-chrome focus changes do not pause an active touch run. Moving the page into the background or switching away still pauses through the document visibility lifecycle, and clears captured touch input before play resumes.
+Mobile browser-chrome focus changes do not pause an active touch run. Moving the page into the background or switching away still pauses through the document visibility lifecycle. A touch pause clears both stick captures, stops residual ship velocity, and requires fresh finger input before movement or firing can resume.
 
 ## Expedition
 
@@ -49,6 +51,8 @@ Each sector is a nine-stage journey with explicit, finite objectives. Stages 1�
 9. **Command Arena** — defeat an alien capital ship inside a locked circular arena.
 
 A wave stops spawning at its configured total. It advances only after every required threat from that wave has spawned and been resolved; splitting required asteroids add their descendants to the live objective, so destroying a parent cannot clear the stage while its fragments survive. Between stages, a brief hyperspace sequence locks combat controls, carries the ship forward along its existing heading, clears the previous battlefield, and preserves the ship's screen position through the next encounter instead of visibly teleporting it.
+
+Automatic opening threats use visible perimeter candidates selected for ship and threat clearance. Every threat that enters the field preserves at least 72 px of ship-surface clearance, 18 px from another threat, and 2.2 seconds of predicted contact time. On compact Stages 1–5, a large asteroid may adapt toward a safe configured radius floor; if the next threat still cannot fit, it remains in the finite wave queue instead of being forced beside the player. The director retries deferred threats as combat frees a safe perimeter slot, without losing the objective or pretending the wave is fully spawned. Newly placed asteroids also receive 2.2 seconds of collision grace.
 
 Outside hyperspace, background stars remain twinkling points: they do not rotate with the ship or stretch into travel lines.
 
@@ -88,8 +92,8 @@ The runtime uses a small `window.ND` namespace and classic deferred scripts so i
 - Explicit caps and cleanup for every entity and effect family
 - Swept projectile collision and radius-aware stage/arena containment
 - Reduced-effects mode for lower particle density during play and fewer, shorter hyperspace streaks
-- Keyboard, mouse, independent dual-touch, and gamepad controls with accessible menus and live status
-- Landscape touch gate, display-safe-area layout, hybrid tablet detection, and visibility-safe input cleanup
+- Keyboard, mouse, independent radial dual-touch, and gamepad controls with accessible menus and live status
+- Landscape touch gate, display-safe-area layout, hybrid tablet detection, double-tap protection, and pause-safe capture cleanup
 - Restrictive Content Security Policy and local relative resources
 - No runtime network APIs, analytics, telemetry, ads, external fonts, workers, or service workers
 - Size-limited, schema-validated local high-score and preference storage
@@ -104,7 +108,7 @@ Node.js is optional and used only by the audit harness:
 node tests/run.js
 ```
 
-The Neon Voyage 1.2.1 source snapshot passes **64/64** dependency-free automated checks. The linked CI and Pages badges report the public workflows independently.
+The Neon Voyage 1.2.2 source snapshot passes **73/73** dependency-free automated checks. The linked CI and Pages badges report the public workflows independently.
 
 A coherent release update includes a semantic version bump, [changelog](CHANGELOG.md), synchronized README/audit, deterministic regression coverage, regenerated checksums after files are frozen, one clean public `main` publish, and observed CI, Pages, and live-site verification. See [AUDIT.md](AUDIT.md) and [tests/README.md](tests/README.md) for the current evidence and scope.
 

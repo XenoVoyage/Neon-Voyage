@@ -58,6 +58,24 @@ function requiredLiving(state) {
   return living(state).filter((entity) => entity.required && entity.generation === data.generation && entity.waveIndex === data.waveIndex);
 }
 
+function timeToCircleContact(first, second) {
+  const px = first.x - second.x;
+  const py = first.y - second.y;
+  const vx = (first.vx || 0) - (second.vx || 0);
+  const vy = (first.vy || 0) - (second.vy || 0);
+  const radius = (first.radius || 0) + (second.radius || 0);
+  const c = px * px + py * py - radius * radius;
+  if (c <= 0) return 0;
+  const a = vx * vx + vy * vy;
+  if (a <= 1e-12) return Infinity;
+  const b = 2 * (px * vx + py * vy);
+  if (b >= 0) return Infinity;
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) return Infinity;
+  const time = (-b - Math.sqrt(discriminant)) / (2 * a);
+  return time >= 0 ? time : Infinity;
+}
+
 function advanceToWave(game, waveNumber, fixedStep) {
   const limit = Math.ceil(2 / fixedStep);
   for (let frame = 0; frame < limit && game.state.encounterData.waveNumber < waveNumber; frame += 1) game.step(fixedStep);
@@ -393,6 +411,124 @@ module.exports = function register(test) {
     assert.equal(requiredLiving(state).length, 4, "second wave did not match its finite configured total");
     runSteps(game, 1, CONFIG.world.fixedStep);
     assert.equal(requiredLiving(state).length, 4, "second wave spawned beyond its configured total");
+  });
+
+  test("Earth Orbit opening spawns are radius-safe across phone, tablet, and desktop viewports", () => {
+    const viewports = [
+      { width: 568, height: 320 },
+      { width: 667, height: 375 },
+      { width: 852, height: 393 },
+      { width: 932, height: 430 },
+      { width: 1024, height: 768 },
+      { width: 1280, height: 720 }
+    ];
+    const seeds = 1024;
+    for (const viewport of viewports) {
+      const { browser, game, CONFIG, Core } = boot(9001 + viewport.width, viewport);
+      const state = game.state;
+      for (let seed = 1; seed <= seeds; seed += 1) {
+        game.setSeed(seed);
+        game.setStage(1, 1);
+        state.ship.hull = 100;
+        state.ship.shield = 0;
+        state.ship.invulnerable = 0;
+        const opening = requiredLiving(state);
+        const label = `${viewport.width}x${viewport.height} seed ${seed}`;
+        assert.equal(opening.length, 3, `${label} did not spawn exactly three required rocks`);
+        for (const asteroid of opening) {
+          const surface = Math.hypot(asteroid.x - state.ship.x, asteroid.y - state.ship.y) - asteroid.radius - state.ship.radius;
+          assert.ok(surface >= CONFIG.combatField.spawnShipClearance - 1e-7, `${label} spawned ${asteroid.id} only ${surface}px from the ship surface`);
+          assert.ok(
+            timeToCircleContact(asteroid, state.ship) >= CONFIG.combatField.spawnMinimumContactSeconds - 1e-7,
+            `${label} spawned ${asteroid.id} with insufficient time to contact`
+          );
+          assert.ok(
+            Core.circleVisible(asteroid.x, asteroid.y, asteroid.radius, state.camera, browser.window.innerWidth, browser.window.innerHeight, 0),
+            `${label} spawned ${asteroid.id} outside the visible field`
+          );
+        }
+        for (let first = 0; first < opening.length; first += 1) {
+          for (let second = first + 1; second < opening.length; second += 1) {
+            const surface = Math.hypot(opening[first].x - opening[second].x, opening[first].y - opening[second].y) - opening[first].radius - opening[second].radius;
+            assert.ok(surface >= CONFIG.combatField.spawnThreatClearance - 1e-7, `${label} spawned overlapping threats with ${surface}px surface clearance`);
+          }
+        }
+
+        game.step(CONFIG.world.fixedStep);
+        for (const asteroid of opening) {
+          const surface = Math.hypot(asteroid.x - state.ship.x, asteroid.y - state.ship.y) - asteroid.radius - state.ship.radius;
+          assert.ok(surface >= 0, `${label} collapsed into the ship on its first simulation tick`);
+        }
+        for (let first = 0; first < opening.length; first += 1) {
+          for (let second = first + 1; second < opening.length; second += 1) {
+            const surface = Math.hypot(opening[first].x - opening[second].x, opening[first].y - opening[second].y) - opening[first].radius - opening[second].radius;
+            assert.ok(surface >= -1e-7, `${label} threats overlapped on their first simulation tick`);
+          }
+        }
+
+        const frames = Math.ceil(2 / CONFIG.world.fixedStep) - 1;
+        for (let frame = 0; frame < frames; frame += 1) game.step(CONFIG.world.fixedStep);
+        assert.equal(state.ship.hull, 100, `${label} damaged the stationary ship during the protected opening window`);
+      }
+    }
+  });
+
+  test("Stages one through five safely place or defer every compact-screen opening threat", () => {
+    const viewports = [
+      { width: 568, height: 320 },
+      { width: 667, height: 375 }
+    ];
+    const stages = [1, 2, 3, 4, 5];
+    const seeds = 1024;
+    for (const viewport of viewports) {
+      const { browser, game, CONFIG, Core } = boot(12000 + viewport.width, viewport);
+      const state = game.state;
+      for (const stage of stages) {
+        const firstWave = CONFIG.sector.encounters[stage - 1].waves[0];
+        const expected = (firstWave.required || []).concat(firstWave.hazards || [])
+          .reduce((total, group) => total + group.count, 0);
+        for (let seed = 1; seed <= seeds; seed += 1) {
+          game.setSeed(seed);
+          game.setStage(stage, 1);
+          state.ship.hull = 100;
+          state.ship.shield = 0;
+          state.ship.invulnerable = 0;
+          const opening = living(state);
+          const data = state.encounterData;
+          const label = `stage ${stage} ${viewport.width}x${viewport.height} seed ${seed}`;
+
+          assert.ok(opening.length > 0, `${label} deferred the entire opening wave`);
+          assert.equal(opening.length + data.pendingSpawns.length, expected, `${label} lost or duplicated a deferred opening threat`);
+          assert.equal(data.requeue.length, 0, `${label} unexpectedly requeued a fresh opening threat`);
+          assert.equal(data.waveSpawned, data.pendingSpawns.length === 0, `${label} reported the wrong deferred-spawn state`);
+          for (const threat of opening) {
+            const surface = Math.hypot(threat.x - state.ship.x, threat.y - state.ship.y) - threat.radius - state.ship.radius;
+            assert.ok(surface >= CONFIG.combatField.spawnShipClearance - 1e-7, `${label} placed ${threat.id} only ${surface}px from the ship surface`);
+            assert.ok(
+              timeToCircleContact(threat, state.ship) >= CONFIG.combatField.spawnMinimumContactSeconds - 1e-7,
+              `${label} placed ${threat.id} with insufficient time to contact`
+            );
+            assert.ok(
+              Core.circleVisible(threat.x, threat.y, threat.radius, state.camera, browser.window.innerWidth, browser.window.innerHeight, 0),
+              `${label} placed ${threat.id} outside the visible field`
+            );
+            if (threat.kind) {
+              assert.ok(threat.radius >= CONFIG.combatField.spawnMinimumRadius - 1e-7, `${label} shrank ${threat.kind} below the safe configured radius floor`);
+              assert.ok(threat.radius <= CONFIG.asteroids[threat.kind].radius + 1e-7, `${label} enlarged ${threat.kind} beyond its authored radius`);
+            }
+          }
+          for (let first = 0; first < opening.length; first += 1) {
+            for (let second = first + 1; second < opening.length; second += 1) {
+              const surface = Math.hypot(opening[first].x - opening[second].x, opening[first].y - opening[second].y) - opening[first].radius - opening[second].radius;
+              assert.ok(surface >= CONFIG.combatField.spawnThreatClearance - 1e-7, `${label} placed threats with only ${surface}px surface clearance`);
+            }
+          }
+
+          for (let frame = 0; frame < Math.ceil(2 / CONFIG.world.fixedStep); frame += 1) game.step(CONFIG.world.fixedStep);
+          assert.equal(state.ship.hull, 100, `${label} damaged the stationary ship during the protected opening window`);
+        }
+      }
+    }
   });
 
   test("stage-clear hyperspace protects a one-hull ship from an overlapping asteroid and advances cleanly", () => {
