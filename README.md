@@ -1,15 +1,18 @@
 # Neon Voyage
 
-Neon Voyage is a fast, fixed-screen 2D arcade shooter that runs entirely in a local browser. Clear five objective-driven stages, combine temporary weapon boosts, survive dense asteroid fields, intercept alien spacecraft, and finish each sector inside a locked command arena.
+[![Version 1.1.0](https://img.shields.io/badge/version-1.1.0-63f7f0)](CHANGELOG.md)
+[![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
+[![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
+[![Local audit: 39/39](https://img.shields.io/badge/local_audit-39%2F39_pass-78ff9f)](AUDIT.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
 
-There is no framework, package manager, build command, account, telemetry, or runtime network request. The game is plain HTML, CSS, JavaScript, and local WebP art.
+Neon Voyage is a fast, fixed-screen 2D space shooter built for a local browser. Fight through finite arcade waves, combine temporary weapon boosts, survive ballistic asteroid fields, intercept alien spacecraft, shatter a Titan, and defeat an alien command ship.
 
-## Play
+## [Play Neon Voyage](https://xenovoyage.github.io/Neon-Voyage/)
 
-- **GitHub Pages:** [Play Neon Voyage](https://xenovoyage.github.io/Neon-Voyage/)
-- **Offline:** clone or download the repository, then open `index.html` directly in a current browser.
+GitHub Pages serves the repository as a static site without transforming the source. For offline play, clone or download the repository and open `index.html` directly—there is no install, server, account, package manager, or build command.
 
-Audio starts after the first click or key press because browsers require a user gesture. Everything else works through `file://` without a local server.
+Audio begins after the first click or key press because browsers require a user gesture.
 
 ## Controls
 
@@ -23,25 +26,25 @@ Audio starts after the first click or key press because browsers require a user 
 | Pause | `P` or `Esc` | Gamepad menu / HUD Pause |
 | Sound | `M` or Settings | HUD Sound |
 
-## Arcade expedition
+## Expedition
 
-Every sector has five enclosed stages with an explicit goal:
+Each sector is five enclosed stages with explicit, finite objectives. Stages 1–4 use configured combat waves; Stage 5 is a direct boss objective:
 
-1. **Belt Breach** — destroy the asteroid quota.
-2. **Salvage Run** — recover three marked energy cores while surviving a mixed field.
-3. **Alien Intercept** — destroy the alien formation. Alien ships crushed by asteroids count toward the objective.
-4. **Meteor Storm** — survive the storm and destroy its non-shooting Titan.
+1. **Belt Breach** — learn the field in an exact three-asteroid opening wave, then clear escalating rock formations.
+2. **Deep Belt** — destroy finite waves of tougher asteroid variants.
+3. **Alien Intercept** — eliminate required alien formations while optional asteroids remain physical hazards.
+4. **Titan Clash** — destroy the non-shooting Titan; victory is not delayed by an artificial survival timer.
 5. **Command Arena** — defeat an alien capital ship inside a locked circular arena.
 
-Normal stages keep the action inside the visible screen. Threats enter from its edges, pressure is replenished quickly, and the next stage begins only after its goal is complete. Asteroids are ballistic physical hazards: they never aim, home, or fire. Only recognisable alien spacecraft use ranged attacks.
+A wave stops spawning at its configured total. It advances only after every required threat from that wave has spawned and been resolved; a stage cannot clear early. Between stages, a brief hyperspace sequence locks combat controls, guides the ship on autopilot, clears the previous battlefield, and hands off to the next encounter.
 
-The scenery communicates progression without turning the game into open-world travel. Space-flow lines always keep one fixed direction, independent of the ship's aim. Earth and Mars use authored stage keyframes, approaching or receding as a sector advances.
+Outside hyperspace, background stars remain twinkling points: they do not rotate with the ship or stretch into travel lines.
+
+Asteroids are ballistic hazards: they do not aim, home, or fire. Ranged attacks belong to recognisable alien spacecraft. Asteroid impacts can destroy aliens and advance the relevant objective without granting duplicate score or drops.
 
 ## Weapons and pickups
 
-The player starts with a pulse cannon and can earn lasting run upgrades such as spread fire, seeker missiles, piercing rail shots, and guardian drones.
-
-Field pickups are deliberately frequent and immediately readable:
+The pulse cannon can grow into a run-wide stack of spread fire, seeker missiles, piercing rail shots, and guardian drones. Frequent field pickups include:
 
 - Rapid Fire
 - Tri-Shot
@@ -51,44 +54,47 @@ Field pickups are deliberately frequent and immediately readable:
 - Pulse Charge
 - Rare Weapon Upgrade
 
-Temporary weapon boosts can coexist, so Rapid Fire and Tri-Shot work together until their independent timers expire. Combo chains, asteroid splitting, environmental alien kills, dash movement, and Void Pulse keep each stage active without an inventory screen.
+Rapid Fire and Tri-Shot coexist on independent timers. Combo chains, splitting asteroids, environmental alien kills, dash movement, and Void Pulse keep short-term decisions active without an inventory screen.
 
-## Project structure
+## Local architecture
 
 | File | Responsibility |
 | --- | --- |
-| `js/config.js` | Balance, stages, goals, variants, power-ups, caps, and difficulty |
-| `js/core.js` | Math, deterministic randomness, collision helpers, safe storage, and cleanup |
+| `js/config.js` | Version, finite stages and waves, goals, balance, variants, power-ups, difficulty, transitions, and caps |
+| `js/core.js` | Deterministic math, collisions, safe storage, pooling, and cleanup helpers |
 | `js/audio.js` | Gesture-unlocked synthesized audio with a hard voice cap |
-| `js/render.js` | Canvas scenery, planet keyframes, ships, asteroids, effects, and world indicators |
-| `js/game.js` | Stage direction, entity behavior, input, fixed-step orchestration, collisions, menus, and HUD updates |
+| `js/render.js` | Canvas scenery, hyperspace presentation, ships, planets, asteroids, aliens, and effects |
+| `js/game.js` | Fixed-step simulation, wave direction, entities, input, collisions, transitions, menus, and HUD |
 
-The source uses a small shared `window.ND` namespace so it remains readable and works directly from disk. Start gameplay tuning in `js/config.js`; the runtime has no generated or bundled code.
+The runtime uses a small `window.ND` namespace and classic deferred scripts so it works through both `file://` and the GitHub Pages repository subpath. Keep stage behavior config-driven and start balance changes in `js/config.js`.
 
-## Performance and safety
+## Performance, privacy, and accessibility
 
 - Deterministic 60 Hz simulation with bounded frame catch-up
-- Explicit caps for every entity and effect family
-- Immediate cleanup of expired or irrelevant objects
-- Swept projectile collision to prevent tunnelling
-- Radius-aware player and boss-arena containment
-- Reduced-effects option for lower particle and streak density
-- Restrictive Content Security Policy and local-only resources
-- No `fetch`, XHR, WebSocket, analytics, ads, external fonts, workers, or service workers
+- Explicit caps and cleanup for every entity and effect family
+- Swept projectile collision and radius-aware stage/arena containment
+- Reduced-effects mode for lower particle density during play and fewer, shorter hyperspace streaks
+- Keyboard, mouse, touch, and gamepad controls with accessible menus and live status
+- Restrictive Content Security Policy and local relative resources
+- No runtime network APIs, analytics, telemetry, ads, external fonts, workers, or service workers
 - Size-limited, schema-validated local high-score and preference storage
 
-## Verification
+## Development and contribution
 
-Node.js is optional and is used only for the repository audit. The game itself does not need Node.
+Read [AGENTS.md](AGENTS.md) before changing the project. Keep updates small, config-driven, fully local, and dependency-free; preserve existing work and avoid speculative frameworks.
+
+Node.js is optional and used only by the audit harness:
 
 ```sh
 node tests/run.js
 ```
 
-The dependency-free test harness validates gameplay invariants, long-run caps, browser boot, accessibility, offline security, and GitHub Pages subpath compatibility. See [AUDIT.md](AUDIT.md) for the release report.
+The Neon Voyage 1.1.0 source snapshot passes **39/39** dependency-free automated checks. The linked CI and Pages badges report the public workflows independently.
+
+A coherent release update includes a semantic version bump, [changelog](CHANGELOG.md), synchronized README/audit, deterministic regression coverage, regenerated checksums after files are frozen, one clean public `main` publish, and observed CI, Pages, and live-site verification. See [AUDIT.md](AUDIT.md) and [tests/README.md](tests/README.md) for the current evidence and scope.
 
 ## Credits and license
 
-Designed and implemented with **OpenAI Codex**, with gameplay direction and review from **XenoVoyage**. Architecture, implementation, tests, and documentation are kept in the public history for transparency.
+Designed and implemented with **OpenAI Codex**, with gameplay direction and review from **XenoVoyage**. The repository history, tests, audit, and changelog document that collaboration transparently.
 
 Released under the [MIT License](LICENSE).

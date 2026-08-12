@@ -5,7 +5,7 @@
   const TAU = Math.PI * 2;
   const mod = (value, span) => ((value % span) + span) % span;
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-  const FLOW_DIRECTION = Object.freeze({ x: -0.9486832980505138, y: 0.31622776601683794 });
+  const DEFAULT_TRAVEL_DIRECTION = Object.freeze({ x: 0, y: -1 });
   const PLANET_KEYFRAMES = Object.freeze([
     Object.freeze({ earth: Object.freeze({ x: 0.91, y: 0.22, size: 0.16, alpha: 0.24 }), mars: Object.freeze({ x: 0.08, y: 0.78, size: 0.08, alpha: 0.06 }) }),
     Object.freeze({ earth: Object.freeze({ x: 0.84, y: 0.28, size: 0.24, alpha: 0.4 }), mars: Object.freeze({ x: 0.14, y: 0.72, size: 0.12, alpha: 0.16 }) }),
@@ -40,11 +40,64 @@
     };
   }
 
+  function smoothstep(value) {
+    const amount = clamp(Number(value) || 0, 0, 1);
+    return amount * amount * (3 - amount * 2);
+  }
+
+  function normalizedDirection(x, y, fallback) {
+    const safeX = Number.isFinite(Number(x)) ? Number(x) : 0;
+    const safeY = Number.isFinite(Number(y)) ? Number(y) : 0;
+    const length = Math.hypot(safeX, safeY);
+    if (length > 0.0001) return { x: safeX / length, y: safeY / length };
+    return { x: fallback.x, y: fallback.y };
+  }
+
+  function cinematicProfile(state, reducedEffects) {
+    const cinematic = state && state.cinematic;
+    const active = Boolean(state && state.mode === "transition" && cinematic && cinematic.active);
+    if (!active) {
+      return {
+        streaks: false,
+        progress: 0,
+        intensity: 0,
+        density: 0,
+        lengthScale: 0,
+        speed: 0,
+        direction: { x: 0, y: 0 }
+      };
+    }
+
+    const duration = Number(cinematic.duration);
+    const elapsed = Number(cinematic.elapsed);
+    const explicitProgress = Number(cinematic.progress);
+    const progress = Number.isFinite(explicitProgress)
+      ? clamp(explicitProgress, 0, 1)
+      : duration > 0 && Number.isFinite(elapsed)
+        ? clamp(elapsed / duration, 0, 1)
+        : 0;
+    const travel = normalizedDirection(
+      cinematic.directionX,
+      cinematic.directionY,
+      DEFAULT_TRAVEL_DIRECTION
+    );
+    const reduced = Boolean(reducedEffects);
+    const build = smoothstep(clamp(progress * 1.45, 0, 1));
+
+    return {
+      streaks: true,
+      progress,
+      intensity: clamp(build * (reduced ? 0.68 : 1), 0, 1),
+      density: reduced ? 0.38 : 0.82,
+      lengthScale: reduced ? 0.56 : 1,
+      speed: clamp(Number(cinematic.speed) || 980, 240, 1800),
+      direction: { x: -travel.x, y: -travel.y }
+    };
+  }
+
   ND.RenderDebug = Object.freeze({
-    flowDirection() {
-      return { x: FLOW_DIRECTION.x, y: FLOW_DIRECTION.y };
-    },
-    planetFrame
+    planetFrame,
+    cinematicProfile
   });
 
   class Renderer {
@@ -182,30 +235,35 @@
       const ctx = this.ctx;
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
       this.reduced = Boolean(state.settings && state.settings.reducedEffects);
-      this.drawBackground(state, time);
+      const cinematic = cinematicProfile(state, this.reduced);
+      this.drawBackground(state, time, cinematic);
 
       if (!state.ship || state.mode === "menu") {
         return;
       }
 
-      const shake = this.reduced ? 0 : Math.max(0, state.shake || 0);
+      const shake = this.reduced || cinematic.streaks ? 0 : Math.max(0, state.shake || 0);
       ctx.save();
       ctx.translate((Math.random() * 2 - 1) * shake, (Math.random() * 2 - 1) * shake);
-      this.drawCombatField(state, time);
-      this.drawArena(state, time);
-      this.drawEffects(state.effects, state.camera, "back");
-      for (const pickup of state.pickups) this.drawPickup(pickup, state.camera, time);
-      for (const mine of state.mines) this.drawMine(mine, state.camera, time);
-      for (const asteroid of state.asteroids) this.drawAsteroid(asteroid, state.camera, time);
-      for (const alien of state.aliens) this.drawAlien(alien, state.camera, time);
-      if (state.boss) this.drawBoss(state.boss, state.camera, time);
-      this.drawProjectiles(state.enemyBullets, state.camera, true);
-      this.drawProjectiles(state.playerBullets, state.camera, false);
-      this.drawDrones(state);
-      this.drawShip(state.ship, state.camera, time);
-      this.drawEffects(state.effects, state.camera, "front");
-      this.drawFloaters(state.floaters, state.camera);
-      this.drawReticle(state);
+      if (!cinematic.streaks) {
+        this.drawCombatField(state, time);
+        this.drawArena(state, time);
+        this.drawEffects(state.effects, state.camera, "back");
+        for (const pickup of state.pickups) this.drawPickup(pickup, state.camera, time);
+        for (const mine of state.mines) this.drawMine(mine, state.camera, time);
+        for (const asteroid of state.asteroids) this.drawAsteroid(asteroid, state.camera, time);
+        for (const alien of state.aliens) this.drawAlien(alien, state.camera, time);
+        if (state.boss) this.drawBoss(state.boss, state.camera, time);
+        this.drawProjectiles(state.enemyBullets, state.camera, true);
+        this.drawProjectiles(state.playerBullets, state.camera, false);
+        this.drawDrones(state);
+      }
+      this.drawShip(state.ship, state.camera, time, cinematic.streaks);
+      if (!cinematic.streaks) {
+        this.drawEffects(state.effects, state.camera, "front");
+        this.drawFloaters(state.floaters, state.camera);
+        this.drawReticle(state);
+      }
       ctx.restore();
 
       if (state.flash > 0) {
@@ -217,7 +275,7 @@
       }
     }
 
-    drawBackground(state, time) {
+    drawBackground(state, time, cinematic) {
       const ctx = this.ctx;
       ctx.fillStyle = "#02050d";
       ctx.fillRect(0, 0, this.width, this.height);
@@ -243,32 +301,34 @@
       }
 
       this.drawEncounterWash(state, time);
-      const ship = state.ship;
-      const velocityX = ship && Number.isFinite(ship.vx) ? ship.vx : 0;
-      const velocityY = ship && Number.isFinite(ship.vy) ? ship.vy : 0;
-      const speed = Math.hypot(velocityX, velocityY);
-      const speedReference = ND.CONFIG && ND.CONFIG.world && Number(ND.CONFIG.world.playerMaxSpeed) > 0 ? Number(ND.CONFIG.world.playerMaxSpeed) : 560;
-      const movementRatio = clamp(speed / speedReference, 0, 1.4);
-      const speedRatio = 0.32 + movementRatio * 1.08;
-      const flowTime = state.mode === "menu" ? time : Number.isFinite(state.runTime) ? state.runTime : time;
-      const flowDistance = flowTime * (94 + movementRatio * 226);
-      const directionX = FLOW_DIRECTION.x;
-      const directionY = FLOW_DIRECTION.y;
+      const duration = state.cinematic && Number.isFinite(Number(state.cinematic.duration)) ? Math.max(0, Number(state.cinematic.duration)) : 0;
+      const elapsed = state.cinematic && Number.isFinite(Number(state.cinematic.elapsed))
+        ? Math.max(0, Number(state.cinematic.elapsed))
+        : cinematic.progress * duration;
+      const flowDistance = cinematic.streaks
+        ? elapsed * cinematic.speed * (0.46 + cinematic.intensity * 0.74)
+        : 0;
+      const directionX = cinematic.direction.x;
+      const directionY = cinematic.direction.y;
+      const streakCount = cinematic.streaks
+        ? Math.floor(this.stars.length * cinematic.density * cinematic.intensity)
+        : 0;
       ctx.save();
       ctx.lineCap = "round";
-      for (const star of this.stars) {
+      for (let index = 0; index < this.stars.length; index += 1) {
+        const star = this.stars[index];
         const parallax = 0.12 + star.depth * 3;
         const x = mod(star.x + directionX * flowDistance * parallax, this.width);
         const y = mod(star.y + directionY * flowDistance * parallax, this.height);
         ctx.globalAlpha = star.alpha * (0.82 + Math.sin(time * 0.7 + star.phase) * 0.18);
         const color = star.blue ? "#a7e9ff" : "#ffffff";
-        const streak = this.reduced ? 0 : Math.max(0, speedRatio - 0.18) * (2 + star.depth * 122);
-        if (streak > 1.25) {
+        const streak = (4 + cinematic.intensity * (24 + star.depth * 260)) * cinematic.lengthScale;
+        if (index < streakCount && streak > 1.25) {
           ctx.strokeStyle = color;
           ctx.lineWidth = Math.max(0.55, star.size * 0.66);
           ctx.beginPath();
           ctx.moveTo(x, y);
-          ctx.lineTo(x + directionX * streak, y + directionY * streak);
+          ctx.lineTo(x - directionX * streak, y - directionY * streak);
           ctx.stroke();
         } else {
           ctx.fillStyle = color;
@@ -276,8 +336,8 @@
         }
       }
       ctx.restore();
-      this.drawSpeedDust(flowDistance, directionX, directionY, speedRatio, time);
-      this.drawCelestials(state);
+      this.drawSpeedDust(flowDistance, cinematic, time);
+      this.drawCelestials(state, cinematic);
 
       ctx.fillStyle = this.vignetteGradient;
       ctx.fillRect(0, 0, this.width, this.height);
@@ -300,12 +360,14 @@
       ctx.restore();
     }
 
-    drawSpeedDust(flowDistance, directionX, directionY, speedRatio, time) {
-      if (this.reduced || speedRatio < 0.22) return;
+    drawSpeedDust(flowDistance, cinematic, time) {
+      if (!cinematic.streaks || cinematic.intensity <= 0.02) return;
       const ctx = this.ctx;
-      const intensity = clamp((speedRatio - 0.22) / 0.92, 0, 1);
-      const active = Math.floor(this.speedDust.length * (0.28 + intensity * 0.72));
-      const baseLength = 8 + intensity * 38;
+      const intensity = cinematic.intensity;
+      const active = Math.floor(this.speedDust.length * cinematic.density * intensity);
+      const baseLength = (6 + intensity * 46) * cinematic.lengthScale;
+      const directionX = cinematic.direction.x;
+      const directionY = cinematic.direction.y;
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
       ctx.strokeStyle = "#b9f5ff";
@@ -320,19 +382,15 @@
         ctx.lineWidth = dust.size;
         ctx.beginPath();
         ctx.moveTo(x, y);
-        ctx.lineTo(x + directionX * length, y + directionY * length);
+        ctx.lineTo(x - directionX * length, y - directionY * length);
         ctx.stroke();
       }
       ctx.restore();
     }
 
-    drawCelestials(state) {
+    drawCelestials(state, cinematic) {
       const stage = stageNumber(state.stage || state.encounter);
-      const data = state.encounterData || {};
-      const transition = Number(data.transition) || 0;
-      const sectorConfig = ND.CONFIG && ND.CONFIG.sector ? ND.CONFIG.sector : {};
-      const duration = stage === 5 ? Number(sectorConfig.postBossRewardSeconds) || 5 : Number(sectorConfig.intermissionSeconds) || 1.25;
-      const transitionProgress = transition > 0 ? clamp(1 - transition / duration, 0, 1) : 0;
+      const transitionProgress = cinematic.streaks ? cinematic.progress : 0;
       const frame = planetFrame(stage, transitionProgress);
       const unit = Math.min(this.width, this.height);
       const objects = [
@@ -468,14 +526,14 @@
       ctx.restore();
     }
 
-    drawShip(ship, camera, time) {
+    drawShip(ship, camera, time, cinematic) {
       const point = this.worldToScreen(ship.x, ship.y, camera);
       const ctx = this.ctx;
       ctx.save();
       ctx.translate(point.x, point.y);
       ctx.rotate(ship.angle);
-      if (ship.invulnerable > 0 && Math.floor(time * 18) % 2 === 0) ctx.globalAlpha = 0.34;
-      this.shipPath(1, ship.engine || 0, time, false);
+      if (!cinematic && ship.invulnerable > 0 && Math.floor(time * 18) % 2 === 0) ctx.globalAlpha = 0.34;
+      this.shipPath(1, cinematic ? Math.max(0.9, ship.engine || 0) : ship.engine || 0, time, false);
       ctx.restore();
       if (ship.shield > 0) {
         ctx.save();
@@ -694,63 +752,51 @@
     drawBoss(boss, camera, time) {
       const point = this.worldToScreen(boss.x, boss.y, camera);
       const ctx = this.ctx;
-      if (boss.type === "gravemaw") {
-        this.drawAsteroid(boss, camera, time);
-        ctx.save();
-        ctx.translate(point.x, point.y);
-        ctx.globalCompositeOperation = "lighter";
-        ctx.fillStyle = `rgba(255,90,70,${0.32 + Math.sin(time * 4) * 0.12})`;
-        ctx.beginPath();
-        ctx.arc(0, 0, boss.radius * (boss.phase >= 2 ? 0.31 : 0.17), 0, TAU);
-        ctx.fill();
-        ctx.restore();
-      } else {
-        ctx.save();
-        ctx.translate(point.x, point.y);
-        ctx.rotate(boss.angle || 0);
-        ctx.fillStyle = "rgba(10,14,30,0.98)";
-        ctx.strokeStyle = "#ff5ecf";
-        ctx.lineWidth = 3;
-        ctx.shadowColor = "#ff4fd8";
-        ctx.shadowBlur = this.reduced ? 0 : 20;
-        ctx.beginPath();
-        ctx.moveTo(boss.radius * 0.85, 0);
-        ctx.quadraticCurveTo(boss.radius * 0.2, -boss.radius * 0.54, -boss.radius * 0.8, -boss.radius * 0.38);
-        ctx.lineTo(-boss.radius * 0.45, 0);
-        ctx.lineTo(-boss.radius * 0.8, boss.radius * 0.38);
-        ctx.quadraticCurveTo(boss.radius * 0.2, boss.radius * 0.54, boss.radius * 0.85, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "#62f7ff";
-        ctx.globalAlpha = 0.66;
-        ctx.beginPath();
-        ctx.ellipse(boss.radius * 0.08, 0, boss.radius * 0.3, boss.radius * 0.14, 0, 0, TAU);
-        ctx.fill();
-        ctx.restore();
+      ctx.save();
+      ctx.translate(point.x, point.y);
+      ctx.rotate(boss.angle || 0);
+      ctx.fillStyle = "rgba(10,14,30,0.98)";
+      ctx.strokeStyle = "#ff5ecf";
+      ctx.lineWidth = 3;
+      ctx.shadowColor = "#ff4fd8";
+      ctx.shadowBlur = this.reduced ? 0 : 20;
+      ctx.beginPath();
+      ctx.moveTo(boss.radius * 0.85, 0);
+      ctx.quadraticCurveTo(boss.radius * 0.2, -boss.radius * 0.54, -boss.radius * 0.8, -boss.radius * 0.38);
+      ctx.lineTo(-boss.radius * 0.45, 0);
+      ctx.lineTo(-boss.radius * 0.8, boss.radius * 0.38);
+      ctx.quadraticCurveTo(boss.radius * 0.2, boss.radius * 0.54, boss.radius * 0.85, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#62f7ff";
+      ctx.globalAlpha = 0.66;
+      ctx.beginPath();
+      ctx.ellipse(boss.radius * 0.08, 0, boss.radius * 0.3, boss.radius * 0.14, 0, 0, TAU);
+      ctx.fill();
+      ctx.restore();
 
-        if (boss.nodes) {
-          for (const node of boss.nodes) {
-            if (node.health <= 0) continue;
-            const nodePoint = this.worldToScreen(node.x, node.y, camera);
-            ctx.save();
-            ctx.translate(nodePoint.x, nodePoint.y);
-            ctx.rotate(time * 1.4 + node.index);
-            ctx.strokeStyle = "#6fffff";
-            ctx.fillStyle = "rgba(12,35,48,0.9)";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            for (let i = 0; i < 6; i += 1) {
-              const angle = i / 6 * TAU;
-              const x = Math.cos(angle) * 13;
-              const y = Math.sin(angle) * 13;
-              if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-            ctx.fill(); ctx.stroke();
-            ctx.restore();
+      if (boss.nodes) {
+        for (const node of boss.nodes) {
+          if (node.health <= 0) continue;
+          const nodePoint = this.worldToScreen(node.x, node.y, camera);
+          ctx.save();
+          ctx.translate(nodePoint.x, nodePoint.y);
+          ctx.rotate(time * 1.4 + node.index);
+          ctx.strokeStyle = "#6fffff";
+          ctx.fillStyle = "rgba(12,35,48,0.9)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let i = 0; i < 6; i += 1) {
+            const angle = i / 6 * TAU;
+            const x = Math.cos(angle) * 13;
+            const y = Math.sin(angle) * 13;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
           }
+          ctx.closePath();
+          ctx.fill(); ctx.stroke();
+          ctx.restore();
         }
       }
 
@@ -830,10 +876,9 @@
         module: "#ff4fd8",
         triShot: "#ff9a62",
         piercing: "#ff6b7d",
-        salvage: "#c6e3ff",
         pulseCharge: "#bca4ff"
       };
-      const labels = { shield: "S", rapid: "R", repair: "+", module: "M", triShot: "3", piercing: "P", salvage: "V", pulseCharge: "E" };
+      const labels = { shield: "S", rapid: "R", repair: "+", module: "M", triShot: "3", piercing: "P", pulseCharge: "E" };
       const color = colors[pickup.kind] || "#ffffff";
       const ctx = this.ctx;
       ctx.save();

@@ -1,8 +1,10 @@
-# Neon Voyage 1.0.0 — release audit
+# Neon Voyage 1.1.0 — release audit
 
 Audited: 2026-08-12  
 Targets: direct `file://` launch and GitHub Pages repository-subpath hosting  
-Result: **PASS — 34/34 automated checks**
+Result: **PASS — 39/39 automated checks**
+
+Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game.
 
 ## Release properties
 
@@ -14,80 +16,68 @@ Result: **PASS — 34/34 automated checks**
 - Persistent data: validated local high score and sound/effects preferences only
 - License: MIT
 
-## Offline and security verification
+## Finite-wave and gameplay verification
 
 Passed:
 
-- Restrictive Content Security Policy with `default-src 'none'`, `connect-src 'none'`, and explicit local script/style/image allowances.
-- No `fetch`, XMLHttpRequest, WebSocket, EventSource, beacon, remote URL, telemetry SDK, dynamic import, `eval`, `new Function`, worker, service worker, external font, iframe, CDN, or package loader in runtime source.
-- Every HTML and CSS resource resolves to a regular file inside the repository.
-- All resource URLs are relative and stay below `/Neon-Voyage/` when resolved under the GitHub Pages repository subpath.
-- No root-relative runtime paths, `<base>` tag, inline script, inline stylesheet, or inline style attributes.
-- No package manifest, lockfile, `node_modules`, framework, bundler, or production build.
-- No symlink in the release tree; individual files and the total runtime remain below conservative offline payload limits.
-- Storage reads and writes are length-limited, schema-validated, exception-safe, and optional.
+- The immutable 1.1 configuration defines five ordered stage families, presented as Belt Breach, Deep Belt, Alien Intercept, Titan Clash, and Command Arena; Stages 1–4 use waves and Stage 5 uses a direct boss-defeat goal.
+- The first Belt Breach wave contains exactly three required rocks. All three are visible at entry, no fourth threat appears while that wave remains active, and the next finite wave begins with its configured four required threats.
+- Stage and wave configuration is finite and capped. A required survivor prevents both wave advancement and premature stage clear.
+- Required wave deaths advance the current-wave and whole-stage counters exactly once. Optional hazards remain independent of goal progress.
+- Direct asteroid impact destroys a required alien, damages the asteroid, and advances both required counters once without awarding score, combo, or a pickup. Reprocessing the same death has no effect.
+- Every asteroid variant—rock, crystal, volatile, armored, colossal, and Titan—remained ballistic and produced no projectile or mine through an isolated 60-second simulation.
+- Alien spacecraft retain finite ranged attack behavior.
+- Destroying the required Titan enters hyperspace on the next fixed step with no survival-time gate.
+- Stage clear protects a one-hull ship from an overlapping asteroid before and throughout hyperspace.
+- Hyperspace clears threats, projectiles, mines, pickups, effects, floaters, and drones before transit. Movement, fire, dash, and Void Pulse inputs cannot alter its configured normalized autopilot path or create combat entities.
+- Hyperspace duration and progress are finite; the ship exits centered, invulnerable, and ready for the next configured stage.
+- Rapid Fire and Tri-Shot coexist, refresh independently, and expire on independent ten-second timers.
+- The deterministic pickup sample includes Shield, Rapid Fire, Tri-Shot, Hull Repair, Piercing Rounds, and Pulse Charge. Rare module upgrades remain configured, pity behavior prevents long droughts, and the pickup array respects its cap.
+- Player movement and outward dashes remain inside all four rectangular stage boundaries.
+- The locked boss arena contains extreme positions and velocity. Its complete authored circle remains visible from every legal ship edge at 1280×720, 320×568, and 568×320.
+- Difficulty functions remain finite, monotonic, sublinear, and capped; all five permanent weapon modules retain bounded tiers.
 
-## Gameplay correctness verification
-
-Passed:
-
-- Five stages remain in the required order: Belt Breach, Salvage Run, Alien Intercept, Meteor Storm, and Command Arena.
-- Each stage has a concrete, independently tested goal. Meteor Storm requires both Titan destruction and its minimum survival time; Command Arena remains boss-only.
-- Every normal stage begins with four visible threats. An unfinished empty stage restores active pressure inside the 0.25-second limit; its configured empty refill is 0.08 seconds.
-- All six asteroid variants were isolated for 60 simulated seconds each. Velocity stayed constant without an impact, and no asteroid produced a bullet, mine, ring attack, beam, or homing adjustment.
-- Alien Scout attack behavior produced finite hostile projectiles. Other alien classes remain config-driven spacecraft with separate attack patterns.
-- An asteroid–alien impact damages the asteroid and destroys the alien. The environmental kill advances Alien Intercept exactly once and produces no score, combo, pulse, or pickup reward.
-- A death-processing guard prevents double objective progress, score, and drops.
-- Rapid Fire and Tri-Shot can coexist, refresh independently, and expire on independent ten-second timers.
-- The weighted field pool produced Shield, Rapid Fire, Tri-Shot, Hull Repair, Piercing Rounds, and Pulse Charge in a deterministic distribution sample. Rare weapon upgrades remain configured separately.
-- The five-kill pity threshold guarantees a pickup before a long reward drought, and the active pickup array respects its hard cap.
-- The player remains inside all four rectangular stage boundaries, including outward dashes.
-- Stage-clear transitions grant immediate safety: a one-hull ship overlapping an asteroid stays alive through the clear frame, transition, and normal Stage 2 advance.
-- An extreme out-of-bounds position and dash velocity cannot escape the locked circular boss arena.
-- At every legal arena edge, the boss camera keeps the complete authored circle visible inside 1280×720 desktop, 320×568 portrait, and 568×320 landscape viewports. It does not drift with the ship.
-- Post-boss reward downtime is capped at 1.5 seconds before the next sector begins.
-- Difficulty functions are finite, monotonic, sublinear, and capped at extreme sector values.
-- All five permanent weapon modules have bounded tiers and fire through the shared module system.
-
-## Visual progression verification
+## Visual verification
 
 Passed:
 
-- The deep-space flow vector is normalized, fixed in screen space, and identical across ship angles and velocity directions. Ship rotation cannot rotate the background lines.
-- Earth and Mars position, size, and opacity match five exact authored stage keyframes.
-- Inter-stage planet values interpolate linearly and continuously; stage and progress inputs are clamped.
-- The fifth-stage scene transitions safely back toward the first-stage keyframe for the next sector.
-- Deep-space, Earth, and Mars WebP assets decode locally; ships, asteroids, projectiles, pickups, and effects are procedural Canvas vectors.
+- Menu, normal play, and pause keep stars as point sprites with zero travel distance and no line streaks, regardless of ship angle or velocity.
+- Earth and Mars match five exact stage keyframes, interpolate continuously between stages, clamp unsafe inputs, and wrap from Stage 5 toward the next sector.
+- Hyperspace streaks activate only during an active transition; menu, normal play, and pause produce no cinematic streak profile.
+- Streaks travel opposite the normalized autopilot vector with bounded progress, intensity, density, length, and speed.
+- Reduced-effects mode lowers hyperspace streak intensity, density, and length without changing the transition contract.
 
-## Long-run and performance verification
-
-Passed:
-
-- Deterministic **20-minute** fixed-step stress expedition: 72,000 simulation steps with stage cycling, movement, aim, continuous fire, dashes, pulses, alien environmental kills, boss damage, spawning, effects, and cleanup.
-- Simulation state, score, clocks, camera, ship, and every active entity remained finite throughout.
-- Every collection remained below its configured cap: player/enemy projectiles, asteroids, aliens, mines, pickups, particles, and floaters.
-- The stress run exercised asteroid pressure, alien pressure, player projectiles, effects, boss combat, and more than one complete stage cycle.
-- Fixed seed plus fixed inputs reproduced the same long-run snapshot, peaks, and transition count.
-- Fixed 60 Hz stepping, bounded frame delta/catch-up, safe cleanup, and capped synthesized audio remain enabled.
-
-## Browser and repository verification
+## Offline, security, and repository verification
 
 Passed:
 
-- Dependency-free browser-VM boot loads every local script, creates the renderer, draws frames, launches from the minimal menu, reveals the HUD, and keeps a single animation loop.
-- Every runtime JavaScript file passes syntax checking.
-- CI runs the audit directly with Node and no install step.
-- The Pages workflow reruns the audit, enables Pages where supported, uploads the repository root, and deploys it without transforming the source.
-- `.nojekyll`, MIT `LICENSE`, version metadata, public README, asset provenance notes, and test documentation are present.
+- The Content Security Policy denies all unspecified sources and explicitly blocks runtime connections, frames, objects, fonts, media, workers, forms, and base-URI changes.
+- Runtime source contains no remote URL, network API, telemetry, dynamic code, worker, service worker, module loader, package manifest, lockfile, or `node_modules`.
+- Every HTML/CSS runtime resource is local, relative, and valid beneath the `/Neon-Voyage/` GitHub Pages repository subpath. No `<base>` tag or root-relative runtime path is present.
+- Runtime JavaScript passes syntax checks. The release tree contains no symlinks and remains below conservative offline payload limits.
+- Runtime configuration, `VERSION.txt`, README, changelog, and this audit agree on version 1.1.0; project contributor instructions are present.
+- The dependency-free browser VM loads every local script, draws Canvas frames, launches from the menu, exposes the HUD, and maintains a single animation loop.
+- CI runs the audit without an install step. The Pages workflow audits, configures Pages, uploads the unchanged repository root, and deploys without a production build.
 
-## Automated command
+## Long-run verification
+
+Passed:
+
+- A deterministic 20-minute expedition completed 72,000 fixed simulation steps while cycling finite waves, hyperspace, every stage family, player input, projectiles, effects, environmental alien kills, and boss combat.
+- Ship, camera, score, clocks, and active entities remained finite. Asteroids, aliens, player/enemy projectiles, mines, pickups, effects, and floaters remained within their configured caps.
+- The run exercised asteroid pressure, alien pressure, player fire, effects, and more than one full stage cycle.
+- Repeating a long simulation with the same seed and inputs reproduced its snapshot, collection peaks, and stage-transition count.
+
+## Reproduce
 
 ```sh
 node tests/run.js
 ```
 
-Audit environment: Node v24.14.0 on Linux x86_64. The test harness uses only Node built-ins and simulates the browser DOM, Canvas, animation frames, local storage, input, and long-running fixed-step gameplay. Node is not used by the game itself.
+Expected result for this source snapshot: `39/39 tests passed`.
 
-## Residual platform note
+## Acceptance and publication boundary
 
-Browsers control permission for synthesized audio and fullscreen mode. The runtime handles denial safely, but audio normally requires one click or key press. Automated Canvas mocks verify behavior and state transitions; they do not replace final perceptual review on every browser, GPU, touch device, and display aspect ratio.
+Automated checks validate contracts, safety, determinism, and simulated browser behavior. They do not establish human acceptance of balance, difficulty, visual quality, responsiveness, audio, or overall game feel.
+
+`SHA256SUMS` must be regenerated only after final integration freezes every release file. CI, Pages deployment, and the live URL must then be observed after the single public `main` publication; this local result does not claim those later publication checks have already completed.

@@ -135,6 +135,19 @@
     sector: 1,
     encounter: 1,
     encounterData: null,
+    cinematic: {
+      active: false,
+      elapsed: 0,
+      duration: CONFIG.cinematic.duration,
+      progress: 0,
+      directionX: CONFIG.cinematic.directionX,
+      directionY: CONFIG.cinematic.directionY,
+      speed: CONFIG.cinematic.speed,
+      fromEncounter: 1,
+      toEncounter: 1,
+      fromSector: 1,
+      toSector: 1
+    },
     score: 0,
     combo: 1,
     comboTimer: 0,
@@ -184,10 +197,10 @@
     overlay(dom.menuOverlay, mode === "menu");
     overlay(dom.pauseOverlay, mode === "paused");
     overlay(dom.gameoverOverlay, mode === "gameover");
-    const inRun = mode === "playing" || mode === "paused";
+    const inRun = mode === "playing" || mode === "transition" || mode === "paused";
     show(dom.hud, inRun);
     show(dom.meters, inRun);
-    show(dom.pauseButton, mode === "playing");
+    show(dom.pauseButton, mode === "playing" || mode === "transition");
     show(dom.objectiveHud, inRun);
     if (!inRun) show(dom.bossHud, false);
     if (dom.touchControls) dom.touchControls.classList.toggle("is-active", mode === "playing");
@@ -237,6 +250,9 @@
     state.sector = 1;
     state.encounter = 1;
     state.encounterData = null;
+    state.cinematic.active = false;
+    state.cinematic.elapsed = 0;
+    state.cinematic.progress = 0;
     state.score = 0;
     state.combo = 1;
     state.comboTimer = 0;
@@ -270,13 +286,14 @@
   }
 
   function togglePause(forcePause) {
-    if (state.mode === "playing" && forcePause !== false) {
+    if ((state.mode === "playing" || state.mode === "transition") && forcePause !== false) {
       resetTransientInput();
+      state.resumeMode = state.mode;
       state.mode = "paused";
       setMode("paused");
     } else if (state.mode === "paused" && forcePause !== true) {
       state.pausedByVisibility = false;
-      setMode("playing");
+      setMode(state.resumeMode === "transition" && state.cinematic.active ? "transition" : "playing");
       canvas.focus({ preventScroll: true });
     }
   }
@@ -394,7 +411,7 @@
     input.keys[key] = true;
     if (["space", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) event.preventDefault();
     const dialogOpen = Boolean(dom.controlsModal && dom.controlsModal.open || dom.settingsModal && dom.settingsModal.open);
-    if ((key === "p" || key === "escape") && !dialogOpen && !event.repeat && (state.mode === "playing" || state.mode === "paused")) {
+    if ((key === "p" || key === "escape") && !dialogOpen && !event.repeat && (state.mode === "playing" || state.mode === "transition" || state.mode === "paused")) {
       event.preventDefault();
       togglePause();
     }
@@ -482,13 +499,13 @@
   });
   global.document.addEventListener("fullscreenchange", updateSettingsUI);
   global.document.addEventListener("visibilitychange", () => {
-    if (global.document.hidden && state.mode === "playing") {
+    if (global.document.hidden && (state.mode === "playing" || state.mode === "transition")) {
       state.pausedByVisibility = true;
       togglePause(true);
     }
   });
   global.addEventListener("blur", () => {
-    if (state.mode === "playing") {
+    if (state.mode === "playing" || state.mode === "transition") {
       state.pausedByVisibility = true;
       togglePause(true);
     }
@@ -517,7 +534,7 @@
     const nowButtons = pad.buttons.map((button) => Boolean(button.pressed));
     if (nowButtons[1] && !input.lastGamepadButtons[1]) input.pressed.dash = true;
     if (nowButtons[2] && !input.lastGamepadButtons[2]) input.pressed.pulse = true;
-    if (nowButtons[9] && !input.lastGamepadButtons[9] && (state.mode === "playing" || state.mode === "paused")) togglePause();
+    if (nowButtons[9] && !input.lastGamepadButtons[9] && (state.mode === "playing" || state.mode === "transition" || state.mode === "paused")) togglePause();
     input.lastGamepadButtons = nowButtons;
   }
 
@@ -544,46 +561,40 @@
     state.ship.y = clamp(state.ship.y, -field.halfHeight + state.ship.radius, field.halfHeight - state.ship.radius);
   }
 
-  function stageGoalTarget(spec) {
-    const goal = spec.goal || { baseTarget: 1, sectorStep: 0, cap: 1 };
-    return Math.min(goal.cap || Infinity, goal.baseTarget + Math.max(0, state.sector - 1) * (goal.sectorStep || 0));
-  }
-
   function beginEncounter() {
     const spec = CONFIG.sector.encounters[state.encounter - 1];
     const isBoss = spec.id === "boss";
     if (isBoss) state.combatField.active = false;
     else openCombatField();
-    const budget = isBoss ? 0 : Math.ceil(spec.baseThreatBudget * CONFIG.difficulty.threatScale(state.sector));
     state.encounterData = {
       spec,
       generation: `${state.sector}:${state.encounter}:${state.runTime.toFixed(2)}`,
-      spawnRemaining: budget,
-      totalBudget: budget,
-      defeatedCost: 0,
       timer: 0,
-      spawnTimer: isBoss ? Infinity : CONFIG.combatField.replenishSeconds,
-      transition: 0,
       complete: false,
-      prioritySpawned: false,
-      priorityDefeated: false,
       guaranteedGranted: false,
       goalType: spec.goal ? spec.goal.type : spec.completion,
-      goalTarget: stageGoalTarget(spec),
+      goalTarget: isBoss ? 1 : spec.waves.length,
       goalProgress: 0,
-      salvageSpawned: 0,
+      waveIndex: isBoss ? -1 : 0,
+      waveNumber: isBoss ? 0 : 1,
+      waveCount: isBoss ? 0 : spec.waves.length,
+      waveLabel: isBoss ? "CAPITAL SHIP" : spec.waves[0].label,
+      waveDelay: 0,
+      waveSpawned: false,
+      waveRequiredTotal: 0,
+      waveRequiredCleared: 0,
+      stageRequiredTotal: 0,
+      stageRequiredCleared: 0,
+      pendingSpawns: [],
+      requeue: [],
       playerKills: 0,
       environmentalKills: 0,
       lastDeathCause: null,
-      killsSincePowerup: 0,
-      killsSinceSalvage: 0
+      killsSincePowerup: 0
     };
     announce(isBoss ? "Alien capital ship — arena forming" : spec.label, isBoss ? 2.6 : 1.5);
     if (isBoss) beginBossWarning();
-    else {
-      let opening = CONFIG.combatField.openingThreats;
-      while (opening > 0 && state.encounterData.spawnRemaining > 0 && spawnEncounterThreat()) opening -= 1;
-    }
+    else spawnWave(0);
     updateUI(true);
   }
 
@@ -683,6 +694,7 @@
     }
 
     if ((input.pressed.e || input.pressed.pulse) && ship.pulse >= 99.5) activatePulse();
+    if (state.mode !== "playing") return;
 
     if (ship.dashTime <= 0) {
       const acceleration = CONFIG.world.playerAcceleration;
@@ -933,6 +945,7 @@
       noDrops: Boolean(settingsValue.noDrops),
       threatCost: Number.isFinite(settingsValue.threatCost) ? settingsValue.threatCost : definition.threatCost,
       generation: settingsValue.generation || (state.encounterData && state.encounterData.generation),
+      waveIndex: Number.isFinite(settingsValue.waveIndex) ? settingsValue.waveIndex : state.encounterData && state.encounterData.waveIndex,
       rotation: rng.range(0, TAU),
       rotationSpeed: rng.range(-0.65, 0.65) * (48 / Math.max(24, radius)),
       phase: rng.range(0, TAU),
@@ -972,6 +985,7 @@
       noDrops: Boolean(settingsValue.noDrops),
       threatCost: Number.isFinite(settingsValue.threatCost) ? settingsValue.threatCost : definition.threatCost,
       generation: settingsValue.generation || (state.encounterData && state.encounterData.generation),
+      waveIndex: Number.isFinite(settingsValue.waveIndex) ? settingsValue.waveIndex : state.encounterData && state.encounterData.waveIndex,
       angle: Math.atan2(state.ship.y - position.y, state.ship.x - position.x),
       heading: Math.atan2(state.ship.y - position.y, state.ship.x - position.x),
       aimAngle: Math.atan2(state.ship.y - position.y, state.ship.x - position.x),
@@ -990,138 +1004,215 @@
     return alien;
   }
 
-  function encounterLivingCost() {
+  function encounterLivingRequired() {
     const generation = state.encounterData && state.encounterData.generation;
     let total = 0;
     for (const name of THREAT_ARRAYS) {
       for (const entity of state[name]) {
-        if (!entity.dead && entity.generation === generation) total += Math.max(0, entity.threatCost || 0);
+        if (!entity.dead && entity.required && entity.generation === generation) total += 1;
       }
     }
     return total;
   }
 
-  function selectThreat(spec, remaining) {
-    if (spec.priorityTarget === "titan" && !state.encounterData.priorityDefeated && !state.encounterData.prioritySpawned && remaining >= CONFIG.asteroids.titan.threatCost) {
-      return { category: "asteroid", kind: "titan", cost: CONFIG.asteroids.titan.threatCost, required: true };
-    }
-    const alienWeight = spec.mix && spec.mix.alien || 0;
-    const category = rng.chance(alienWeight) && spec.alienPool && spec.alienPool.length ? "alien" : "asteroid";
-    const pool = category === "alien" ? spec.alienPool : spec.asteroidPool;
-    if (!pool || !pool.length) return null;
-    let eligible = pool.filter((kind) => {
-      const table = category === "alien" ? CONFIG.aliens : CONFIG.asteroids;
-      if (kind === "titan" && state.encounterData.prioritySpawned) return false;
-      return table[kind].threatCost <= remaining;
-    });
-    if (state.sector < 2) eligible = eligible.filter((kind) => kind !== "carrier" && kind !== "colossal");
-    if (!eligible.length) {
-      const fallback = category === "alien" ? "scout" : "rock";
-      const table = category === "alien" ? CONFIG.aliens : CONFIG.asteroids;
-      return table[fallback].threatCost <= remaining ? { category, kind: fallback, cost: table[fallback].threatCost } : null;
-    }
-    const kind = rng.pick(eligible);
-    const table = category === "alien" ? CONFIG.aliens : CONFIG.asteroids;
-    return { category, kind, cost: table[kind].threatCost, required: true };
+  function scaledGroupCount(group) {
+    const root = Math.sqrt(Math.max(0, state.sector - 1));
+    return Math.max(0, Math.min(group.cap || group.count, Math.floor(group.count + root * (group.sectorStep || 0))));
   }
 
-  function spawnEncounterThreat() {
+  function buildWaveQueue(wave) {
+    const queue = [];
+    const add = (group, required) => {
+      const count = scaledGroupCount(group);
+      for (let index = 0; index < count; index += 1) {
+        queue.push({
+          family: group.family,
+          kind: rng.pick(group.kinds),
+          required,
+          waveIndex: state.encounterData.waveIndex
+        });
+      }
+    };
+    for (const group of wave.required || []) add(group, true);
+    for (const group of wave.hazards || []) add(group, false);
+    return queue;
+  }
+
+  function spawnWave(index) {
     const data = state.encounterData;
-    if (!data || data.spawnRemaining <= 0) return false;
-    const selected = selectThreat(data.spec, data.spawnRemaining);
-    if (!selected) return false;
-    const options = { generation: data.generation, required: selected.required !== false };
-    const entity = selected.category === "alien" ? spawnAlien(selected.kind, options) : spawnAsteroid(selected.kind, options);
-    if (!entity) return false;
-    data.spawnRemaining -= selected.cost;
-    if (selected.kind === "titan") data.prioritySpawned = true;
+    const wave = data && data.spec.waves && data.spec.waves[index];
+    if (!wave) return false;
+    data.waveIndex = index;
+    data.waveNumber = index + 1;
+    data.waveLabel = wave.label;
+    data.waveSpawned = false;
+    data.waveRequiredCleared = 0;
+    data.pendingSpawns = buildWaveQueue(wave);
+    data.waveRequiredTotal = data.pendingSpawns.filter((entry) => entry.required).length;
+    data.stageRequiredTotal += data.waveRequiredTotal;
+    data.waveDelay = 0;
+    spawnPendingWave();
+    announce(`Wave ${data.waveNumber}/${data.waveCount} — ${data.waveLabel}`, 1.25);
     return true;
+  }
+
+  function spawnQueuedThreat(entry) {
+    const data = state.encounterData;
+    if (!data || !entry) return null;
+    const options = {
+      generation: data.generation,
+      required: entry.required,
+      waveIndex: entry.waveIndex
+    };
+    return entry.family === "alien" ? spawnAlien(entry.kind, options) : spawnAsteroid(entry.kind, options);
+  }
+
+  function spawnPendingWave() {
+    const data = state.encounterData;
+    if (!data) return false;
+    let spawned = false;
+    while (data.requeue.length || data.pendingSpawns.length) {
+      const fromRequeue = data.requeue.length > 0;
+      const entry = fromRequeue ? data.requeue[0] : data.pendingSpawns[0];
+      const entity = spawnQueuedThreat(entry);
+      if (!entity) break;
+      if (fromRequeue) data.requeue.shift();
+      else data.pendingSpawns.shift();
+      spawned = true;
+    }
+    data.waveSpawned = data.pendingSpawns.length === 0 && data.requeue.length === 0;
+    return spawned;
   }
 
   function updateEncounter(dt) {
     const data = state.encounterData;
     if (!data) return;
     data.timer += dt;
-    if (data.transition > 0) {
-      data.transition -= dt;
-      if (data.transition <= 0) advanceEncounter();
-      return;
-    }
     if (data.spec.id === "boss") {
       updateBossEncounter(dt);
       return;
     }
 
-    data.spawnTimer -= dt;
-    let activeCost = encounterLivingCost();
-    const activeTarget = clamp(
-      CONFIG.combatField.activeThreatCost + state.sector * CONFIG.combatField.activeThreatCostPerSector,
-      CONFIG.combatField.activeThreatCost,
-      CONFIG.combatField.maxActiveThreatCost
-    );
-    if (activeCost <= 0 && data.spawnRemaining > 0) {
-      data.spawnTimer = Math.min(data.spawnTimer, CONFIG.combatField.emptyReplenishSeconds);
-    }
-    if (data.spawnTimer <= 0 && data.spawnRemaining > 0 && activeCost < activeTarget) {
-      let spawnedCount = 0;
-      while (spawnedCount < CONFIG.combatField.maxBurstSpawns && data.spawnRemaining > 0 && activeCost < activeTarget) {
-        if (!spawnEncounterThreat()) break;
-        spawnedCount += 1;
-        activeCost = encounterLivingCost();
+    if (!data.waveSpawned) {
+      data.waveDelay -= dt;
+      if (data.waveDelay <= 0) {
+        const spawned = spawnPendingWave();
+        data.waveDelay = spawned ? 0 : CONFIG.combatField.waveSpawnRetrySeconds;
       }
-      data.spawnTimer = spawnedCount ? CONFIG.combatField.replenishSeconds : CONFIG.combatField.retrySeconds;
     }
-
-    if (!goalComplete(data) && data.spawnRemaining <= 0 && activeCost <= 0) {
-      data.spawnRemaining = Math.min(8, Math.ceil(data.totalBudget * 0.35));
-      data.totalBudget += data.spawnRemaining;
-      data.spawnTimer = Math.min(data.spawnTimer, CONFIG.combatField.emptyReplenishSeconds);
+    const waveClear = data.waveSpawned && data.waveRequiredCleared >= data.waveRequiredTotal && encounterLivingRequired() === 0;
+    if (!waveClear) return;
+    data.goalProgress = Math.max(data.goalProgress, data.waveNumber);
+    if (data.waveIndex + 1 < data.waveCount) {
+      data.waveDelay += dt;
+      if (data.waveDelay >= CONFIG.combatField.interWaveSeconds) spawnWave(data.waveIndex + 1);
+    } else if (!data.complete) {
+      finishEncounter();
     }
-    if (goalComplete(data) && !data.complete) finishEncounter();
   }
 
-  function goalComplete(data) {
-    if (!data) return false;
-    if (data.goalType === "titan") return data.priorityDefeated && data.timer >= (data.spec.goal.minimumSeconds || 0);
-    if (data.goalType === "boss") return Boolean(data.complete);
-    return data.goalProgress >= data.goalTarget;
+  function clearCombatWorld() {
+    for (const name of THREAT_ARRAYS) state[name].length = 0;
+    state.playerBullets.length = 0;
+    state.enemyBullets.length = 0;
+    state.mines.length = 0;
+    state.pickups.length = 0;
+    state.effects.length = 0;
+    state.floaters.length = 0;
+    if (state.ship) state.ship.drones.length = 0;
   }
 
-  function finishEncounter() {
+  function startCinematic(message) {
+    const nextEncounter = state.encounter < CONFIG.sector.encountersPerSector ? state.encounter + 1 : 1;
+    const nextSector = state.encounter < CONFIG.sector.encountersPerSector ? state.sector : state.sector + 1;
+    const directionLength = Math.hypot(CONFIG.cinematic.directionX, CONFIG.cinematic.directionY) || 1;
+    clearCombatWorld();
+    resetTransientInput();
+    state.boss = null;
+    state.arena.active = false;
+    state.arena.locked = false;
+    state.arena.warning = 0;
+    state.combatField.active = false;
+    state.cinematic = {
+      active: true,
+      elapsed: 0,
+      duration: CONFIG.cinematic.duration,
+      progress: 0,
+      directionX: CONFIG.cinematic.directionX / directionLength,
+      directionY: CONFIG.cinematic.directionY / directionLength,
+      speed: CONFIG.cinematic.speed,
+      fromEncounter: state.encounter,
+      toEncounter: nextEncounter,
+      fromSector: state.sector,
+      toSector: nextSector
+    };
+    state.ship.invulnerable = Math.max(state.ship.invulnerable, CONFIG.cinematic.duration + CONFIG.cinematic.exitInvulnerability);
+    state.ship.vx = state.cinematic.directionX * state.cinematic.speed;
+    state.ship.vy = state.cinematic.directionY * state.cinematic.speed;
+    state.ship.angle = Math.atan2(state.cinematic.directionY, state.cinematic.directionX);
+    state.ship.dashTime = 0;
+    state.ship.engine = 1.6;
+    setMode("transition");
+    announce(message || "Stage clear", Math.min(1.45, CONFIG.cinematic.duration));
+  }
+
+  function finishEncounter(message) {
     const data = state.encounterData;
     if (!data || data.complete) return;
     data.complete = true;
+    data.goalProgress = data.goalTarget;
     if (data.spec.guaranteedReward === "moduleUpgrade" && !data.guaranteedGranted) {
       data.guaranteedGranted = true;
       grantModuleUpgrade("ARMORY LINK");
     }
     state.score += Math.round(300 * state.sector * CONFIG.difficulty.scoreScale(state.sector));
-    data.transition = CONFIG.sector.intermissionSeconds;
-    for (const name of THREAT_ARRAYS) state[name].length = 0;
-    state.playerBullets.length = 0;
-    state.enemyBullets.length = 0;
-    state.mines.length = 0;
-    state.ship.invulnerable = Math.max(state.ship.invulnerable, data.transition + 0.35);
-    announce(data.spec.id === "titanEvent" ? "Titan shattered" : "Stage clear", 1.35);
+    startCinematic(message || (data.spec.id === "titanEvent" ? "Titan shattered" : "Stage clear"));
   }
 
   function advanceEncounter() {
-    for (const name of THREAT_ARRAYS) {
-      state[name].length = 0;
-    }
-    state.playerBullets.length = 0;
-    state.enemyBullets.length = 0;
-    state.mines.length = 0;
-    state.pickups.length = 0;
+    clearCombatWorld();
     if (state.encounter < CONFIG.sector.encountersPerSector) {
       state.encounter += 1;
     } else {
-      state.arena.active = false;
-      state.arena.locked = false;
       state.sector += 1;
       state.encounter = 1;
     }
+    state.ship.x = 0;
+    state.ship.y = 0;
+    state.ship.vx = 0;
+    state.ship.vy = 0;
+    state.ship.angle = 0;
+    state.ship.engine = 0;
+    state.ship.dashTime = 0;
+    state.ship.invulnerable = Math.max(state.ship.invulnerable, CONFIG.cinematic.exitInvulnerability);
+    state.camera.x = 0;
+    state.camera.y = 0;
+    state.aimWorld.x = 200;
+    state.aimWorld.y = 0;
+    state.cinematic.active = false;
+    state.cinematic.progress = 1;
+    resetTransientInput();
+    setMode("playing");
     beginEncounter();
+  }
+
+  function updateCinematic(dt) {
+    const cinematic = state.cinematic;
+    if (!cinematic.active) return;
+    cinematic.elapsed = Math.min(cinematic.duration, cinematic.elapsed + dt);
+    cinematic.progress = clamp(cinematic.elapsed / Math.max(CONFIG.world.fixedStep, cinematic.duration), 0, 1);
+    const ship = state.ship;
+    ship.vx = cinematic.directionX * cinematic.speed;
+    ship.vy = cinematic.directionY * cinematic.speed;
+    ship.x += ship.vx * dt;
+    ship.y += ship.vy * dt;
+    ship.angle = Math.atan2(cinematic.directionY, cinematic.directionX);
+    ship.engine = 1.6;
+    ship.dashTime = 0;
+    ship.invulnerable = cinematic.duration - cinematic.elapsed + CONFIG.cinematic.exitInvulnerability;
+    state.aimWorld.x = ship.x + cinematic.directionX * 400;
+    state.aimWorld.y = ship.y + cinematic.directionY * 400;
+    if (cinematic.elapsed >= cinematic.duration) advanceEncounter();
   }
 
   function updateAsteroids(dt) {
@@ -1652,12 +1743,7 @@
     state.flashColor = "#ffffff";
     audio.explode(true);
     grantModuleUpgrade("BOSS CORE");
-    announce(`${CONFIG.bosses[boss.type].label} defeated`, 2.2);
-    state.boss = null;
-    state.arena.locked = false;
-    state.encounterData.goalProgress = state.encounterData.goalTarget;
-    state.encounterData.complete = true;
-    state.encounterData.transition = CONFIG.sector.postBossRewardSeconds;
+    finishEncounter(`${CONFIG.bosses[boss.type].label} defeated`);
     show(dom.bossHud, false);
   }
 
@@ -1891,16 +1977,10 @@
     entity.deathProcessed = true;
     entity.deathCause = cause || "player";
     const encounter = state.encounterData;
-    if (encounter && entity.generation === encounter.generation && entity.kind === encounter.spec.priorityTarget) {
-      encounter.priorityDefeated = true;
-    }
-    const countsForGoal = Boolean(encounter && entity.generation === encounter.generation && entity.required && entity.threatCost > 0);
-    if (countsForGoal && encounter.goalType === "asteroidKills" && entity.kind) {
-      encounter.goalProgress = Math.min(encounter.goalTarget, encounter.goalProgress + 1);
-    } else if (countsForGoal && encounter.goalType === "alienKills" && entity.type) {
-      encounter.goalProgress = Math.min(encounter.goalTarget, encounter.goalProgress + 1);
-    } else if (countsForGoal && encounter.goalType === "titan" && entity.kind === "titan") {
-      encounter.goalProgress = 1;
+    const countsForWave = Boolean(encounter && entity.generation === encounter.generation && entity.required);
+    if (countsForWave) {
+      encounter.stageRequiredCleared += 1;
+      if (entity.waveIndex === encounter.waveIndex) encounter.waveRequiredCleared += 1;
     }
     const rewarded = entity.deathCause !== "asteroid" && entity.deathCause !== "environment";
     if (encounter) {
@@ -1932,17 +2012,6 @@
     state.shake = Math.max(state.shake, clamp(entity.radius * 0.06, 2, 10));
     if (entity.radius > 70 || entity.type === "carrier") audio.explode(true);
     else audio.explode(false);
-    if (rewarded && !entity.noDrops && encounter && encounter.goalType === "salvage") {
-      encounter.killsSinceSalvage += 1;
-      const outstanding = state.pickups.filter((pickup) => !pickup.dead && pickup.kind === "salvage").length;
-      if (encounter.goalProgress + outstanding < encounter.goalTarget &&
-          (rng.chance(encounter.spec.goal.dropChance) || encounter.killsSinceSalvage >= 2)) {
-        if (spawnPickup(entity.x, entity.y, "salvage")) {
-          encounter.salvageSpawned += 1;
-          encounter.killsSinceSalvage = 0;
-        }
-      }
-    }
     if (rewarded && !entity.noDrops) {
       if (encounter) encounter.killsSincePowerup += 1;
       const pity = encounter && encounter.killsSincePowerup >= CONFIG.powerups.pityKills;
@@ -2017,7 +2086,7 @@
       radius: 13,
       kind,
       phase: rng.range(0, TAU),
-      life: kind === "salvage" ? CONFIG.powerups.salvage.duration : 16,
+      life: 16,
       dead: false
     };
     state.pickups.push(pickup);
@@ -2046,12 +2115,6 @@
     } else if (pickup.kind === "pulseCharge") {
       ship.pulse = Math.min(100, ship.pulse + CONFIG.powerups.pulseCharge.amount);
       showPowerup("VOID PULSE CHARGED");
-    } else if (pickup.kind === "salvage") {
-      const data = state.encounterData;
-      if (data && data.goalType === "salvage") {
-        data.goalProgress = Math.min(data.goalTarget, data.goalProgress + 1);
-        showPowerup(`SALVAGE ${data.goalProgress}/${data.goalTarget}`);
-      }
     } else {
       grantModuleUpgrade("MODULE CACHE");
     }
@@ -2194,9 +2257,15 @@
           if (entity.dead || !Core.beyondRadius(entity, ship.x, ship.y, hardRadius)) continue;
           entity.dead = true;
           state.stats.culled += 1;
-          if (CONFIG.culling.requeueRequiredThreats && entity.required && entity.threatCost > 0 && data && !data.complete && entity.generation === data.generation) {
-            data.spawnRemaining = Math.min(data.totalBudget, data.spawnRemaining + entity.threatCost);
-            if (entity.kind === data.spec.priorityTarget) data.prioritySpawned = false;
+          if (CONFIG.culling.requeueRequiredThreats && entity.required && data && !data.complete && entity.generation === data.generation) {
+            data.requeue.push({
+              family: entity.type ? "alien" : "asteroid",
+              kind: entity.type || entity.kind,
+              required: true,
+              waveIndex: entity.waveIndex
+            });
+            data.waveSpawned = false;
+            data.waveDelay = 0;
           }
         }
       }
@@ -2225,7 +2294,11 @@
     let targetX = ship.x + ship.vx * lookScale;
     let targetY = ship.y + ship.vy * lookScale;
     let sharpness = CONFIG.camera.followSharpness;
-    if (state.combatField.active && !state.arena.active) {
+    if (state.mode === "transition" && state.cinematic.active) {
+      targetX = ship.x;
+      targetY = ship.y;
+      sharpness = CONFIG.cinematic.cameraSharpness;
+    } else if (state.combatField.active && !state.arena.active) {
       targetX = state.combatField.x;
       targetY = state.combatField.y;
       sharpness = CONFIG.combatField.cameraSharpness;
@@ -2267,12 +2340,25 @@
   }
 
   function update(dt) {
-    if (state.mode !== "playing" || !state.ship) {
+    if ((state.mode !== "playing" && state.mode !== "transition") || !state.ship) {
       clearPressed();
       return;
     }
     state.time += dt;
     state.runTime += dt;
+    if (state.mode === "transition") {
+      updateCinematic(dt);
+      updateCamera(dt);
+      state.shake = Math.max(0, state.shake - dt * 24);
+      state.flash = Math.max(0, state.flash - dt * 2.8);
+      if (state.announcementTimer > 0) {
+        state.announcementTimer -= dt;
+        if (state.announcementTimer <= 0) hideAnnouncement();
+      }
+      updateUI(false);
+      clearPressed();
+      return;
+    }
     updateShip(dt);
     updateEncounter(dt);
     updateAsteroids(dt);
@@ -2281,7 +2367,8 @@
     updateProjectiles(dt);
     updateMines(dt);
     collidePlayerBullets();
-    collidePlayer();
+    if (state.mode === "playing" && state.encounterData.spec.id !== "boss") updateEncounter(0);
+    if (state.mode === "playing") collidePlayer();
     updateEffects(dt);
     cullWorld();
     updateCamera(dt);
@@ -2336,21 +2423,15 @@
   function objectiveText() {
     const data = state.encounterData;
     if (!data) return "Stand by";
-    if (data.transition > 0) return "Stage clear";
+    if (state.mode === "transition" && state.cinematic.active) return `Transit ${Math.round(state.cinematic.progress * 100)}%`;
     if (data.spec.id === "boss") {
       if (state.arena.warning > 0) return `Arena lock in ${state.arena.warning.toFixed(1)}s`;
       if (state.boss) return `Break ${CONFIG.bosses[state.boss.type].label}`;
       return "Signal collapsing";
     }
-    if (data.goalType === "asteroidKills") return `Asteroids ${data.goalProgress}/${data.goalTarget}`;
-    if (data.goalType === "salvage") return `Salvage cores ${data.goalProgress}/${data.goalTarget}`;
-    if (data.goalType === "alienKills") return `Alien ships ${data.goalProgress}/${data.goalTarget}`;
-    if (data.goalType === "titan") {
-      const remaining = Math.max(0, (data.spec.goal.minimumSeconds || 0) - data.timer);
-      if (remaining > 0) return `Survive meteor storm ${Math.ceil(remaining)}s`;
-      return data.priorityDefeated ? "Titan destroyed" : "Destroy the titan";
-    }
-    return "Hold the stage";
+    const remaining = Math.max(0, data.waveRequiredTotal - data.waveRequiredCleared);
+    if (data.goalType === "titan") return remaining ? "Destroy the titan" : "Titan destroyed";
+    return `Wave ${data.waveNumber}/${data.waveCount} · ${remaining} required`;
   }
 
   function updateUI(force) {
@@ -2367,7 +2448,7 @@
     }
     if (dom.sector) dom.sector.textContent = String(state.sector).padStart(2, "0");
     if (dom.encounter) dom.encounter.textContent = state.encounterData ? state.encounterData.spec.label : "Stage";
-    if (dom.wave) dom.wave.textContent = String(state.encounter);
+    if (dom.wave) dom.wave.textContent = String(state.encounterData && state.encounterData.waveNumber || state.encounter);
     const hullRatio = clamp(state.ship.hull / state.ship.maxHull, 0, 1);
     if (dom.hullValue) dom.hullValue.textContent = `${Math.round(hullRatio * 100)}%`;
     if (dom.hullFill) dom.hullFill.style.transform = `scaleX(${hullRatio})`;
@@ -2455,11 +2536,22 @@
         progress: state.encounterData.goalProgress,
         target: state.encounterData.goalTarget,
         complete: state.encounterData.complete,
-        spawnRemaining: state.encounterData.spawnRemaining,
+        waveIndex: state.encounterData.waveIndex,
+        waveNumber: state.encounterData.waveNumber,
+        waveCount: state.encounterData.waveCount,
+        waveLabel: state.encounterData.waveLabel,
+        waveSpawned: state.encounterData.waveSpawned,
+        waveRequiredTotal: state.encounterData.waveRequiredTotal,
+        waveRequiredCleared: state.encounterData.waveRequiredCleared,
+        stageRequiredTotal: state.encounterData.stageRequiredTotal,
+        stageRequiredCleared: state.encounterData.stageRequiredCleared,
+        pendingSpawns: state.encounterData.pendingSpawns.length,
+        requeue: state.encounterData.requeue.length,
         playerKills: state.encounterData.playerKills,
         environmentalKills: state.encounterData.environmentalKills,
         lastDeathCause: state.encounterData.lastDeathCause
       } : null,
+      cinematic: { ...state.cinematic },
       combatField: { ...state.combatField },
       counts: {
         asteroids: state.asteroids.length,
@@ -2476,14 +2568,21 @@
 
   function debugSetStage(stage, sector) {
     if (!state.ship) resetRun();
-    state.mode = "playing";
+    state.cinematic.active = false;
+    setMode("playing");
     state.sector = clamp(Math.floor(Number(sector) || state.sector || 1), 1, 999);
     state.encounter = clamp(Math.floor(Number(stage) || 1), 1, CONFIG.sector.encountersPerSector);
-    for (const name of ["asteroids", "aliens", "playerBullets", "enemyBullets", "mines", "pickups", "effects", "floaters"]) state[name].length = 0;
+    clearCombatWorld();
     state.boss = null;
     state.arena.active = false;
     state.arena.locked = false;
     state.combatField.active = false;
+    state.ship.x = 0;
+    state.ship.y = 0;
+    state.ship.vx = 0;
+    state.ship.vy = 0;
+    state.camera.x = 0;
+    state.camera.y = 0;
     beginEncounter();
     return debugSnapshot();
   }
@@ -2525,7 +2624,7 @@
     const frameDelta = clamp(seconds - previousTime, 0, CONFIG.world.maxFrameDelta);
     previousTime = seconds;
     pollGamepad();
-    if (state.mode === "playing") {
+    if (state.mode === "playing" || state.mode === "transition") {
       accumulator += frameDelta;
       let safety = 0;
       while (accumulator >= CONFIG.world.fixedStep && safety < 5) {

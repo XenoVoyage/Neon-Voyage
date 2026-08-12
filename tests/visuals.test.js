@@ -12,15 +12,32 @@ function loadRenderer() {
 }
 
 module.exports = function register(test) {
-  test("background flow orientation is fixed and independent of ship angle", () => {
+  test("normal stars remain point-only regardless of ship angle and velocity", () => {
     const debug = loadRenderer();
-    assert.ok(debug && typeof debug.flowDirection === "function");
-    const baseline = debug.flowDirection();
-    approximately(Math.hypot(baseline.x, baseline.y), 1, 1e-12, "flow vector length");
-    for (const angle of [0, Math.PI / 3, Math.PI, Math.PI * 1.75, -2.4]) {
-      const direction = debug.flowDirection({ ship: { angle, vx: Math.cos(angle) * 800, vy: Math.sin(angle) * 800 } });
-      approximately(direction.x, baseline.x, 1e-12, `flow x at ship angle ${angle}`);
-      approximately(direction.y, baseline.y, 1e-12, `flow y at ship angle ${angle}`);
+    assert.ok(debug && typeof debug.cinematicProfile === "function");
+    const cinematic = {
+      active: true,
+      duration: 2,
+      elapsed: 1,
+      progress: 0.5,
+      directionX: 0,
+      directionY: -1,
+      speed: 640
+    };
+    for (const state of [
+      { mode: "menu", ship: null, cinematic },
+      { mode: "playing", ship: { angle: 0, vx: 0, vy: 0 }, cinematic },
+      { mode: "playing", ship: { angle: 2.4, vx: -920, vy: 480 }, cinematic },
+      { mode: "paused", ship: { angle: -1.7, vx: 300, vy: -700 }, cinematic }
+    ]) {
+      const profile = debug.cinematicProfile(state, false);
+      assert.equal(profile.streaks, false);
+      assert.equal(profile.intensity, 0);
+      assert.equal(profile.density, 0);
+      assert.equal(profile.lengthScale, 0);
+      assert.equal(profile.speed, 0);
+      assert.equal(profile.direction.x, 0);
+      assert.equal(profile.direction.y, 0);
     }
   });
 
@@ -60,5 +77,57 @@ module.exports = function register(test) {
     }
     assert.deepEqual(debug.planetFrame(-20, -4), debug.planetFrame(1, 0));
     assert.deepEqual(debug.planetFrame(99, 99), debug.planetFrame(5, 1));
+  });
+
+  test("hyperspace streak profile is transition-only, directional, bounded, and reduced-effects aware", () => {
+    const debug = loadRenderer();
+    assert.ok(debug && typeof debug.cinematicProfile === "function");
+    const activeCinematic = {
+      active: true,
+      duration: 2,
+      elapsed: 1,
+      progress: 0.5,
+      directionX: 3,
+      directionY: 4,
+      speed: 640
+    };
+
+    const inactive = debug.cinematicProfile({
+      mode: "transition",
+      cinematic: { ...activeCinematic, active: false }
+    }, false);
+    assert.equal(inactive.streaks, false, "an inactive transition rendered hyperspace streaks");
+    assert.equal(inactive.intensity, 0);
+    assert.equal(inactive.density, 0);
+    assert.equal(inactive.lengthScale, 0);
+    assert.equal(inactive.speed, 0);
+
+    const full = debug.cinematicProfile({ mode: "transition", cinematic: activeCinematic }, false);
+    assert.equal(full.streaks, true);
+    assert.equal(full.progress, 0.5);
+    approximately(full.direction.x, -0.6, 1e-12, "opposite travel x");
+    approximately(full.direction.y, -0.8, 1e-12, "opposite travel y");
+    approximately(Math.hypot(full.direction.x, full.direction.y), 1, 1e-12, "streak direction length");
+    assert.ok(full.intensity > 0 && full.intensity <= 1);
+    assert.ok(full.density > 0 && full.density <= 1);
+    assert.ok(full.lengthScale > 0 && full.lengthScale <= 1);
+    assert.equal(full.speed, 640);
+
+    const reduced = debug.cinematicProfile({ mode: "transition", cinematic: activeCinematic }, true);
+    assert.equal(reduced.streaks, true);
+    assert.ok(reduced.intensity < full.intensity);
+    assert.ok(reduced.density < full.density);
+    assert.ok(reduced.lengthScale < full.lengthScale);
+
+    const bounded = debug.cinematicProfile({
+      mode: "transition",
+      cinematic: { active: true, duration: 0, elapsed: Infinity, progress: 99, directionX: 0, directionY: 0, speed: 999999 }
+    }, false);
+    assert.equal(bounded.progress, 1);
+    assert.ok(bounded.intensity >= 0 && bounded.intensity <= 1);
+    assert.ok(bounded.density >= 0 && bounded.density <= 1);
+    assert.ok(bounded.lengthScale >= 0 && bounded.lengthScale <= 1);
+    assert.equal(bounded.speed, 1800);
+    approximately(Math.hypot(bounded.direction.x, bounded.direction.y), 1, 1e-12, "fallback streak direction length");
   });
 };

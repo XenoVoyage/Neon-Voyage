@@ -51,23 +51,19 @@ function stress(seed, seconds) {
     if (step % 111 === 0) game.input.pressed.dash = true;
     if (step % 997 === 0) game.input.pressed.pulse = true;
 
-    // Deterministically retire objectives. This exercises every stage transition while the
-    // director, AI, projectiles, effects, cleanup, input, and renderer-facing state keep running.
+    // Deterministically retire the required entity in the active finite wave. Optional hazards
+    // remain live so the director, AI, projectiles, effects, cleanup, and renderer-facing state
+    // keep running while every wave and hyperspace handoff is exercised.
     if (step % 18 === 0 && state.encounterData && !state.encounterData.complete) {
       const data = state.encounterData;
-      if (data.goalType === "asteroidKills") {
-        const target = state.asteroids.find((entity) => !entity.dead && entity.required);
-        if (target) game.killThreat(target, "player");
-      } else if (data.goalType === "salvage") {
-        const core = game.spawnPickup(state.ship.x, state.ship.y, "salvage");
-        if (core) game.applyPickup(core);
-      } else if (data.goalType === "alienKills") {
-        const target = state.aliens.find((entity) => !entity.dead && entity.required);
-        if (target) game.killThreat(target, step % 36 === 0 ? "asteroid" : "player");
-      } else if (data.goalType === "titan") {
-        data.timer = Math.max(data.timer, data.spec.goal.minimumSeconds);
-        const titan = state.asteroids.find((entity) => entity.kind === "titan" && !entity.dead);
-        if (titan) game.killThreat(titan, "player");
+      if (data.spec.id !== "boss") {
+        const target = state.asteroids.concat(state.aliens).find((entity) =>
+          !entity.dead && entity.required && entity.generation === data.generation && entity.waveIndex === data.waveIndex
+        );
+        if (target) {
+          const environmental = Boolean(target.type && step % 36 === 0);
+          game.killThreat(target, environmental ? "asteroid" : "player");
+        }
       }
     }
     if (state.encounter === 5 && state.boss) game.damageBoss(state.boss.maxHealth * 0.2);

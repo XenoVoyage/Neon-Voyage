@@ -29,10 +29,16 @@ function clearEntities(state) {
 }
 
 function freezeDirector(state) {
-  state.encounterData.spawnRemaining = 0;
-  state.encounterData.spawnTimer = Infinity;
-  state.encounterData.goalProgress = 0;
-  state.encounterData.complete = false;
+  const data = state.encounterData;
+  if (!data || data.spec.id === "boss") return;
+  data.pendingSpawns.length = 0;
+  data.requeue.length = 0;
+  data.waveSpawned = true;
+  data.waveDelay = Infinity;
+  data.waveRequiredTotal = 1;
+  data.waveRequiredCleared = 0;
+  data.goalProgress = 0;
+  data.complete = false;
 }
 
 function runSteps(game, seconds, fixedStep, eachStep) {
@@ -45,6 +51,17 @@ function runSteps(game, seconds, fixedStep, eachStep) {
 
 function living(state) {
   return state.asteroids.concat(state.aliens).filter((entity) => !entity.dead);
+}
+
+function requiredLiving(state) {
+  const data = state.encounterData;
+  return living(state).filter((entity) => entity.required && entity.generation === data.generation && entity.waveIndex === data.waveIndex);
+}
+
+function advanceToWave(game, waveNumber, fixedStep) {
+  const limit = Math.ceil(2 / fixedStep);
+  for (let frame = 0; frame < limit && game.state.encounterData.waveNumber < waveNumber; frame += 1) game.step(fixedStep);
+  assert.equal(game.state.encounterData.waveNumber, waveNumber, `wave ${waveNumber} did not begin`);
 }
 
 module.exports = function register(test) {
@@ -95,7 +112,7 @@ module.exports = function register(test) {
     assert.ok(state.enemyBullets.every((bullet) => Number.isFinite(bullet.vx) && Number.isFinite(bullet.vy)));
   });
 
-  test("asteroid impact destroys an alien once, advances its goal once, and grants no reward", () => {
+  test("asteroid impact destroys a required alien once, advances its wave once, and grants no reward", () => {
     const { game } = boot(301);
     const state = game.state;
     game.setStage(3, 1);
@@ -119,7 +136,8 @@ module.exports = function register(test) {
     game.collideThreats();
     assert.equal(alien.dead, true);
     assert.ok(asteroid.health < beforeAsteroidHealth, "asteroid took no impact damage");
-    assert.equal(state.encounterData.goalProgress, 1);
+    assert.equal(state.encounterData.waveRequiredCleared, 1);
+    assert.equal(state.encounterData.stageRequiredCleared, 1);
     assert.equal(state.encounterData.environmentalKills, 1);
     assert.equal(state.encounterData.playerKills, 0);
     assert.equal(state.encounterData.lastDeathCause, "asteroid");
@@ -128,61 +146,73 @@ module.exports = function register(test) {
     assert.equal(state.pickups.length, beforePickups, "environmental kill created a pickup");
     game.collideThreats();
     game.killThreat(alien, "player");
-    assert.equal(state.encounterData.goalProgress, 1, "alien death was processed twice");
+    assert.equal(state.encounterData.waveRequiredCleared, 1, "alien death advanced the wave twice");
+    assert.equal(state.encounterData.stageRequiredCleared, 1, "alien death advanced the stage twice");
     assert.equal(state.score, 700, "double processing awarded score");
     assert.equal(state.pickups.length, beforePickups, "double processing created a drop");
   });
 
-  test("stage APIs preserve the ordered goals and never complete them early", () => {
+  test("stage APIs expose ordered finite goals and a required survivor prevents premature wave clear", () => {
     const { game, CONFIG } = boot(401);
-    const expected = ["asteroidKills", "salvage", "alienKills", "titan", "boss"];
+    const expected = ["waves", "waves", "waves", "titan", "boss"];
     expected.forEach((goal, index) => {
       const snapshot = game.setStage(index + 1, 1);
       assert.equal(snapshot.encounter, index + 1);
       assert.equal(snapshot.objective.type, goal);
       assert.equal(snapshot.objective.progress, 0);
       assert.equal(snapshot.objective.complete, false);
+      if (index < 4) {
+        assert.equal(snapshot.objective.waveNumber, 1);
+        assert.equal(snapshot.objective.waveCount, CONFIG.sector.encounters[index].waves.length);
+        assert.ok(snapshot.objective.waveRequiredTotal > 0);
+      }
     });
-    game.setStage(4, 1);
-    clearEntities(game.state);
-    freezeDirector(game.state);
-    game.state.encounterData.priorityDefeated = true;
-    game.state.encounterData.goalProgress = 1;
-    game.step(CONFIG.world.fixedStep);
-    assert.equal(game.state.encounterData.complete, false, "Meteor Storm skipped its survival timer");
-    game.state.encounterData.timer = CONFIG.sector.encounters[3].goal.minimumSeconds;
-    game.step(CONFIG.world.fixedStep);
-    assert.equal(game.state.encounterData.complete, true, "Meteor Storm did not finish after both goals");
+    game.setStage(1, 1);
+    const targets = requiredLiving(game.state);
+    assert.equal(targets.length, 3);
+    game.killThreat(targets[0], "player");
+    game.killThreat(targets[1], "player");
+    runSteps(game, CONFIG.combatField.interWaveSeconds + 0.2, CONFIG.world.fixedStep);
+    assert.equal(game.state.encounterData.waveNumber, 1, "wave advanced while a required asteroid survived");
+    assert.equal(game.state.encounterData.complete, false, "stage cleared while a required asteroid survived");
   });
 
-  test("opening pressure is visible and an unfinished empty stage refills within 0.25 seconds", () => {
+  test("Belt Breach opens with exactly three visible rocks and never over-spawns its finite waves", () => {
     const { browser, game, CONFIG, Core } = boot(501);
     const state = game.state;
     game.setStage(1, 1);
     const opening = living(state);
-    assert.equal(opening.length, CONFIG.combatField.openingThreats);
-    assert.ok(opening.length >= 3);
+    assert.equal(opening.length, 3);
+    assert.ok(opening.every((entity) => entity.kind === "rock" && entity.required && entity.waveIndex === 0));
     opening.forEach((entity, index) => assert.ok(
       Core.circleVisible(entity.x, entity.y, entity.radius, state.camera, browser.window.innerWidth, browser.window.innerHeight, 0),
       `opening threat ${index} was off-screen`
     ));
-    opening.forEach((entity) => { entity.dead = true; });
-    let elapsed = 0;
-    while (living(state).length === 0 && elapsed <= 0.25 + CONFIG.world.fixedStep) {
-      game.step(CONFIG.world.fixedStep);
-      elapsed += CONFIG.world.fixedStep;
-    }
-    assert.ok(living(state).length > 0, "active stage remained empty");
-    assert.ok(elapsed <= 0.25 + 1e-9, `dead-air gap lasted ${elapsed.toFixed(3)} seconds`);
+    runSteps(game, 2, CONFIG.world.fixedStep);
+    assert.equal(requiredLiving(state).length, 3, "first wave spawned beyond its configured total");
+    opening.forEach((entity) => game.killThreat(entity, "player"));
+    advanceToWave(game, 2, CONFIG.world.fixedStep);
+    assert.equal(requiredLiving(state).length, 4, "second wave did not match its finite configured total");
+    runSteps(game, 1, CONFIG.world.fixedStep);
+    assert.equal(requiredLiving(state).length, 4, "second wave spawned beyond its configured total");
   });
 
-  test("stage-clear transition protects a one-hull ship from an overlapping asteroid", () => {
+  test("stage-clear hyperspace protects a one-hull ship from an overlapping asteroid and advances cleanly", () => {
     const { game, CONFIG } = boot(551);
     const state = game.state;
     game.setStage(1, 1);
     clearEntities(state);
-    freezeDirector(state);
-    state.encounterData.goalProgress = state.encounterData.goalTarget;
+    const data = state.encounterData;
+    data.waveIndex = data.waveCount - 1;
+    data.waveNumber = data.waveCount;
+    data.pendingSpawns.length = 0;
+    data.requeue.length = 0;
+    data.waveSpawned = true;
+    data.waveRequiredTotal = 1;
+    data.waveRequiredCleared = 1;
+    data.stageRequiredTotal = 1;
+    data.stageRequiredCleared = 1;
+    data.goalProgress = data.goalTarget - 1;
     state.ship.hull = 1;
     state.ship.invulnerable = 0;
     game.spawnAsteroid("rock", {
@@ -198,17 +228,116 @@ module.exports = function register(test) {
 
     game.step(CONFIG.world.fixedStep);
     assert.equal(state.encounterData.complete, true, "completed goal did not begin its clear transition");
-    assert.equal(state.mode, "playing", "ship died on the stage-clear frame");
+    assert.equal(state.mode, "transition", "stage clear did not enter hyperspace");
     assert.ok(state.ship.hull > 0, "ship lost its final hull point on the stage-clear frame");
 
-    const transitionFrames = Math.ceil((CONFIG.sector.intermissionSeconds + 0.2) / CONFIG.world.fixedStep);
+    const transitionFrames = Math.ceil((CONFIG.cinematic.duration + 0.2) / CONFIG.world.fixedStep);
     for (let frame = 0; frame < transitionFrames; frame += 1) {
       game.step(CONFIG.world.fixedStep);
-      assert.equal(state.mode, "playing", `ship died during clear transition frame ${frame}`);
+      assert.notEqual(state.mode, "gameover", `ship died during hyperspace frame ${frame}`);
       assert.ok(state.ship.hull > 0, `ship lost its final hull point during clear transition frame ${frame}`);
     }
-    assert.equal(state.encounter, 2, "stage-clear transition did not advance to Stage 2");
+    assert.equal(state.mode, "playing");
+    assert.equal(state.encounter, 2, "hyperspace did not advance to Stage 2");
     assert.equal(state.encounterData.complete, false, "Stage 2 began already complete");
+  });
+
+  test("hyperspace locks movement, weapons, dash, and pulse to a finite autopilot path", () => {
+    const { game, CONFIG } = boot(575);
+    const state = game.state;
+    game.setStage(1, 1);
+    clearEntities(state);
+    const data = state.encounterData;
+    data.waveIndex = data.waveCount - 1;
+    data.waveNumber = data.waveCount;
+    data.pendingSpawns.length = 0;
+    data.requeue.length = 0;
+    data.waveSpawned = true;
+    data.waveRequiredTotal = 1;
+    data.waveRequiredCleared = 1;
+    data.stageRequiredTotal = 1;
+    data.stageRequiredCleared = 1;
+    data.goalProgress = data.goalTarget - 1;
+
+    game.spawnAsteroid("rock", { required: false });
+    game.spawnAlien("scout", { required: false });
+    game.spawnPickup(0, 0, "shield");
+    state.playerBullets.push({ marker: "old" });
+    state.enemyBullets.push({ marker: "old" });
+    state.mines.push({ marker: "old" });
+    state.effects.push({ marker: "old" });
+    state.floaters.push({ marker: "old" });
+    state.ship.drones.push({ marker: "old" });
+
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.mode, "transition");
+    assert.equal(state.cinematic.active, true);
+    for (const name of ["asteroids", "aliens", "playerBullets", "enemyBullets", "mines", "pickups", "effects", "floaters"]) {
+      assert.equal(state[name].length, 0, `${name} survived the hyperspace cleanup`);
+    }
+    assert.equal(state.ship.drones.length, 0, "drones survived the hyperspace cleanup");
+
+    const startX = state.ship.x;
+    const startY = state.ship.y;
+    const startPulse = state.ship.pulse;
+    const directionLength = Math.hypot(CONFIG.cinematic.directionX, CONFIG.cinematic.directionY);
+    const directionX = CONFIG.cinematic.directionX / directionLength;
+    const directionY = CONFIG.cinematic.directionY / directionLength;
+    const frames = 18;
+    for (let frame = 0; frame < frames; frame += 1) {
+      game.input.keys.w = true;
+      game.input.keys.d = true;
+      game.input.keys.space = true;
+      game.input.touchMoveX = -1;
+      game.input.touchMoveY = 1;
+      game.input.touchAimX = 1;
+      game.input.touchAimY = 0;
+      game.input.touchFire = true;
+      game.input.gamepadMoveX = 1;
+      game.input.gamepadMoveY = 1;
+      game.input.gamepadFire = true;
+      game.input.pressed.dash = true;
+      game.input.pressed.pulse = true;
+      game.step(CONFIG.world.fixedStep);
+      approximately(state.ship.x, startX + directionX * CONFIG.cinematic.speed * CONFIG.world.fixedStep * (frame + 1), 1e-7, "autopilot x");
+      approximately(state.ship.y, startY + directionY * CONFIG.cinematic.speed * CONFIG.world.fixedStep * (frame + 1), 1e-7, "autopilot y");
+      approximately(state.ship.vx, directionX * CONFIG.cinematic.speed, 1e-9, "autopilot vx");
+      approximately(state.ship.vy, directionY * CONFIG.cinematic.speed, 1e-9, "autopilot vy");
+      assert.equal(state.ship.dashTime, 0, "dash input changed the cinematic path");
+      assert.equal(state.ship.pulse, startPulse, "pulse input activated during hyperspace");
+      assert.equal(state.playerBullets.length, 0, "fire input created a projectile during hyperspace");
+      assert.equal(state.effects.length, 0, "pulse or dash input created an effect during hyperspace");
+    }
+
+    assert.ok(state.cinematic.progress > 0 && state.cinematic.progress < 1);
+    runSteps(game, CONFIG.cinematic.duration, CONFIG.world.fixedStep);
+    assert.equal(state.mode, "playing");
+    assert.equal(state.cinematic.active, false);
+    assert.equal(state.encounter, 2);
+    approximately(state.ship.x, 0, 1e-12, "Stage 2 centered x");
+    approximately(state.ship.y, 0, 1e-12, "Stage 2 centered y");
+    assert.equal(state.playerBullets.length, 0);
+    assert.equal(state.enemyBullets.length, 0);
+    assert.equal(state.mines.length, 0);
+  });
+
+  test("destroying the Titan completes its stage immediately without a survival-time gate", () => {
+    const { game, CONFIG } = boot(590);
+    const state = game.state;
+    game.setStage(4, 1);
+    const data = state.encounterData;
+    assert.equal(data.timer, 0);
+    const titan = state.asteroids.find((entity) => !entity.dead && entity.required && entity.kind === "titan");
+    assert.ok(titan, "Titan wave did not spawn its required Titan");
+    assert.equal(data.waveRequiredTotal, 1);
+    assert.equal(game.killThreat(titan, "player"), true);
+    game.step(CONFIG.world.fixedStep);
+    assert.ok(data.timer <= CONFIG.world.fixedStep * 1.01, "Titan stage waited after the kill");
+    assert.equal(data.waveRequiredCleared, 1);
+    assert.equal(data.complete, true);
+    assert.equal(state.mode, "transition", "Titan destruction did not enter hyperspace immediately");
+    assert.equal(state.cinematic.fromEncounter, 4);
+    assert.equal(state.cinematic.toEncounter, 5);
   });
 
   test("Rapid Fire and Tri-Shot coexist, refresh independently, and expire", () => {

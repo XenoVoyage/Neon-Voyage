@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage 1.0 configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "1.0.0");
+  test("Neon Voyage 1.1 configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "1.1.0");
     collectFrozen(CONFIG, new Set());
   });
 
@@ -31,19 +31,45 @@ module.exports = function register(test) {
     assert.ok(CONFIG.caps.activeAudioNodes <= 24);
   });
 
-  test("five closed stages expose their goals in the required order", () => {
+  test("five stages expose finite waves and goals in the required order", () => {
     const stages = CONFIG.sector.encounters;
     assert.equal(CONFIG.sector.encountersPerSector, 5);
     assert.equal(stages.length, 5);
     stages.forEach((stage, index) => assert.equal(stage.index, index + 1));
-    assert.deepEqual(Array.from(stages, (stage) => stage.id), ["skirmish", "salvage", "alienRaid", "titanEvent", "boss"]);
-    assert.deepEqual(Array.from(stages, (stage) => stage.goal.type), ["asteroidKills", "salvage", "alienKills", "titan", "boss"]);
-    assert.equal(stages[1].goal.baseTarget, 3, "Salvage Run must ask for three cores");
-    assert.equal(stages[3].priorityTarget, "titan");
-    assert.ok(stages[3].goal.minimumSeconds > 0, "Meteor Storm needs an explicit survival goal");
+    assert.deepEqual(Array.from(stages, (stage) => stage.id), ["beltBreach", "deepBelt", "alienRaid", "titanEvent", "boss"]);
+    assert.deepEqual(Array.from(stages, (stage) => stage.goal.type), ["waves", "waves", "waves", "titan", "boss"]);
+    for (const stage of stages.slice(0, 4)) {
+      assert.equal(stage.completion, "waves", `${stage.id} must use finite wave completion`);
+      assert.ok(Array.isArray(stage.waves) && stage.waves.length > 0, `${stage.id} needs waves`);
+      for (const wave of stage.waves) {
+        assert.ok(Array.isArray(wave.required) && wave.required.length > 0, `${stage.id}/${wave.label} needs required groups`);
+        for (const group of wave.required.concat(wave.hazards || [])) {
+          assert.ok(["asteroid", "alien"].includes(group.family), `unknown family ${group.family}`);
+          assert.ok(Array.isArray(group.kinds) && group.kinds.length > 0);
+          assert.ok(Number.isSafeInteger(group.count) && group.count > 0);
+          assert.ok(Number.isSafeInteger(group.cap) && group.cap >= group.count);
+        }
+      }
+    }
+    const firstWave = stages[0].waves[0];
+    assert.equal(firstWave.required.length, 1);
+    assert.equal(firstWave.required[0].family, "asteroid");
+    assert.deepEqual(Array.from(firstWave.required[0].kinds), ["rock"]);
+    assert.equal(firstWave.required[0].count, 3, "first wave must contain exactly three asteroids");
+    assert.equal(firstWave.required[0].cap, 3, "first wave must not scale above three asteroids");
+    assert.equal("minimumSeconds" in stages[3].goal, false, "Titan victory must not be time-gated");
     assert.equal(stages[4].suspendWorldStreaming, true);
     assert.ok(CONFIG.bossArena.warningSeconds > 0);
-    assert.ok(CONFIG.sector.postBossRewardSeconds <= 1.5, "post-boss empty transition must not create long dead air");
+  });
+
+  test("hyperspace configuration is finite, directional, and fast", () => {
+    const cinematic = CONFIG.cinematic;
+    assert.ok(cinematic.duration > 0 && cinematic.duration <= 3);
+    assert.ok(Number.isFinite(cinematic.directionX) && Number.isFinite(cinematic.directionY));
+    assert.ok(Math.hypot(cinematic.directionX, cinematic.directionY) > 0);
+    assert.ok(cinematic.speed >= CONFIG.world.playerMaxSpeed);
+    assert.ok(cinematic.exitInvulnerability > 0);
+    assert.ok(CONFIG.combatField.interWaveSeconds >= 0 && CONFIG.combatField.interWaveSeconds <= 1.5);
   });
 
   test("asteroids are physical hazards only while aliens own normal ranged attacks", () => {
@@ -70,6 +96,7 @@ module.exports = function register(test) {
     for (const kind of ["shield", "rapid", "triShot", "repair", "piercing", "pulseCharge", "moduleUpgrade"]) {
       assert.ok(powerups[kind] && powerups[kind].weight > 0, `${kind} must appear in the weighted pool`);
     }
+    assert.equal("salvage" in powerups, false, "collectible salvage progression was removed in 1.1");
   });
 
   test("difficulty scaling is monotonic, sublinear, finite, and capped", () => {

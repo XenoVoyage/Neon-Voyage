@@ -62,7 +62,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "1.0.0",
+    version: "1.1.0",
 
     world: {
       fixedStep: 1 / 60,
@@ -98,14 +98,17 @@
       spawnShipClearance: 48,
       threatBoundaryPadding: 8,
       threatBoundaryBounce: 0.32,
-      openingThreats: 4,
-      activeThreatCost: 6,
-      activeThreatCostPerSector: 0.32,
-      maxActiveThreatCost: 13,
-      maxBurstSpawns: 3,
-      replenishSeconds: 0.22,
-      emptyReplenishSeconds: 0.08,
-      retrySeconds: 0.08
+      waveSpawnRetrySeconds: 0.08,
+      interWaveSeconds: 0.7
+    },
+
+    cinematic: {
+      duration: 1.65,
+      directionX: 0,
+      directionY: -1,
+      speed: 640,
+      cameraSharpness: 9,
+      exitInvulnerability: 0.8
     },
 
     culling: {
@@ -137,68 +140,129 @@
 
     sector: {
       encountersPerSector: 5,
-      intermissionSeconds: 1.25,
-      postBossRewardSeconds: 1.5,
       bossRotation: ["harrower"],
       encounters: [
         {
           index: 1,
-          id: "skirmish",
+          id: "beltBreach",
           label: "CLEAR THE BELT",
-          completion: "asteroidQuota",
-          goal: { type: "asteroidKills", baseTarget: 9, sectorStep: 2, cap: 21 },
-          baseThreatBudget: 18,
-          targetSeconds: 38,
-          mix: { asteroid: 1, alien: 0 },
-          asteroidPool: ["rock", "crystal", "volatile"]
+          completion: "waves",
+          goal: { type: "waves" },
+          waves: [
+            {
+              label: "FIRST CONTACT",
+              required: [
+                { family: "asteroid", kinds: ["rock"], count: 3, cap: 3 }
+              ]
+            },
+            {
+              label: "FRACTURE LINE",
+              required: [
+                { family: "asteroid", kinds: ["rock", "crystal"], count: 4, sectorStep: 0.7, cap: 6 }
+              ]
+            },
+            {
+              label: "BELT CORE",
+              required: [
+                { family: "asteroid", kinds: ["rock", "crystal", "volatile"], count: 5, sectorStep: 1, cap: 8 }
+              ]
+            }
+          ]
         },
         {
           index: 2,
-          id: "salvage",
-          label: "RECOVER LOST CORES",
-          completion: "salvageQuota",
-          goal: { type: "salvage", baseTarget: 3, sectorStep: 1, cap: 7, dropChance: 0.62 },
-          baseThreatBudget: 24,
-          targetSeconds: 44,
-          mix: { asteroid: 0.72, alien: 0.28 },
+          id: "deepBelt",
+          label: "BREAK THE DEEP BELT",
+          completion: "waves",
+          goal: { type: "waves" },
           guaranteedReward: "moduleUpgrade",
-          asteroidPool: ["rock", "crystal", "volatile", "armored"],
-          alienPool: ["scout"]
+          waves: [
+            {
+              label: "CRYSTAL VEIN",
+              required: [
+                { family: "asteroid", kinds: ["rock"], count: 2, cap: 2 },
+                { family: "asteroid", kinds: ["crystal"], count: 2, sectorStep: 0.5, cap: 3 }
+              ]
+            },
+            {
+              label: "VOLATILE POCKET",
+              required: [
+                { family: "asteroid", kinds: ["rock", "crystal"], count: 3, sectorStep: 0.6, cap: 5 },
+                { family: "asteroid", kinds: ["volatile"], count: 2, sectorStep: 0.4, cap: 3 }
+              ]
+            },
+            {
+              label: "ARMORED HEART",
+              required: [
+                { family: "asteroid", kinds: ["crystal", "volatile"], count: 3, sectorStep: 0.6, cap: 5 },
+                { family: "asteroid", kinds: ["armored"], count: 2, sectorStep: 0.5, cap: 4 }
+              ]
+            }
+          ]
         },
         {
           index: 3,
           id: "alienRaid",
           label: "BREAK THE RAID",
-          completion: "alienQuota",
-          goal: { type: "alienKills", baseTarget: 8, sectorStep: 2, cap: 20 },
-          baseThreatBudget: 28,
-          targetSeconds: 50,
-          mix: { asteroid: 0.2, alien: 0.8 },
-          asteroidPool: ["rock", "crystal"],
-          alienPool: ["scout", "striker", "bomber", "carrier"]
+          completion: "waves",
+          goal: { type: "waves" },
+          waves: [
+            {
+              label: "SCOUT SCREEN",
+              required: [
+                { family: "alien", kinds: ["scout"], count: 3, sectorStep: 0.5, cap: 5 }
+              ],
+              hazards: [
+                { family: "asteroid", kinds: ["rock"], count: 2, sectorStep: 0.3, cap: 3 }
+              ]
+            },
+            {
+              label: "STRIKE WING",
+              required: [
+                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.4, cap: 3 },
+                { family: "alien", kinds: ["striker"], count: 2, sectorStep: 0.5, cap: 4 }
+              ],
+              hazards: [
+                { family: "asteroid", kinds: ["rock", "volatile"], count: 2, cap: 2 }
+              ]
+            },
+            {
+              label: "RAID COMMAND",
+              required: [
+                { family: "alien", kinds: ["scout", "striker"], count: 3, sectorStep: 0.6, cap: 5 },
+                { family: "alien", kinds: ["bomber"], count: 1, sectorStep: 0.35, cap: 2 },
+                { family: "alien", kinds: ["carrier"], count: 1, cap: 1 }
+              ],
+              hazards: [
+                { family: "asteroid", kinds: ["rock", "crystal"], count: 2, sectorStep: 0.25, cap: 3 }
+              ]
+            }
+          ]
         },
         {
           index: 4,
           id: "titanEvent",
           label: "SHATTER THE TITAN",
-          completion: "priorityTarget",
-          goal: { type: "titan", baseTarget: 1, sectorStep: 0, cap: 1, minimumSeconds: 18 },
-          baseThreatBudget: 26,
-          targetSeconds: 62,
-          mix: { asteroid: 0.86, alien: 0.14 },
-          priorityTarget: "titan",
-          priorityCap: 1,
-          asteroidPool: ["rock", "volatile", "armored", "colossal", "titan"],
-          alienPool: ["scout", "striker"]
+          completion: "waves",
+          goal: { type: "titan" },
+          waves: [
+            {
+              label: "TITAN",
+              required: [
+                { family: "asteroid", kinds: ["titan"], count: 1, cap: 1 }
+              ],
+              hazards: [
+                { family: "asteroid", kinds: ["rock", "volatile", "armored"], count: 3, sectorStep: 0.45, cap: 5 }
+              ]
+            }
+          ]
         },
         {
           index: 5,
           id: "boss",
           label: "CAPITAL SHIP DETECTED",
           completion: "bossDefeated",
-          goal: { type: "boss", baseTarget: 1, sectorStep: 0, cap: 1 },
-          baseThreatBudget: 0,
-          targetSeconds: 82,
+          goal: { type: "boss" },
           suspendWorldStreaming: true,
           reward: "moduleUpgrade"
         }
@@ -482,10 +546,6 @@
         maxTier: 3,
         persistsForRun: true,
         unlocksBlueprint: true
-      },
-      salvage: {
-        label: "SALVAGE CORE",
-        duration: 18
       }
     },
 
