@@ -1,0 +1,14 @@
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Local audit output and packaged releases
+*.log
+coverage/
+dist/
+*.zip
