@@ -221,7 +221,8 @@ module.exports = function register(test) {
   });
 
   test("barely active touch aim shares one epsilon without snapping or firing", () => {
-    const { game, CONFIG, Core } = bootMobile();
+    const { browser, game, CONFIG, Core } = bootMobile();
+    const canvas = browser.elements.get("game");
     game.start();
     game.state.asteroids.length = 0;
     game.state.aliens.length = 0;
@@ -229,6 +230,7 @@ module.exports = function register(test) {
     game.state.ship.vx = 0;
     game.state.ship.vy = 0;
     game.input.pointerActive = false;
+    rawPointer(browser, canvas, "pointerdown", 23, 700, 200);
     game.input.touchAimX = 0;
     game.input.touchAimY = -0.0005;
     game.input.touchFire = false;
@@ -244,6 +246,7 @@ module.exports = function register(test) {
       1e-7,
       "barely active touch aim anchor"
     );
+    rawPointer(browser, browser.window, "pointerup", 23, 700, 200);
   });
 
   test("releasing touch aim preserves heading while movement reanchors the aim vector", () => {
@@ -564,6 +567,159 @@ module.exports = function register(test) {
     }
   });
 
+  test("owned touch terminals are pointer-ID first when Safari omits or changes pointerType", () => {
+    for (const [type, pointerType] of [
+      ["pointerup", ""],
+      ["pointercancel", "mouse"],
+      ["lostpointercapture", ""]
+    ]) {
+      const { browser, game, CONFIG } = bootMobile();
+      const canvas = browser.elements.get("game");
+      const aimZone = browser.elements.get("aim-zone");
+      game.start();
+      rawPointer(browser, canvas, "pointerdown", 83, 700, 200);
+      rawPointer(browser, canvas, "pointermove", 83, 700, 200 - CONFIG.mobileControls.stickRadius);
+      assert.equal(game.input.touchFire, true, `${type}/${pointerType || "empty"} precondition failed`);
+      rawPointer(browser, canvas, type, 83, 700, 150, { pointerType, buttons: 0 });
+      assert.equal(game.mobile.aimPointerId, null, `${type}/${pointerType || "empty"} retained ownership`);
+      assert.equal(game.input.touchAimX, 0);
+      assert.equal(game.input.touchAimY, 0);
+      assert.equal(game.input.touchFire, false);
+      assert.equal(aimZone.classList.contains("is-engaged"), false, `${type}/${pointerType || "empty"} retained its visual`);
+    }
+  });
+
+  test("inactive pointer boundaries clear a touch but active boundaries preserve it", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    game.start();
+
+    rawPointer(browser, canvas, "pointerdown", 84, 700, 200);
+    rawPointer(browser, canvas, "pointermove", 84, 700, 200 - CONFIG.mobileControls.stickRadius);
+    rawPointer(browser, canvas, "pointerout", 84, 700, 150, { buttons: 1 });
+    assert.equal(game.mobile.aimPointerId, 84, "active pointerout ended a held touch");
+    assert.equal(game.input.touchFire, true);
+    rawPointer(browser, canvas, "pointerleave", 84, 700, 150, { buttons: 0 });
+    assert.equal(game.mobile.aimPointerId, null, "inactive pointerleave retained touch ownership");
+    assert.equal(game.input.touchFire, false);
+
+    rawPointer(browser, canvas, "pointerdown", 85, 700, 200);
+    rawPointer(browser, canvas, "pointermove", 85, 700, 200 - CONFIG.mobileControls.stickRadius);
+    rawPointer(browser, canvas, "pointerout", 85, 700, 150, { buttons: 0 });
+    assert.equal(game.mobile.aimPointerId, null, "inactive pointerout retained touch ownership");
+    assert.equal(game.input.touchFire, false);
+  });
+
+  test("capture liveness recovers implicit release without timing out a stationary hold", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    game.start();
+    rawPointer(browser, canvas, "pointerdown", 86, 700, 200);
+    rawPointer(browser, canvas, "pointermove", 86, 700, 200 - CONFIG.mobileControls.stickRadius);
+    assert.equal(canvas.hasPointerCapture(86), true);
+
+    browser.pumpFrames(3600);
+    assert.equal(game.mobile.aimPointerId, 86, "stationary held touch was cleared by elapsed time");
+    assert.equal(game.input.touchFire, true);
+
+    canvas._capturedPointers.delete(86);
+    browser.pumpFrames(1);
+    assert.equal(game.mobile.aimPointerId, null, "implicit capture loss was not reconciled");
+    assert.equal(game.input.touchFire, false);
+    assert.equal(browser.elements.get("aim-zone").classList.contains("is-engaged"), false);
+
+    canvas.setPointerCapture = undefined;
+    canvas.hasPointerCapture = undefined;
+    rawPointer(browser, canvas, "pointerdown", 87, 700, 200);
+    rawPointer(browser, canvas, "pointermove", 87, 700, 200 - CONFIG.mobileControls.stickRadius);
+    browser.pumpFrames(120);
+    assert.equal(game.mobile.aimPointerId, 87, "uncaptured live touch was treated as stale");
+    rawPointer(browser, browser.window, "pointerup", 87, 700, 150);
+  });
+
+  test("a fresh primary touch recovers stale ownership while a valid second thumb does not", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    game.start();
+    rawPointer(browser, canvas, "pointerdown", 88, 700, 200, { isPrimary: true });
+    rawPointer(browser, canvas, "pointermove", 88, 700, 200 - CONFIG.mobileControls.stickRadius, { isPrimary: true });
+    assert.equal(game.input.touchFire, true);
+
+    rawPointer(browser, canvas, "pointerdown", 89, 680, 230, { isPrimary: true });
+    assert.equal(game.mobile.aimPointerId, 89, "fresh primary pointer did not replace stale ownership");
+    assert.deepEqual(JSON.parse(JSON.stringify(game.mobile.aimOrigin)), { x: 680, y: 230 });
+    assert.equal(game.input.touchFire, false, "fresh touch inherited stale fire");
+
+    rawPointer(browser, canvas, "pointerdown", 90, 150, 230, { isPrimary: false });
+    assert.equal(game.mobile.movePointerId, 90, "valid second thumb did not start movement");
+    assert.equal(game.mobile.aimPointerId, 89, "valid second thumb stole aim ownership");
+    rawPointer(browser, browser.window, "pointerup", 89, 680, 230);
+    rawPointer(browser, browser.window, "pointerup", 90, 150, 230);
+  });
+
+  test("native touch and page lifecycle fallbacks neutralize suppressed pointer streams", () => {
+    const cases = [
+      ["touchend", (browser) => browser.emit(browser.document, "touchend", { touches: [] })],
+      ["touchcancel", (browser) => browser.emit(browser.document, "touchcancel", { touches: [{ identifier: 1 }] })],
+      ["freeze", (browser) => browser.emit(browser.document, "freeze")],
+      ["persisted pageshow", (browser) => browser.window.dispatchEvent({ type: "pageshow", persisted: true })]
+    ];
+    for (const [label, finish] of cases) {
+      const { browser, game, CONFIG } = bootMobile();
+      const canvas = browser.elements.get("game");
+      game.start();
+      rawPointer(browser, canvas, "pointerdown", 92, 150, 210);
+      rawPointer(browser, canvas, "pointermove", 92, 150 + CONFIG.mobileControls.stickRadius, 210);
+      rawPointer(browser, canvas, "pointerdown", 93, 690, 210, { isPrimary: false });
+      rawPointer(browser, canvas, "pointermove", 93, 690, 210 - CONFIG.mobileControls.stickRadius, { isPrimary: false });
+      finish(browser);
+      assert.equal(game.mobile.movePointerId, null, `${label} retained movement ownership`);
+      assert.equal(game.mobile.aimPointerId, null, `${label} retained aim ownership`);
+      assert.equal(game.input.touchMoveX, 0);
+      assert.equal(game.input.touchFire, false, `${label} retained automatic fire`);
+    }
+
+    const partial = bootMobile();
+    const partialCanvas = partial.browser.elements.get("game");
+    partial.game.start();
+    rawPointer(partial.browser, partialCanvas, "pointerdown", 94, 150, 210);
+    rawPointer(partial.browser, partialCanvas, "pointermove", 94, 200, 210);
+    partial.browser.emit(partial.browser.document, "touchend", { touches: [{ identifier: 94 }] });
+    assert.equal(partial.game.mobile.movePointerId, 94, "partial native touchend cleared a held finger");
+    rawPointer(partial.browser, partial.browser.window, "pointerup", 94, 200, 210);
+  });
+
+  test("collision pressure cannot create input and cannot defeat malformed-terminal recovery", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    game.start();
+    game.state.asteroids.length = 0;
+    for (let index = 0; index < 28; index += 1) {
+      game.spawnAsteroid("rock", {
+        x: 700 + index % 4,
+        y: 700 + index % 5,
+        velocityAngle: index,
+        speed: 80,
+        required: false,
+        noDrops: true,
+        collisionGrace: 0
+      });
+    }
+    for (let index = 0; index < 120; index += 1) game.collideThreats();
+    assert.equal(game.mobile.movePointerId, null);
+    assert.equal(game.mobile.aimPointerId, null);
+    assert.equal(game.input.touchMoveX, 0, "collisions created movement input");
+    assert.equal(game.input.touchFire, false, "collisions created automatic fire");
+
+    rawPointer(browser, canvas, "pointerdown", 98, 700, 200);
+    rawPointer(browser, canvas, "pointermove", 98, 700, 200 - CONFIG.mobileControls.stickRadius);
+    for (let index = 0; index < 120; index += 1) game.collideThreats();
+    rawPointer(browser, canvas, "pointerup", 98, 700, 150, { pointerType: "", buttons: 0 });
+    assert.equal(game.mobile.aimPointerId, null, "collision pressure retained malformed terminal ownership");
+    assert.equal(game.input.touchFire, false, "collision pressure retained malformed terminal fire");
+    assert.equal(browser.elements.get("aim-zone").classList.contains("is-engaged"), false);
+  });
+
   test("Pulse and Dash cannot create or preserve stuck automatic fire", () => {
     const { browser, game, CONFIG } = bootMobile();
     const canvas = browser.elements.get("game");
@@ -584,6 +740,33 @@ module.exports = function register(test) {
     browser.elements.get("touch-dash").click();
     assert.equal(game.input.touchFire, false, "action buttons created fire without an aim pointer");
     assert.equal(game.mobile.aimPointerId, null);
+  });
+
+  test("two-thumb touch action pointerdowns activate once without stealing aim", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    const pulse = browser.elements.get("touch-pulse");
+    const dash = browser.elements.get("touch-dash");
+    game.start();
+    rawPointer(browser, canvas, "pointerdown", 95, 690, 210);
+    rawPointer(browser, canvas, "pointermove", 95, 690, 210 - CONFIG.mobileControls.stickRadius);
+    assert.equal(game.input.touchFire, true);
+
+    rawPointer(browser, pulse, "pointerdown", 96, 620, 260, { isPrimary: false });
+    rawPointer(browser, dash, "pointerdown", 97, 620, 320, { isPrimary: false });
+    assert.equal(game.mobile.aimPointerId, 95, "action pointer stole aim ownership");
+    game.step(CONFIG.world.fixedStep);
+    const pulseAfterOne = game.state.ship.pulse;
+    const dashAfterOne = game.state.ship.dashCooldown;
+    assert.ok(pulseAfterOne < 99.5, "touch pointerdown did not activate Pulse");
+    assert.ok(dashAfterOne > 0, "touch pointerdown did not activate Dash");
+    pulse.click();
+    dash.click();
+    game.step(CONFIG.world.fixedStep);
+    assert.ok(game.state.ship.pulse >= pulseAfterOne, "synthetic click replayed Pulse");
+    assert.ok(game.state.ship.dashCooldown < dashAfterOne, "synthetic click replayed Dash");
+    assert.equal(game.input.touchFire, true, "action buttons cleared a valid aim hold");
+    rawPointer(browser, browser.window, "pointerup", 95, 690, 150);
   });
 
   test("touch blur clears active sticks without pausing and stale IDs stay inert", () => {
@@ -885,14 +1068,13 @@ module.exports = function register(test) {
     assert.equal(game.mobile.orientationBlocked, false);
     assert.equal(overlay.classList.contains("is-visible"), false);
     assert.equal(overlay.getAttribute("aria-hidden"), "true");
-    if (shell && shell.children) {
-      for (const child of Array.from(shell.children)) {
-        if (child !== overlay) assert.equal(child.hasAttribute("inert"), false, "landscape left shell content inert");
-      }
-    }
-    for (const id of ["game", "menu-overlay", "controls-modal", "settings-modal", "touch-controls"]) {
+    for (const id of ["game", "controls-modal", "settings-modal", "stage-select-modal", "touch-controls"]) {
       assert.equal(browser.elements.get(id).hasAttribute("inert"), false, `${id} remained inert in landscape`);
       assert.equal(browser.elements.get(id).inert, false, `${id} inert property remained set in landscape`);
+    }
+    for (const id of ["menu-overlay", "pause-overlay", "gameover-overlay"]) {
+      assert.equal(browser.elements.get(id).hasAttribute("inert"), true, `${id} became interactive while hidden`);
+      assert.equal(browser.elements.get(id).getAttribute("aria-hidden"), "true", `${id} became accessible while hidden`);
     }
     game.step(CONFIG.world.fixedStep);
     assert.ok(game.state.runTime > before, "landscape did not resume simulation");

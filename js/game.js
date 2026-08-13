@@ -11,6 +11,8 @@
   const lerp = Core.lerp;
   const distanceSquared = Core.distanceSquared;
   const STORAGE_KEY = "neon-voyage-v1";
+  const PROGRESS_STORAGE_KEY = "neon-voyage-progress-v1";
+  const PROGRESS_STORAGE_LIMIT = 256;
   const TOUCH_INPUT_EPSILON = 0.0001;
   const MODULE_ORDER = ["pulse", "prism", "seeker", "massDriver", "drone"];
   const THREAT_ARRAYS = ["asteroids", "aliens"];
@@ -48,8 +50,12 @@
     powerupStatus: byId("powerup-status"),
     announcement: byId("announcement"),
     menuOverlay: byId("menu-overlay"),
+    startButton: byId("start-button"),
+    continueButton: byId("continue-button"),
     pauseOverlay: byId("pause-overlay"),
+    resumeButton: byId("resume-button"),
     gameoverOverlay: byId("gameover-overlay"),
+    restartButton: byId("restart-button"),
     finalScore: byId("final-score"),
     finalSector: byId("final-sector"),
     finalWave: byId("final-wave"),
@@ -65,6 +71,8 @@
     settingsFullscreenButton: byId("settings-fullscreen-button"),
     controlsModal: byId("controls-modal"),
     settingsModal: byId("settings-modal"),
+    stageSelectModal: byId("stage-select-modal"),
+    stageGrid: byId("stage-grid"),
     orientationOverlay: byId("orientation-overlay"),
     touchControls: byId("touch-controls"),
     moveZone: byId("move-zone"),
@@ -80,6 +88,14 @@
       typeof value.settings.sound === "boolean" && typeof value.settings.reducedEffects === "boolean";
   }
 
+  function validProgress(value) {
+    const maximum = CONFIG.sector.encountersPerSector;
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value) &&
+      value.schema === 1 &&
+      Number.isInteger(value.maxUnlockedStage) && value.maxUnlockedStage >= 1 && value.maxUnlockedStage <= maximum &&
+      Number.isInteger(value.lastPlayedStage) && value.lastPlayedStage >= 1 && value.lastPlayedStage <= value.maxUnlockedStage;
+  }
+
   const saved = Core.safeReadJSON(null, STORAGE_KEY, {
     highScore: 0,
     settings: { sound: true, reducedEffects: false }
@@ -87,6 +103,16 @@
   const settings = {
     sound: saved.settings.sound,
     reducedEffects: saved.settings.reducedEffects
+  };
+  const savedProgress = Core.safeReadJSON(null, PROGRESS_STORAGE_KEY, {
+    schema: 1,
+    maxUnlockedStage: 1,
+    lastPlayedStage: 1
+  }, validProgress, PROGRESS_STORAGE_LIMIT);
+  const progress = {
+    schema: 1,
+    maxUnlockedStage: savedProgress.maxUnlockedStage,
+    lastPlayedStage: savedProgress.lastPlayedStage
   };
   let highScore = Math.floor(saved.highScore);
   const renderer = new ND.Renderer(canvas);
@@ -120,7 +146,8 @@
       knob: dom.moveKnob,
       activeId: null,
       originX: 0,
-      originY: 0
+      originY: 0,
+      captureTracked: false
     },
     aim: {
       kind: "aim",
@@ -128,11 +155,17 @@
       knob: dom.aimKnob,
       activeId: null,
       originX: 0,
-      originY: 0
+      originY: 0,
+      captureTracked: false
     }
   };
+  const notedTouchEvents = new WeakSet();
+  const handledTouchMoves = new WeakSet();
   let touchCapable = false;
   let orientationBlocked = false;
+  let campaignProgressEligible = false;
+  let presentedMode = null;
+  const stageButtons = [];
 
   function mediaMatches(query) {
     try {
@@ -162,7 +195,8 @@
   function updateOrientationState() {
     if (!touchCapable && detectTouchCapability()) setTouchCapable(true);
     const nextBlocked = touchCapable && isPortraitViewport();
-    if (nextBlocked !== orientationBlocked) {
+    const changed = nextBlocked !== orientationBlocked;
+    if (changed) {
       const heldGamepadButtons = nextBlocked ? null : input.lastGamepadButtons.slice();
       orientationBlocked = nextBlocked;
       resetTransientInput();
@@ -170,9 +204,10 @@
       if (orientationBlocked) {
         closeDialog(dom.controlsModal);
         closeDialog(dom.settingsModal);
+        closeDialog(dom.stageSelectModal);
       }
     }
-    if (dom.orientationOverlay) {
+    if (changed && dom.orientationOverlay) {
       dom.orientationOverlay.classList.toggle("is-visible", orientationBlocked);
       dom.orientationOverlay.setAttribute("aria-hidden", String(!orientationBlocked));
       const shell = dom.orientationOverlay.parentElement;
@@ -184,15 +219,29 @@
         }
       }
     }
+    for (const dialog of [dom.controlsModal, dom.settingsModal, dom.stageSelectModal]) {
+      if (!dialog) continue;
+      if (orientationBlocked) dialog.setAttribute("inert", "");
+      else dialog.removeAttribute("inert");
+    }
+    syncModePresentation();
+    if (changed && !orientationBlocked) focusPrimaryModeAction(state.mode);
     return orientationBlocked;
   }
 
   function noteTouchInteraction(event) {
     if (!event || event.pointerType !== "touch") return;
+    if (notedTouchEvents.has(event)) return;
+    notedTouchEvents.add(event);
     if (!touchCapable) setTouchCapable(true);
     input.pointerActive = false;
     input.pointerFire = false;
     updateOrientationState();
+    if (event.type === "pointerdown" && event.isPrimary &&
+        !touchStickForPointer(event.pointerId) &&
+        (touchSticks.move.activeId !== null || touchSticks.aim.activeId !== null)) {
+      clearTouchSticks();
+    }
   }
 
   function requestLandscapeLock() {
@@ -265,6 +314,10 @@
     }, validSave, 1024);
   }
 
+  function saveProgress() {
+    return Core.safeWriteJSON(null, PROGRESS_STORAGE_KEY, progress, validProgress, PROGRESS_STORAGE_LIMIT);
+  }
+
   function formatScore(value) {
     return String(Math.max(0, Math.floor(value))).padStart(6, "0");
   }
@@ -273,8 +326,23 @@
     if (element) element.classList.toggle("is-hidden", !visible);
   }
 
-  function overlay(element, visible) {
-    if (element) element.classList.toggle("is-visible", visible);
+  function setOverlayState(element, visible) {
+    if (!element) return;
+    const interactive = Boolean(visible) && !orientationBlocked;
+    element.classList.toggle("is-visible", Boolean(visible));
+    element.setAttribute("aria-hidden", String(!interactive));
+    if (interactive) element.removeAttribute("inert");
+    else element.setAttribute("inert", "");
+  }
+
+  function anyDialogOpen() {
+    return [dom.controlsModal, dom.settingsModal, dom.stageSelectModal].some((dialog) => Boolean(dialog && dialog.open));
+  }
+
+  function focusPrimaryModeAction(mode) {
+    if (orientationBlocked || touchCapable && isPortraitViewport() || anyDialogOpen()) return;
+    const target = mode === "menu" ? dom.startButton : mode === "paused" ? dom.resumeButton : mode === "gameover" ? dom.restartButton : null;
+    target?.focus({ preventScroll: true });
   }
 
   function announce(text, seconds) {
@@ -288,12 +356,11 @@
     if (dom.announcement) dom.announcement.classList.remove("is-visible");
   }
 
-  function setMode(mode) {
-    if (state.mode !== mode) clearTouchSticks();
-    state.mode = mode;
-    overlay(dom.menuOverlay, mode === "menu");
-    overlay(dom.pauseOverlay, mode === "paused");
-    overlay(dom.gameoverOverlay, mode === "gameover");
+  function syncModePresentation() {
+    const mode = state.mode;
+    setOverlayState(dom.menuOverlay, mode === "menu");
+    setOverlayState(dom.pauseOverlay, mode === "paused");
+    setOverlayState(dom.gameoverOverlay, mode === "gameover");
     const inRun = mode === "playing" || mode === "transition" || mode === "paused";
     show(dom.hud, inRun);
     show(dom.meters, inRun);
@@ -302,9 +369,23 @@
     if (!inRun) show(dom.bossHud, false);
     if (dom.touchControls) dom.touchControls.classList.toggle("is-active", mode === "playing");
     canvas.style.cursor = mode === "playing" ? "crosshair" : "default";
+    const canvasTabIndex = mode === "playing" ? 0 : -1;
+    canvas.tabIndex = canvasTabIndex;
+    canvas.setAttribute("tabindex", String(canvasTabIndex));
   }
 
-  function resetRun() {
+  function setMode(mode) {
+    if (state.mode !== mode) clearTouchSticks();
+    state.mode = mode;
+    syncModePresentation();
+    if (presentedMode !== mode) {
+      presentedMode = mode;
+      focusPrimaryModeAction(mode);
+    }
+  }
+
+  function resetRun(startStage) {
+    const initialStage = clamp(Math.floor(Number(startStage) || 1), 1, CONFIG.sector.encountersPerSector);
     resetTransientInput();
     audio.resetTimeline();
     const ship = {
@@ -347,7 +428,7 @@
     state.arena = { active: false, locked: false, warning: 0, x: 0, y: 0, radius: 320 };
     state.combatField = { active: false, x: 0, y: 0, halfWidth: 0, halfHeight: 0 };
     state.sector = 1;
-    state.encounter = 1;
+    state.encounter = initialStage;
     state.encounterData = null;
     state.cinematic.active = false;
     state.cinematic.elapsed = 0;
@@ -367,13 +448,27 @@
     beginEncounter();
   }
 
-  function startRun() {
+  function startRunAt(stage) {
+    const requestedStage = Math.floor(Number(stage));
+    if (!Number.isInteger(requestedStage) || requestedStage < 1 || requestedStage > progress.maxUnlockedStage) return false;
     audio.ensure();
     requestLandscapeLock();
-    resetRun();
+    closeDialog(dom.controlsModal);
+    closeDialog(dom.settingsModal);
+    closeDialog(dom.stageSelectModal);
+    progress.lastPlayedStage = requestedStage;
+    saveProgress();
+    updateProgressUI();
+    campaignProgressEligible = true;
+    resetRun(requestedStage);
     setMode("playing");
     if (!touchCapable) canvas.focus({ preventScroll: true });
     updateUI(true);
+    return true;
+  }
+
+  function startNewRun() {
+    return startRunAt(1);
   }
 
   function returnToMenu() {
@@ -420,7 +515,8 @@
   }
 
   function openDialog(dialog) {
-    if (!dialog) return;
+    if (!dialog || orientationBlocked) return;
+    dialog.removeAttribute("inert");
     if (typeof dialog.showModal === "function") dialog.showModal();
     else dialog.setAttribute("open", "");
   }
@@ -429,6 +525,84 @@
     if (!dialog) return;
     if (typeof dialog.close === "function") dialog.close();
     else dialog.removeAttribute("open");
+  }
+
+  function stageCardText(className, text) {
+    const element = global.document.createElement("span");
+    element.className = className;
+    element.textContent = text;
+    return element;
+  }
+
+  function buildStageGrid() {
+    if (!dom.stageGrid || stageButtons.length) return;
+    for (const spec of CONFIG.sector.encounters) {
+      const stage = spec.index;
+      const button = global.document.createElement("button");
+      button.type = "button";
+      button.className = "stage-card";
+      button.dataset.stage = String(stage);
+
+      const preview = global.document.createElement("canvas");
+      preview.className = "stage-preview";
+      preview.width = 320;
+      preview.height = 180;
+      preview.setAttribute("aria-hidden", "true");
+
+      const copy = global.document.createElement("span");
+      copy.className = "stage-card-copy";
+      copy.appendChild(stageCardText("stage-card-index", `Stage ${String(stage).padStart(2, "0")}`));
+      copy.appendChild(stageCardText("stage-card-title", spec.label));
+      const status = stageCardText("stage-card-status", "Locked");
+      copy.appendChild(status);
+
+      button.appendChild(preview);
+      button.appendChild(copy);
+      button.addEventListener("click", () => {
+        if (orientationBlocked || state.mode !== "menu" || stage > progress.maxUnlockedStage) return;
+        startRunAt(stage);
+      });
+      dom.stageGrid.appendChild(button);
+      stageButtons.push({ stage, spec, button, status });
+      if (ND.StagePreview && typeof ND.StagePreview.render === "function") ND.StagePreview.render(preview, stage, 1);
+    }
+  }
+
+  function updateProgressUI() {
+    buildStageGrid();
+    const canContinue = progress.maxUnlockedStage >= 2;
+    if (dom.continueButton) {
+      dom.continueButton.disabled = !canContinue;
+      dom.continueButton.setAttribute("aria-disabled", String(!canContinue));
+    }
+    for (const entry of stageButtons) {
+      const unlocked = entry.stage <= progress.maxUnlockedStage;
+      const current = unlocked && entry.stage === progress.lastPlayedStage;
+      entry.button.disabled = !unlocked;
+      entry.button.setAttribute("aria-label", `Stage ${entry.stage}: ${entry.spec.label}. ${unlocked ? "Unlocked" : "Locked"}.`);
+      if (current) entry.button.setAttribute("aria-current", "step");
+      else entry.button.removeAttribute("aria-current");
+      entry.status.textContent = unlocked ? (current ? "Last played" : "Unlocked") : "Locked";
+    }
+  }
+
+  function openStageSelect() {
+    if (progress.maxUnlockedStage < 2 || state.mode !== "menu") return;
+    updateProgressUI();
+    closeDialog(dom.controlsModal);
+    closeDialog(dom.settingsModal);
+    openDialog(dom.stageSelectModal);
+    const target = stageButtons.find((entry) => entry.stage === progress.lastPlayedStage);
+    target?.button.focus({ preventScroll: true });
+  }
+
+  function unlockNextStage(completedStage) {
+    const stage = clamp(Math.floor(Number(completedStage) || 1), 1, CONFIG.sector.encountersPerSector);
+    const nextStage = Math.min(CONFIG.sector.encountersPerSector, stage + 1);
+    progress.maxUnlockedStage = Math.max(progress.maxUnlockedStage, nextStage);
+    progress.lastPlayedStage = nextStage;
+    saveProgress();
+    updateProgressUI();
   }
 
   function toggleSound() {
@@ -471,9 +645,10 @@
     });
   }
 
-  bindButton("start-button", startRun);
-  bindButton("restart-button", startRun);
-  bindButton("restart-pause-button", startRun);
+  bindButton("start-button", startNewRun);
+  bindButton("continue-button", openStageSelect);
+  bindButton("restart-button", startNewRun);
+  bindButton("restart-pause-button", startNewRun);
   bindButton("resume-button", () => togglePause(false));
   bindButton("pause-button", () => togglePause());
   bindButton("pause-menu-button", returnToMenu);
@@ -484,14 +659,41 @@
   bindButton("pause-settings-button", () => openDialog(dom.settingsModal));
   bindButton("controls-close-button", () => closeDialog(dom.controlsModal));
   bindButton("settings-close-button", () => closeDialog(dom.settingsModal));
+  bindButton("stage-select-close-button", () => closeDialog(dom.stageSelectModal));
   bindButton("sound-button", toggleSound);
   bindButton("settings-sound-button", toggleSound);
   bindButton("motion-button", toggleEffects);
   bindButton("settings-effects-button", toggleEffects);
   bindButton("fullscreen-button", toggleFullscreen);
   bindButton("settings-fullscreen-button", toggleFullscreen);
-  bindButton("touch-dash", () => { input.pressed.dash = true; });
-  bindButton("touch-pulse", () => { input.pressed.pulse = true; });
+  function bindTouchAction(id, action) {
+    const button = byId(id);
+    if (!button) return;
+    let touchActivation = false;
+    button.addEventListener("pointerdown", (event) => {
+      noteTouchInteraction(event);
+      if (orientationBlocked || event.pointerType !== "touch") return;
+      touchActivation = true;
+      action();
+      event.preventDefault();
+    }, { passive: false });
+    button.addEventListener("click", (event) => {
+      if (orientationBlocked) {
+        event.preventDefault();
+        return;
+      }
+      if (touchActivation) {
+        touchActivation = false;
+        event.preventDefault();
+        return;
+      }
+      action();
+    });
+    button.addEventListener("pointercancel", () => { touchActivation = false; });
+  }
+
+  bindTouchAction("touch-dash", () => { input.pressed.dash = true; });
+  bindTouchAction("touch-pulse", () => { input.pressed.pulse = true; });
 
   function normalizeKey(event) {
     if (event.code === "Space") return "space";
@@ -554,6 +756,7 @@
   canvas.addEventListener("pointermove", (event) => {
     if (orientationBlocked) return;
     if (event.pointerType === "touch") {
+      handledTouchMoves.add(event);
       updateTouchStick(event);
       return;
     }
@@ -575,17 +778,16 @@
     canvas.setPointerCapture?.(event.pointerId);
   });
   canvas.addEventListener("pointerup", (event) => {
-    if (event.pointerType === "touch") endTouchStick(event);
-    else input.pointerFire = false;
+    finishPointer(event);
   });
   canvas.addEventListener("pointercancel", (event) => {
-    if (event.pointerType === "touch") endTouchStick(event);
-    else input.pointerFire = false;
+    finishPointer(event);
   });
   canvas.addEventListener("lostpointercapture", (event) => {
-    if (event.pointerType === "touch") endTouchStick(event);
-    else input.pointerFire = false;
+    finishPointer(event);
   });
+  canvas.addEventListener("pointerout", endInactivePointer);
+  canvas.addEventListener("pointerleave", endInactivePointer);
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 
   function shapeTouchVector(x, y, deadzone, curve, maxOutput) {
@@ -666,6 +868,7 @@
     stick.activeId = event.pointerId;
     stick.originX = event.clientX;
     stick.originY = event.clientY;
+    stick.captureTracked = false;
     if (stick.kind === "move") input.touchMoveX = input.touchMoveY = 0;
     else {
       input.touchAimX = input.touchAimY = 0;
@@ -674,6 +877,7 @@
     placeTouchStick(stick, event.clientX, event.clientY, bounds);
     try {
       canvas.setPointerCapture?.(event.pointerId);
+      stick.captureTracked = typeof canvas.hasPointerCapture === "function" && canvas.hasPointerCapture(event.pointerId);
     } catch {
       // Global terminal listeners still release the stick when capture is unavailable.
     }
@@ -696,6 +900,7 @@
     stick.activeId = null;
     stick.originX = 0;
     stick.originY = 0;
+    stick.captureTracked = false;
     if (pointerId !== null && typeof canvas.releasePointerCapture === "function") {
       try {
         if (!canvas.hasPointerCapture || canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
@@ -723,6 +928,34 @@
     return true;
   }
 
+  function finishPointer(event) {
+    if (endTouchStick(event)) return true;
+    if (!event || event.pointerType !== "touch") input.pointerFire = false;
+    return false;
+  }
+
+  function endInactivePointer(event) {
+    if (event && event.buttons === 0) finishPointer(event);
+  }
+
+  function reconcileTouchCaptures() {
+    if (typeof canvas.hasPointerCapture !== "function") return;
+    for (const stick of [touchSticks.move, touchSticks.aim]) {
+      if (stick.activeId === null || !stick.captureTracked) continue;
+      try {
+        if (!canvas.hasPointerCapture(stick.activeId)) clearTouchStick(stick);
+      } catch {
+        clearTouchStick(stick);
+      }
+    }
+  }
+
+  function clearEndedNativeTouches(event) {
+    if (!event || !event.touches || event.touches.length !== 0) return;
+    clearTouchSticks();
+    input.pointerFire = false;
+  }
+
   global.addEventListener("resize", () => {
     renderer.resize();
     if (state.arena.active) state.arena.radius = arenaRadius();
@@ -732,16 +965,21 @@
   global.addEventListener("orientationchange", updateOrientationState);
   global.addEventListener("pointerdown", noteTouchInteraction, { capture: true, passive: true });
   global.addEventListener("pointermove", (event) => {
-    if (event.pointerType === "touch") updateTouchStick(event);
+    if (event.pointerType === "touch" && !handledTouchMoves.has(event)) updateTouchStick(event);
   }, { passive: false });
   global.addEventListener("pointerup", (event) => {
-    if (event.pointerType === "touch") endTouchStick(event);
-    else input.pointerFire = false;
+    finishPointer(event);
   }, { capture: true });
   global.addEventListener("pointercancel", (event) => {
-    if (event.pointerType === "touch") endTouchStick(event);
-    else input.pointerFire = false;
+    finishPointer(event);
   }, { capture: true });
+  global.addEventListener("pointerout", endInactivePointer, { capture: true });
+  global.addEventListener("pointerleave", endInactivePointer, { capture: true });
+  global.document.addEventListener("touchend", clearEndedNativeTouches, { passive: true });
+  global.document.addEventListener("touchcancel", () => {
+    clearTouchSticks();
+    input.pointerFire = false;
+  }, { passive: true });
   global.document.addEventListener("fullscreenchange", updateSettingsUI);
   global.document.addEventListener("visibilitychange", () => {
     if (global.document.hidden && (state.mode === "playing" || state.mode === "transition")) {
@@ -763,6 +1001,16 @@
       state.pausedByVisibility = true;
       togglePause(true);
     } else clearTouchSticks();
+  });
+  global.document.addEventListener("freeze", () => {
+    clearTouchSticks();
+    input.pointerFire = false;
+  });
+  global.addEventListener("pageshow", (event) => {
+    if (!event || event.persisted) {
+      clearTouchSticks();
+      input.pointerFire = false;
+    }
   });
 
   function deadzone(value, edge) {
@@ -886,14 +1134,16 @@
   function readMovement() {
     let x = (input.keys.d || input.keys.arrowright ? 1 : 0) - (input.keys.a || input.keys.arrowleft ? 1 : 0);
     let y = (input.keys.s || input.keys.arrowdown ? 1 : 0) - (input.keys.w || input.keys.arrowup ? 1 : 0);
-    x += input.touchMoveX + input.gamepadMoveX;
-    y += input.touchMoveY + input.gamepadMoveY;
+    const touchMoveOwned = !touchCapable || touchSticks.move.activeId !== null;
+    x += (touchMoveOwned ? input.touchMoveX : 0) + input.gamepadMoveX;
+    y += (touchMoveOwned ? input.touchMoveY : 0) + input.gamepadMoveY;
     const length = Math.hypot(x, y);
     return length > 1 ? { x: x / length, y: y / length } : { x, y };
   }
 
   function readAim(ship) {
-    const touchLength = Math.hypot(input.touchAimX, input.touchAimY);
+    const touchAimOwned = !touchCapable || touchSticks.aim.activeId !== null;
+    const touchLength = touchAimOwned ? Math.hypot(input.touchAimX, input.touchAimY) : 0;
     if (touchLength > TOUCH_INPUT_EPSILON) {
       const angle = Math.atan2(input.touchAimY, input.touchAimX);
       state.aimWorld.x = ship.x + Math.cos(angle) * 400;
@@ -919,7 +1169,8 @@
   }
 
   function shouldFire() {
-    const touchFire = input.touchFire && (!touchCapable || touchSticks.aim.activeId !== null);
+    const touchFire = touchSticks.aim.activeId !== null &&
+      Math.hypot(input.touchAimX, input.touchAimY) > CONFIG.mobileControls.aimFireThreshold;
     return Boolean(input.keys.space || input.pointerFire || touchFire || input.gamepadFire);
   }
 
@@ -951,7 +1202,8 @@
     const ship = state.ship;
     const move = readMovement();
     const aim = readAim(ship);
-    const touchAimMagnitude = Math.hypot(input.touchAimX, input.touchAimY);
+    const touchAimMagnitude = touchSticks.aim.activeId !== null || !touchCapable ?
+      Math.hypot(input.touchAimX, input.touchAimY) : 0;
     if (touchAimMagnitude > TOUCH_INPUT_EPSILON) {
       const turnScale = clamp(touchAimMagnitude / Math.max(TOUCH_INPUT_EPSILON, CONFIG.mobileControls.aimMaxOutput), 0, 1);
       const maximumTurn = CONFIG.mobileControls.aimTurnRate * turnScale * dt;
@@ -1335,7 +1587,7 @@
     if (automaticPosition && !state.combatField.active) applySpawnClearance(position, radius);
     const targetAngle = Number.isFinite(settingsValue.velocityAngle) ? settingsValue.velocityAngle :
       Math.atan2(state.ship.y - position.y, state.ship.x - position.x) + rng.range(-0.52, 0.52);
-    const baseSpeed = Number(settingsValue.speed) || rng.range(definition.speed[0], definition.speed[1]);
+    const baseSpeed = Number.isFinite(Number(settingsValue.speed)) ? Number(settingsValue.speed) : rng.range(definition.speed[0], definition.speed[1]);
     const scaledSpeed = baseSpeed * CONFIG.difficulty.speedScale(state.sector);
     const surfaceDistance = Math.max(0, Math.hypot(position.x - state.ship.x, position.y - state.ship.y) - state.ship.radius - radius);
     const safeSpeed = automaticPosition && state.combatField.active ? surfaceDistance / CONFIG.combatField.spawnMinimumContactSeconds : scaledSpeed;
@@ -1364,10 +1616,14 @@
       rotation: rng.range(0, TAU),
       rotationSpeed: rng.range(-0.65, 0.65) * (48 / Math.max(24, radius)),
       phase: rng.range(0, TAU),
+      hitFlash: Math.max(0, Number(settingsValue.hitFlash) || 0),
       gateIndex: Math.max(0, Math.floor(Number(settingsValue.gateIndex) || 0)),
       points: makeAsteroidPoints(radius),
       fragment: Boolean(settingsValue.fragment),
       ballisticFragment: Boolean(settingsValue.ballisticFragment),
+      splitRemaining: Number.isFinite(settingsValue.splitRemaining) ?
+        Math.max(0, Math.floor(settingsValue.splitRemaining)) :
+        definition.split ? Math.max(1, Math.floor(definition.split.generations || 1)) : 0,
       required: settingsValue.required !== false,
       collisionGrace: Math.max(0, Number.isFinite(settingsValue.collisionGrace) ? settingsValue.collisionGrace : automaticPosition ? CONFIG.combatField.spawnCollisionGraceSeconds : 0),
       dead: false
@@ -1490,6 +1746,8 @@
       threatCost: entry.threatCost,
       fragment: entry.fragment,
       ballisticFragment: entry.ballisticFragment,
+      splitRemaining: entry.splitRemaining,
+      hitFlash: entry.hitFlash,
       collisionGrace: entry.collisionGrace,
       gateIndex: entry.gateIndex
     };
@@ -1617,6 +1875,7 @@
       data.guaranteedGranted = true;
       grantModuleUpgrade("ARMORY LINK");
     }
+    if (campaignProgressEligible) unlockNextStage(state.encounter);
     state.score += Math.round(300 * state.sector * CONFIG.difficulty.scoreScale(state.sector));
     startCinematic(message || (data.spec.id === "titanGate" ? "Titan shattered" : "Stage clear"));
   }
@@ -1682,6 +1941,7 @@
       asteroid.x += asteroid.vx * dt;
       asteroid.y += asteroid.vy * dt;
       asteroid.rotation += asteroid.rotationSpeed * dt;
+      asteroid.hitFlash = Math.max(0, (asteroid.hitFlash || 0) - dt * 8);
       asteroid.collisionGrace = Math.max(0, (asteroid.collisionGrace || 0) - dt);
       if (state.arena.locked) Core.constrainToCircle(asteroid, state.arena.x, state.arena.y, state.arena.radius - 8, 0.55);
       else constrainThreatToCombatField(asteroid);
@@ -1891,14 +2151,6 @@
         first.vy -= impulse / firstMass * normalY;
         second.vx += impulse / secondMass * normalX;
         second.vy += impulse / secondMass * normalY;
-        const impactSpeed = -relativeNormalSpeed;
-        if (impactSpeed < CONFIG.combatField.asteroidImpactMinimumSpeed) continue;
-        const scale = CONFIG.combatField.asteroidImpactDamageScale;
-        const firstDamage = impactSpeed * scale * Math.min(2.4, second.radius / Math.max(12, first.radius));
-        const secondDamage = impactSpeed * scale * Math.min(2.4, first.radius / Math.max(12, second.radius));
-        damageThreat(first, firstDamage, null, "asteroid");
-        damageThreat(second, secondDamage, null, "asteroid");
-        addRing((first.x + second.x) * 0.5, (first.y + second.y) * 0.5, "#ffd166", 2, 0.2, 24);
       }
     }
   }
@@ -2411,10 +2663,25 @@
     }
     for (const asteroid of state.asteroids) {
       if (!asteroid.dead && Core.circlesOverlap(ship.x, ship.y, ship.radius, asteroid.x, asteroid.y, asteroid.radius * 0.82)) {
+        const dx = ship.x - asteroid.x;
+        const dy = ship.y - asteroid.y;
+        const distance = Math.hypot(dx, dy);
+        const normalX = distance > 0.001 ? dx / distance : (ship.x >= asteroid.x ? 1 : -1);
+        const normalY = distance > 0.001 ? dy / distance : 0;
+        const minimum = ship.radius + asteroid.radius * 0.82;
+        const overlap = minimum - distance;
+        if (overlap > 0) {
+          ship.x += normalX * (overlap + 0.5);
+          ship.y += normalY * (overlap + 0.5);
+        }
+        const relativeNormalSpeed = (ship.vx - asteroid.vx) * normalX + (ship.vy - asteroid.vy) * normalY;
+        if (relativeNormalSpeed < 0) {
+          ship.vx -= normalX * relativeNormalSpeed;
+          ship.vy -= normalY * relativeNormalSpeed;
+        }
         if (damagePlayer(asteroid.damage, asteroid.x, asteroid.y)) {
-          const angle = Math.atan2(asteroid.y - ship.y, asteroid.x - ship.x);
-          asteroid.vx += Math.cos(angle) * 70;
-          asteroid.vy += Math.sin(angle) * 70;
+          asteroid.vx -= normalX * 70;
+          asteroid.vy -= normalY * 70;
         }
       }
     }
@@ -2446,7 +2713,10 @@
     const isAsteroid = Boolean(entity.kind);
     const multiplier = isAsteroid ? asteroidDamageMultiplier(entity, bullet) : 1;
     entity.health -= amount * multiplier;
-    if (isAsteroid) processHealthGates(entity);
+    if (isAsteroid) {
+      entity.hitFlash = 1;
+      processHealthGates(entity);
+    }
     if (entity.health <= 0) killThreat(entity, cause || "player");
   }
 
@@ -2462,7 +2732,7 @@
     }
   }
 
-  function spawnFragments(parent, count, kind, radius, speed, circular) {
+  function spawnFragments(parent, count, kind, radius, speed, circular, splitRemaining) {
     const available = Math.max(0, CONFIG.caps.asteroids - state.asteroids.length);
     const total = Math.min(count, available);
     const offset = rng.range(0, TAU);
@@ -2482,6 +2752,7 @@
         noDrops: true,
         fragment: true,
         ballisticFragment: circular,
+        splitRemaining: Math.max(0, Math.floor(Number(splitRemaining) || 0)),
         required: parent.required,
         generation: parent.generation,
         waveIndex: parent.waveIndex,
@@ -2516,11 +2787,11 @@
     const definition = entity.kind ? CONFIG.asteroids[entity.kind] : CONFIG.aliens[entity.type];
     if (entity.kind === "volatile") {
       const burstData = CONFIG.asteroids.volatile.deathBurst;
-      spawnFragments(entity, burstData.fragments, burstData.fragmentKind, burstData.fragmentRadius, burstData.fragmentSpeed, true);
+      spawnFragments(entity, burstData.fragments, burstData.fragmentKind, burstData.fragmentRadius, burstData.fragmentSpeed, true, 0);
       addRing(entity.x, entity.y, "#ff9a45", 5, 0.55, 110);
-    } else if (entity.kind && definition.split && !entity.fragment) {
+    } else if (entity.kind && definition.split && entity.splitRemaining > 0) {
       const radius = Math.max(14, entity.radius * (definition.split.radiusScale || 0.42));
-      spawnFragments(entity, definition.split.count, definition.split.into || "rock", radius, 135, false);
+      spawnFragments(entity, definition.split.count, definition.split.into || "rock", radius, 135, false, entity.splitRemaining - 1);
     }
     state.stats.kills += 1;
     if (rewarded) {
@@ -2804,6 +3075,8 @@
               threatCost: entity.threatCost,
               fragment: entity.fragment,
               ballisticFragment: entity.ballisticFragment,
+              splitRemaining: entity.splitRemaining,
+              hitFlash: entity.hitFlash,
               collisionGrace: entity.collisionGrace,
               gateIndex: entity.gateIndex
             });
@@ -3102,6 +3375,10 @@
       } : null,
       cinematic: { ...state.cinematic },
       combatField: { ...state.combatField },
+      progress: {
+        maxUnlockedStage: progress.maxUnlockedStage,
+        lastPlayedStage: progress.lastPlayedStage
+      },
       counts: {
         asteroids: state.asteroids.length,
         aliens: state.aliens.length,
@@ -3116,6 +3393,7 @@
   }
 
   function debugSetStage(stage, sector) {
+    campaignProgressEligible = false;
     if (!state.ship) resetRun();
     state.cinematic.active = false;
     setMode("playing");
@@ -3143,8 +3421,14 @@
     return normalized;
   }
 
+  function debugStartRun() {
+    const started = startNewRun();
+    campaignProgressEligible = false;
+    return started;
+  }
+
   const debugApi = Object.freeze({
-    start: startRun,
+    start: debugStartRun,
     step: update,
     snapshot: debugSnapshot,
     state,
@@ -3160,6 +3444,10 @@
     killThreat: (entity, cause) => killThreat(entity, cause || "player"),
     collideThreats: collideAsteroidsAndAliens,
     damageBoss,
+    progress: Object.freeze({
+      get maxUnlockedStage() { return progress.maxUnlockedStage; },
+      get lastPlayedStage() { return progress.lastPlayedStage; }
+    }),
     mobile: Object.freeze({
       get touchCapable() { return touchCapable; },
       get orientationBlocked() { return orientationBlocked; },
@@ -3182,6 +3470,7 @@
     if (!previousTime) previousTime = seconds;
     const frameDelta = clamp(seconds - previousTime, 0, CONFIG.world.maxFrameDelta);
     previousTime = seconds;
+    reconcileTouchCaptures();
     pollGamepad();
     if (!orientationBlocked && (state.mode === "playing" || state.mode === "transition")) {
       accumulator += frameDelta;
@@ -3201,6 +3490,7 @@
 
   setMode("menu");
   updateOrientationState();
+  updateProgressUI();
   updateSettingsUI();
   updateUI(true);
   global.requestAnimationFrame(frame);

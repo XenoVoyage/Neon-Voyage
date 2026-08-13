@@ -2,6 +2,35 @@
 
 All notable user-facing changes to Neon Voyage are documented here. Versions follow semantic versioning.
 
+## [1.3.0] — 2026-08-13
+
+### Added
+
+- Added persistent local stage progression. **New Game** always starts at Stage 1, while **Continue** opens an adaptive grid of earned checkpoints with deterministic, locally drawn previews.
+- Made checkpoint semantics explicit: selecting an unlocked stage starts a fresh Sector 1 run there with reset score, hull, temporary weapons, and run upgrades; it is not a suspended live-state save.
+- Added an exact bounded colossal break tree: one parent becomes three rocks, then each rock splits once into two final fragments (1→3→6). Every required descendant joins the finite objective.
+- Added three progressive asteroid crack stages and a short hit flash so heavy damage is visible before destruction.
+
+### Fixed
+
+- Fixed the persistent mobile fire and movement latch seen when Safari/WebKit suppresses or malformedly reports a terminal pointer event. Matching pointer IDs now release their owned sticks regardless of `pointerType`.
+- Added per-frame pointer-capture reconciliation plus inactive boundary, native touch, page freeze/restore, visibility, page-exit, portrait, and mode-change fallbacks. Lost ownership clears immediately, while a deliberately stationary hold has no inactivity timeout.
+- Allowed a fresh primary touch to recover genuinely stale stick ownership without stealing a valid simultaneous second-thumb control.
+- Separated an overlapping player and asteroid before applying impact response, preventing collision embedding from making resumed movement feel stuck.
+- Stopped asteroid pairs from damaging or destroying one another. They now separate and bounce only, while a genuine asteroid-to-alien impact remains lethal and reward-free.
+
+### Changed
+
+- Slightly raised the bounded pickup weights for Rapid Fire (24), Tri-Shot (22), and Hull Repair (20) without changing the global drop chance or pity threshold.
+- Made inactive menus and overlays inert, limited canvas focus to active play, and restored the correct primary action after menu, pause, game-over, dialog, and portrait transitions.
+- Kept campaign unlock storage separate from high score and preferences, with strict schema, size, and Stage 1–9 bounds; debug stage jumps cannot unlock checkpoints.
+
+### Quality
+
+- Expanded the dependency-free audit to **101/101** checks, including malformed terminal events, implicit capture loss, long stationary holds, native lifecycle fallback, collision/reward invariants, progress corruption and denied storage, locked-stage guards, responsive selector behavior, and accessible focus ownership.
+- Added a deterministic weapon-driven journey that clears all nine stages, defeats the Harrower boss, wraps to the next sector, and remains under every configured entity cap.
+- Re-ran the frozen candidate on Node v24.14.0 / Linux x64. Phone- and tablet-class evidence remains automated browser simulation; a live rendered Play is still required after Pages deployment.
+
 ## [1.2.3] — 2026-08-13
 
 ### Added

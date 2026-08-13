@@ -1,9 +1,9 @@
 # Neon Voyage
 
-[![Version 1.2.3](https://img.shields.io/badge/version-1.2.3-63f7f0)](CHANGELOG.md)
+[![Version 1.3.0](https://img.shields.io/badge/version-1.3.0-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
-[![Local audit: 81/81](https://img.shields.io/badge/local_audit-81%2F81_pass-78ff9f)](AUDIT.md)
+[![Local audit: 101/101](https://img.shields.io/badge/local_audit-101%2F101_pass-78ff9f)](AUDIT.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
 
 Neon Voyage is a fast, fixed-screen 2D space shooter built for a local browser. Leave Earth behind through finite asteroid waves, discover increasingly unfamiliar space, shatter a Titan, and survive first contact before confronting an alien command ship.
@@ -11,6 +11,8 @@ Neon Voyage is a fast, fixed-screen 2D space shooter built for a local browser. 
 ## [Play Neon Voyage](https://xenovoyage.github.io/Neon-Voyage/)
 
 GitHub Pages serves the repository as a static site without transforming the source. For offline play, clone or download the repository and open `index.html` directly—there is no install, server, account, package manager, or build command.
+
+**New Game** always begins at Stage 1. After the first genuine stage clear, **Continue** opens a responsive grid of earned stage checkpoints with local, procedurally drawn scene previews. Selecting a checkpoint starts a fresh Sector 1 run at that authored stage—score, hull, temporary weapons, and run upgrades are intentionally reset. This is stage progression, not a suspended mid-run save.
 
 Audio begins after the first click or key press because browsers require a user gesture.
 
@@ -36,7 +38,7 @@ The fullscreen shell suppresses accidental double-tap zoom and browser overscrol
 
 Touch play is landscape-only. In portrait, a blocking rotate prompt owns all button, keyboard, pointer, and gamepad input; it freezes the simulation and clears held actions without opening the pause menu or discarding the run. Rotating back to landscape continues from the same state without replaying buttons held during portrait. Neon Voyage requests a landscape orientation lock when the browser permits it, but iPhone and iPad browsers do not reliably expose that capability to an ordinary web page, so the player may need to rotate the device manually and turn off the system orientation lock.
 
-Mobile browser-chrome focus changes do not pause an active touch run. Moving the page into the background or switching away still pauses through the document visibility lifecycle. A touch pause clears both stick captures, stops residual ship velocity, and requires fresh finger input before movement or firing can resume. Pointer release, cancellation, lost capture, visibility changes, page exit, control-mode changes, and browsers that reject pointer capture all converge on the same cleanup path; stale aim state cannot keep the weapon firing.
+Mobile browser-chrome focus changes do not pause an active touch run. Moving the page into the background or switching away still pauses through the document visibility lifecycle. A touch pause clears both stick captures, stops residual ship velocity, and requires fresh finger input before movement or firing can resume. Cleanup is pointer-ID-first: even a Safari/WebKit terminal event with a missing or malformed pointer type releases the stick it owns. Pointer release/cancel, inactive boundary exit, lost or silently dropped capture, zero-touch native termination, page freeze/restore, visibility, page exit, portrait blocking, and control-mode changes converge on neutral input. A per-frame capture watchdog clears only capture that the browser actually lost; there is no inactivity timeout, so a stationary held thumb remains valid and cannot be mistaken for a stale attack.
 
 ## Expedition
 
@@ -58,7 +60,9 @@ Automatic opening threats use visible perimeter candidates selected for ship and
 
 Outside hyperspace, background stars remain twinkling points: they do not rotate with the ship or stretch into travel lines.
 
-Asteroids are ballistic physical hazards: they do not aim, home, or fire. They separate, bounce, and exchange impact damage when they collide with each other or alien spacecraft; environmental destruction advances a relevant objective exactly once without granting duplicate score or drops. Ranged attacks belong to recognisable alien spacecraft, which appear only in the later half of the journey.
+Asteroids are ballistic physical hazards: they do not aim, home, or fire. Asteroid pairs use mass-aware separation and bounce without damaging or breaking one another, so required targets cannot disappear to friendly collisions. A genuine asteroid-to-alien impact can still destroy the alien and damage the asteroid; environmental destruction advances a relevant objective exactly once without granting score, combo, or pickup rewards. Ranged attacks belong to recognisable alien spacecraft, which appear only in the later half of the journey.
+
+The largest colossal formation has an exact bounded break tree: one parent splits into three rocks, and each of those splits once into two final fragments (1→3→6). Every required descendant joins the live objective and remains subject to entity caps and hard-cull restoration. Damaged asteroids reveal three progressive crack stages plus a short hit flash before destruction, making remaining durability legible without adding an on-screen health bar.
 
 ## Weapons and pickups
 
@@ -75,6 +79,8 @@ The pulse cannon can grow into a run-wide stack of spread fire, seeker missiles,
 - Rare Weapon Upgrade
 
 Temporary weapons coexist on independent timers, refresh only their own duration, change the live firing pattern, and expire back to the permanent loadout. Combo chains, splitting objectives, environmental kills, dash movement, and Void Pulse keep short-term decisions active without an inventory screen.
+
+The requested combat pickups are slightly more common while the existing drop chance and pity boundary remain bounded: Rapid Fire has weight 24, Tri-Shot 22, and Hull Repair 20.
 
 ## Local architecture
 
@@ -94,11 +100,11 @@ The runtime uses a small `window.ND` namespace and classic deferred scripts so i
 - Explicit caps and cleanup for every entity and effect family
 - Swept projectile collision and radius-aware stage/arena containment
 - Reduced-effects mode for lower particle density during play and fewer, shorter hyperspace streaks
-- Keyboard, mouse, dynamic half-screen radial dual-touch, and gamepad controls with accessible menus and live status
+- Keyboard, mouse, dynamic half-screen radial dual-touch, and gamepad controls with accessible menus, dialog focus, inert inactive overlays, and live status
 - Landscape touch gate, display-safe-area layout, hybrid tablet detection, double-tap protection, and pause-safe capture cleanup
 - Restrictive Content Security Policy and local relative resources
 - No runtime network APIs, analytics, telemetry, ads, external fonts, workers, or service workers
-- Size-limited, schema-validated local high-score and preference storage
+- Separate size-limited, schema-validated local records for high score/preferences and unlocked-stage progress
 
 ## Development and contribution
 
@@ -110,7 +116,7 @@ Node.js is optional and used only by the audit harness:
 node tests/run.js
 ```
 
-The frozen Neon Voyage 1.2.3 source snapshot passes **81/81** dependency-free automated checks. Its phone- and tablet-class touch evidence is browser-simulated rather than a claim of physical-device acceptance. The linked CI and Pages badges report the public workflows independently after publication; release completion also requires an observed live Play after deployment.
+The frozen Neon Voyage 1.3.0 source snapshot passes **101/101** dependency-free automated checks on Node v24.14.0 / Linux x64, including a weapon-driven Stage 1–9 journey that defeats the Harrower boss under every entity cap. Its phone- and tablet-class touch evidence is browser-simulated rather than a claim of physical-device acceptance. The linked CI and Pages badges report the public workflows independently after publication; release completion also requires an observed live Play after deployment.
 
 A coherent release update includes a semantic version bump, [changelog](CHANGELOG.md), synchronized README/audit, deterministic regression coverage, regenerated checksums after files are frozen, one clean public `main` publish, and observed CI, Pages, and live-site verification. See [AUDIT.md](AUDIT.md) and [tests/README.md](tests/README.md) for the current evidence and scope.
 

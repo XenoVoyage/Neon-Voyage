@@ -235,12 +235,101 @@
     return { x, y, normalizedX: x / width, normalizedY: y / height };
   }
 
+  function asteroidCrackStage(asteroid) {
+    const health = Number(asteroid && asteroid.health);
+    const maxHealth = Number(asteroid && asteroid.maxHealth);
+    const ratio = maxHealth > 0 && Number.isFinite(health) ? clamp(health / maxHealth, 0, 1) : 1;
+    return ratio < 0.25 ? 3 : ratio < 0.5 ? 2 : ratio < 0.75 ? 1 : 0;
+  }
+
+  function previewRandom(stage, sector) {
+    let value = (Math.imul(stageNumber(stage), 0x9e3779b1) ^ Math.imul(sectorNumber(sector), 0x85ebca6b)) >>> 0;
+    return function nextPreviewRandom() {
+      value = (Math.imul(value, 1664525) + 1013904223) >>> 0;
+      return value / 4294967296;
+    };
+  }
+
+  function renderStagePreview(canvas, stage, sector) {
+    if (!canvas || typeof canvas.getContext !== "function") return false;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return false;
+    const width = Math.max(1, Number(canvas.width) || 320);
+    const height = Math.max(1, Number(canvas.height) || 180);
+    const scene = authoredScene(stage, sector);
+    const random = previewRandom(scene.stage, scene.sector);
+    const background = ctx.createLinearGradient(0, 0, width, height);
+    background.addColorStop(0, `hsl(${mod(scene.hue - 28, 360)} 56% 8%)`);
+    background.addColorStop(0.55, "#030713");
+    background.addColorStop(1, `hsl(${mod(scene.hue + 34, 360)} 44% 7%)`);
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+
+    const glow = ctx.createRadialGradient(width * 0.52, height * 0.46, 0, width * 0.52, height * 0.46, width * 0.72);
+    glow.addColorStop(0, `hsla(${scene.hue} 82% 58% / 0.12)`);
+    glow.addColorStop(1, `hsla(${scene.hue} 82% 30% / 0)`);
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    for (let index = 0; index < 44; index += 1) {
+      const size = 0.45 + random() * 1.25;
+      ctx.globalAlpha = 0.25 + random() * 0.68;
+      ctx.fillStyle = random() < 0.24 ? "#a9ecff" : "#ffffff";
+      ctx.fillRect(random() * width, random() * height, size, size);
+    }
+    ctx.restore();
+
+    const unit = Math.min(width, height);
+    for (const body of scene.bodies) {
+      if (body.alpha <= 0.002 || body.size <= 0.002) continue;
+      const x = body.x * width;
+      const y = body.y * height;
+      const radius = Math.max(1.5, body.size * unit * 0.5);
+      ctx.save();
+      ctx.globalAlpha = clamp(body.alpha, 0, 1);
+      if (body.rings > 0.02) {
+        ctx.strokeStyle = `hsla(${body.hue} 78% 72% / ${clamp(0.18 + body.rings * 0.38, 0, 0.62)})`;
+        ctx.lineWidth = Math.max(1, radius * 0.045);
+        ctx.beginPath();
+        ctx.ellipse(x, y, radius * (1.35 + body.rings * 0.32), radius * 0.36, -0.26, 0, TAU);
+        ctx.stroke();
+      }
+      const planet = ctx.createRadialGradient(x - radius * 0.34, y - radius * 0.38, radius * 0.06, x, y, radius);
+      if (body.type === "earth") {
+        planet.addColorStop(0, "#bdf9ff");
+        planet.addColorStop(0.35, "#3ca7d6");
+        planet.addColorStop(0.66, "#337b69");
+        planet.addColorStop(1, "#071323");
+      } else if (body.type === "mars") {
+        planet.addColorStop(0, "#ffd1a3");
+        planet.addColorStop(0.45, "#b65031");
+        planet.addColorStop(1, "#1a0808");
+      } else {
+        planet.addColorStop(0, `hsl(${body.hue} 90% 82%)`);
+        planet.addColorStop(0.42, `hsl(${body.hue} 64% 44%)`);
+        planet.addColorStop(1, `hsl(${body.hue} 54% 8%)`);
+      }
+      ctx.fillStyle = planet;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = `hsla(${body.hue} 84% 82% / 0.46)`;
+      ctx.lineWidth = Math.max(0.7, radius * 0.025);
+      ctx.stroke();
+      ctx.restore();
+    }
+    return true;
+  }
+
   ND.RenderDebug = Object.freeze({
     sceneFrame,
     planetFrame,
     cinematicProfile,
-    screenAnchor
+    screenAnchor,
+    asteroidCrackStage
   });
+  ND.StagePreview = Object.freeze({ render: renderStagePreview });
 
   class Renderer {
     constructor(canvas) {
@@ -869,16 +958,36 @@
       ctx.stroke();
       ctx.shadowBlur = 0;
 
-      ctx.globalAlpha = 0.48;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = Math.max(1, asteroid.radius * 0.018);
-      const crack = asteroid.radius * 0.62;
-      ctx.beginPath();
-      ctx.moveTo(-crack, -crack * 0.14);
-      ctx.lineTo(-crack * 0.15, crack * 0.08);
-      ctx.lineTo(crack * 0.18, -crack * 0.36);
-      ctx.lineTo(crack * 0.72, crack * 0.18);
-      ctx.stroke();
+      if (asteroid.hitFlash > 0) {
+        ctx.globalAlpha = clamp(asteroid.hitFlash, 0, 1) * 0.34;
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+      }
+
+      const crackStage = asteroidCrackStage(asteroid);
+      if (crackStage > 0) {
+        ctx.globalAlpha = 0.3 + crackStage * 0.15;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(1, asteroid.radius * (0.014 + crackStage * 0.006));
+        const crack = asteroid.radius * 0.62;
+        ctx.beginPath();
+        ctx.moveTo(-crack, -crack * 0.14);
+        ctx.lineTo(-crack * 0.15, crack * 0.08);
+        ctx.lineTo(crack * 0.18, -crack * 0.36);
+        ctx.lineTo(crack * 0.72, crack * 0.18);
+        if (crackStage >= 2) {
+          ctx.moveTo(-crack * 0.15, crack * 0.08);
+          ctx.lineTo(-crack * 0.42, crack * 0.5);
+          ctx.lineTo(-crack * 0.12, crack * 0.76);
+        }
+        if (crackStage >= 3) {
+          ctx.moveTo(crack * 0.18, -crack * 0.36);
+          ctx.lineTo(crack * 0.02, -crack * 0.74);
+          ctx.moveTo(crack * 0.34, -crack * 0.18);
+          ctx.lineTo(crack * 0.68, -crack * 0.58);
+        }
+        ctx.stroke();
+      }
       if (asteroid.kind === "volatile") {
         ctx.globalAlpha = 0.85;
         ctx.fillStyle = `rgba(255,145,55,${0.4 + Math.sin(time * 7 + asteroid.phase) * 0.22})`;

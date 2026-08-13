@@ -220,7 +220,7 @@ module.exports = function register(test) {
     assert.equal(state.pickups.length, pickups, "repeat collision created a pickup");
   });
 
-  test("asteroids separate, bounce, and take one approaching-impact damage event", () => {
+  test("asteroids separate and bounce without damaging either body or changing rewards", () => {
     const { game } = boot(321);
     const state = game.state;
     game.setStage(1, 1);
@@ -230,13 +230,24 @@ module.exports = function register(test) {
     const right = game.spawnAsteroid("rock", { x: 20, y: 0, velocityAngle: Math.PI, speed: 120, health: 100, required: false, noDrops: true });
     const leftHealth = left.health;
     const rightHealth = right.health;
+    const before = {
+      score: state.score,
+      pickups: state.pickups.length,
+      cleared: state.encounterData.waveRequiredCleared,
+      environmental: state.encounterData.environmentalKills
+    };
     game.collideThreats();
-    assert.ok(left.health < leftHealth && right.health < rightHealth, "approaching asteroid impact did not damage both bodies");
+    assert.deepEqual([left.health, right.health], [leftHealth, rightHealth], "asteroid impact changed health");
     assert.ok(left.vx < 0 && right.vx > 0, "asteroids did not bounce apart");
     assert.ok(Math.hypot(right.x - left.x, right.y - left.y) >= left.radius + right.radius - 1e-7, "asteroids remained overlapped");
-    const afterImpact = [left.health, right.health];
     game.collideThreats();
-    assert.deepEqual([left.health, right.health], afterImpact, "a separated collision dealt repeated damage");
+    assert.deepEqual([left.health, right.health], [leftHealth, rightHealth], "a separated collision changed health");
+    assert.deepEqual({
+      score: state.score,
+      pickups: state.pickups.length,
+      cleared: state.encounterData.waveRequiredCleared,
+      environmental: state.encounterData.environmentalKills
+    }, before, "asteroid impact changed objectives or rewards");
 
     left.x = right.x = 0;
     left.y = right.y = 0;
@@ -248,7 +259,7 @@ module.exports = function register(test) {
     assert.ok(Math.hypot(right.x - left.x, right.y - left.y) >= left.radius + right.radius - 1e-7, "resting overlap was not separated");
   });
 
-  test("asteroid impact can resolve a required asteroid once without farming rewards", () => {
+  test("asteroid impact cannot resolve or reward a required asteroid", () => {
     const { game } = boot(331);
     const state = game.state;
     game.setStage(1, 1);
@@ -263,18 +274,19 @@ module.exports = function register(test) {
     data.stageRequiredTotal = 1;
     const pickups = state.pickups.length;
     game.collideThreats();
-    assert.equal(required.dead, true, "asteroid collision did not destroy the required asteroid");
-    assert.equal(data.waveRequiredCleared, 1);
-    assert.equal(data.stageRequiredCleared, 1);
-    assert.equal(data.lastDeathCause, "asteroid");
+    assert.equal(required.dead, false, "asteroid collision destroyed the required asteroid");
+    assert.equal(required.health, 1, "asteroid collision damaged the required asteroid");
+    assert.equal(first.health, 1, "asteroid collision damaged the other asteroid");
+    assert.equal(data.waveRequiredCleared, 0);
+    assert.equal(data.stageRequiredCleared, 0);
+    assert.equal(data.lastDeathCause, null);
     assert.equal(state.score, 900);
     assert.equal(state.combo, 6);
     assert.equal(state.pickups.length, pickups);
     game.collideThreats();
     game.killThreat(required, "player");
-    assert.equal(data.waveRequiredCleared, 1, "environmental asteroid death counted twice");
-    assert.equal(state.score, 900, "double processing awarded score");
-    assert.ok(first.dead || first.health < first.maxHealth, "other asteroid took no reciprocal impact damage");
+    assert.equal(data.waveRequiredCleared, 1, "player destruction did not resolve the objective once");
+    assert.ok(state.score > 900, "player destruction awarded no score");
   });
 
   test("required asteroid descendants join the objective and block clear until the full tree dies", () => {
@@ -297,7 +309,7 @@ module.exports = function register(test) {
     });
     data.waveRequiredTotal = 1;
     data.stageRequiredTotal = 1;
-    game.killThreat(parent, "player");
+    game.damageThreat(parent, 2, "player");
     const children = state.asteroids.filter((item) => !item.dead && item.fragment && item.required);
     assert.equal(children.length, CONFIG.asteroids.volatile.deathBurst.fragments, "required volatile did not create its full descendant objective");
     assert.ok(children.every((item) => item.kind === CONFIG.asteroids.volatile.deathBurst.fragmentKind));
@@ -314,6 +326,48 @@ module.exports = function register(test) {
     assert.equal(data.waveRequiredCleared, data.waveRequiredTotal - 1);
     game.killThreat(children.at(-1), "player");
     assert.equal(data.waveRequiredCleared, data.waveRequiredTotal, "final descendant did not resolve the objective");
+  });
+
+  test("a colossal asteroid has an exact bounded one-to-three-to-six required split tree", () => {
+    const { game } = boot(351);
+    const state = game.state;
+    game.setStage(4, 1);
+    clearEntities(state);
+    freezeDirector(state);
+    const data = state.encounterData;
+    const parent = game.spawnAsteroid("colossal", {
+      x: 0,
+      y: 0,
+      speed: 0,
+      health: 1,
+      required: true,
+      generation: data.generation,
+      waveIndex: data.waveIndex,
+      noDrops: true
+    });
+    data.waveRequiredTotal = 1;
+    data.stageRequiredTotal = 1;
+    assert.equal(Math.hypot(parent.vx, parent.vy), 0, "explicit zero speed was ignored");
+
+    game.damageThreat(parent, 2, "player");
+    const firstGeneration = state.asteroids.filter((item) => !item.dead);
+    assert.equal(firstGeneration.length, 3);
+    assert.ok(firstGeneration.every((item) => item.kind === "rock" && item.fragment && item.splitRemaining === 1));
+    assert.equal(data.waveRequiredTotal, 4);
+
+    firstGeneration.forEach((item) => game.damageThreat(item, 2, "player"));
+    const finalGeneration = state.asteroids.filter((item) => !item.dead);
+    assert.equal(finalGeneration.length, 6);
+    assert.ok(finalGeneration.every((item) => item.kind === "rock" && item.splitRemaining === 0));
+    assert.equal(data.waveRequiredTotal, 10);
+    assert.equal(data.stageRequiredTotal, 10);
+    assert.equal(data.waveRequiredCleared, 4);
+    finalGeneration.slice(0, -1).forEach((item) => game.killThreat(item, "player"));
+    game.step(1 / 60);
+    assert.equal(data.complete, false, "the stage cleared with a final descendant alive");
+    game.killThreat(finalGeneration.at(-1), "player");
+    assert.equal(data.waveRequiredCleared, 10);
+    assert.ok(state.asteroids.filter((item) => !item.dead).length === 0, "the final generation split again");
   });
 
   test("hard-culling a required fragment requeues its exact objective state", () => {
@@ -350,7 +404,7 @@ module.exports = function register(test) {
     assert.equal(data.waveSpawned, false, "hard-cull did not reopen the finite spawn queue");
     assert.equal(data.requeue.length, 1);
     const queued = data.requeue[0];
-    for (const key of ["health", "maxHealth", "radius", "score", "noDrops", "threatCost", "fragment", "ballisticFragment", "gateIndex"]) {
+    for (const key of ["health", "maxHealth", "radius", "score", "noDrops", "threatCost", "fragment", "ballisticFragment", "splitRemaining", "gateIndex"]) {
       assert.equal(queued[key], original[key], `requeue lost ${key}`);
     }
     approximately(queued.collisionGrace, Math.max(0, original.collisionGrace), 1e-12, "requeued collision grace");
@@ -358,7 +412,7 @@ module.exports = function register(test) {
     assert.equal(data.requeue.length, 0, "required fragment did not respawn");
     const restored = state.asteroids.find((item) => !item.dead && item.id !== original.id && item.required);
     assert.ok(restored, "required fragment objective vanished after culling");
-    for (const key of ["health", "maxHealth", "radius", "score", "noDrops", "threatCost", "fragment", "ballisticFragment", "gateIndex"]) {
+    for (const key of ["health", "maxHealth", "radius", "score", "noDrops", "threatCost", "fragment", "ballisticFragment", "splitRemaining", "gateIndex"]) {
       assert.equal(restored[key], original[key], `respawn changed ${key}`);
     }
     assert.equal(data.waveRequiredTotal, 1, "requeue duplicated the objective total");
@@ -766,7 +820,7 @@ module.exports = function register(test) {
     assert.equal(state.ship.novaLanceTimer, 0);
     game.input.touchAimX = 1;
     game.input.touchAimY = 0;
-    game.input.touchFire = true;
+    game.input.keys.space = true;
     runSteps(game, 0.4, CONFIG.world.fixedStep);
     assert.ok(state.playerBullets.some((bullet) => bullet.kind === "arc"), "Arc Burst did not fire arc projectiles");
     state.playerBullets.length = 0;
@@ -833,6 +887,15 @@ module.exports = function register(test) {
     assert.equal(state.encounterData.killsSincePowerup, 0);
   });
 
+  test("requested combat and repair pickups receive only the bounded weight increase", () => {
+    const { CONFIG } = boot(711);
+    assert.equal(CONFIG.powerups.rapid.weight, 24);
+    assert.equal(CONFIG.powerups.triShot.weight, 22);
+    assert.equal(CONFIG.powerups.repair.weight, 20);
+    assert.equal(CONFIG.powerups.dropChance, 0.19);
+    assert.equal(CONFIG.powerups.pityKills, 5);
+  });
+
   test("all four player bounds and outward dashes stay inside normal stages", () => {
     const { game, CONFIG } = boot(801);
     const state = game.state;
@@ -858,6 +921,33 @@ module.exports = function register(test) {
       assert.ok(state.ship.y <= field.y + field.halfHeight - state.ship.radius + 1e-7);
     }
     game.input.touchMoveX = game.input.touchMoveY = 0;
+  });
+
+  test("player-asteroid contact separates the hull and removes inward relative velocity", () => {
+    const { game, CONFIG } = boot(831);
+    const state = game.state;
+    game.setStage(1, 1);
+    clearEntities(state);
+    freezeDirector(state);
+    const asteroid = game.spawnAsteroid("rock", {
+      x: 0,
+      y: 0,
+      speed: 0,
+      health: 100,
+      required: false,
+      noDrops: true
+    });
+    Object.assign(state.ship, { x: 12, y: 0, vx: -320, vy: 0, invulnerable: 0 });
+    game.step(CONFIG.world.fixedStep);
+    const normalX = state.ship.x - asteroid.x;
+    const normalY = state.ship.y - asteroid.y;
+    const distance = Math.hypot(normalX, normalY);
+    assert.ok(distance >= state.ship.radius + asteroid.radius * 0.82 - 1e-7, "ship remained embedded in asteroid");
+    const relativeNormalSpeed = ((state.ship.vx - asteroid.vx) * normalX + (state.ship.vy - asteroid.vy) * normalY) / distance;
+    assert.ok(relativeNormalSpeed >= -1e-7, "contact retained inward relative velocity");
+    for (let frame = 0; frame < 120; frame += 1) game.step(CONFIG.world.fixedStep);
+    assert.ok(Math.hypot(state.ship.x - asteroid.x, state.ship.y - asteroid.y) >= state.ship.radius + asteroid.radius * 0.82 - 1e-7,
+      "ship re-embedded while collision invulnerability was active");
   });
 
   test("asteroids and alien spacecraft bounce back inside stage boundaries", () => {
@@ -1010,7 +1100,60 @@ module.exports = function register(test) {
       }
     }
   });
+
+  test("deterministic weapon fire traverses all nine stages through the alien boss within caps", () => {
+    const { game, CONFIG } = boot(918273, { width: 1280, height: 720 });
+    const state = game.state;
+    const visited = new Set([state.encounter]);
+    const capByCollection = {
+      asteroids: CONFIG.caps.asteroids,
+      aliens: CONFIG.caps.aliens,
+      playerBullets: CONFIG.caps.playerProjectiles,
+      enemyBullets: CONFIG.caps.enemyProjectiles,
+      mines: CONFIG.caps.mines,
+      pickups: CONFIG.caps.pickups,
+      effects: CONFIG.caps.particles,
+      floaters: CONFIG.caps.floaters
+    };
+    const limit = Math.ceil(360 / CONFIG.world.fixedStep);
+    for (let frame = 0; frame < limit && !(state.sector === 2 && state.encounter === 1); frame += 1) {
+      state.ship.invulnerable = 1e9;
+      let target = state.boss && (state.boss.nodes.find((node) => node.health > 0) || state.boss);
+      const data = state.encounterData;
+      if (!target && data) {
+        target = state.asteroids.concat(state.aliens)
+          .filter((entity) => !entity.dead && entity.required && entity.generation === data.generation)
+          .sort((first, second) => distanceSquaredForTest(first, state.ship) - distanceSquaredForTest(second, state.ship))[0];
+      }
+      if (!target) target = state.asteroids.concat(state.aliens).find((entity) => !entity.dead);
+      if (target) {
+        const angle = Math.atan2(target.y - state.ship.y, target.x - state.ship.x);
+        game.input.touchAimX = Math.cos(angle);
+        game.input.touchAimY = Math.sin(angle);
+      } else {
+        game.input.touchAimX = 0;
+        game.input.touchAimY = 0;
+      }
+      game.input.keys.space = true;
+      for (const pickup of state.pickups.slice()) if (!pickup.dead) game.applyPickup(pickup);
+      game.step(CONFIG.world.fixedStep);
+      visited.add(state.encounter);
+      for (const [name, cap] of Object.entries(capByCollection)) {
+        assert.ok(state[name].length <= cap, `${name} exceeded ${cap} during full journey`);
+      }
+    }
+    assert.equal(state.sector, 2, "weapon-driven journey did not wrap after Stage 9");
+    assert.equal(state.encounter, 1);
+    assert.deepEqual(Array.from(visited).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    assert.equal(state.bossesDefeated, 1, "alien boss was not defeated by weapon fire");
+  });
 };
+
+function distanceSquaredForTest(first, second) {
+  const dx = first.x - second.x;
+  const dy = first.y - second.y;
+  return dx * dx + dy * dy;
+}
 
 module.exports.boot = boot;
 module.exports.clearEntities = clearEntities;

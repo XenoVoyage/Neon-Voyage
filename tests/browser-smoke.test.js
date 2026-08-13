@@ -57,14 +57,15 @@ function makeCanvasContext() {
   });
 }
 
-function makeElement(id, className) {
+function makeElement(id, className, tagName) {
   const listeners = new Map();
   const attributes = new Map();
-  const context = id === "game" ? makeCanvasContext() : null;
+  const isCanvas = id === "game" || String(tagName || "").toLowerCase() === "canvas";
+  const context = isCanvas ? makeCanvasContext() : null;
   const element = {
     id,
     nodeType: 1,
-    tagName: id === "game" ? "CANVAS" : "DIV",
+    tagName: isCanvas ? "CANVAS" : String(tagName || "div").toUpperCase(),
     className: className || "",
     classList: makeClassList(className),
     style: { setProperty(name, value) { this[name] = value; }, removeProperty(name) { delete this[name]; } },
@@ -96,8 +97,8 @@ function makeElement(id, className) {
       return !event.defaultPrevented;
     },
     click() { this.dispatchEvent({ type: "click", preventDefault() {} }); },
-    focus() {},
-    blur() {},
+    focus() { if (typeof this._focus === "function") this._focus(); },
+    blur() { if (typeof this._blur === "function") this._blur(); },
     _capturedPointers: new Set(),
     setPointerCapture(pointerId) { this._capturedPointers.add(pointerId); },
     releasePointerCapture(pointerId) { this._capturedPointers.delete(pointerId); },
@@ -142,13 +143,19 @@ function buildBrowser(options) {
     const classMatch = tag.match(/\bclass=["']([^"']*)["']/i);
     elementClasses.set(match[1], classMatch ? classMatch[1] : "");
   }
-  const elements = new Map(Array.from(elementClasses, ([id, className]) => [id, makeElement(id, className)]));
+  let activeElement = null;
+  function bindFocus(element) {
+    element._focus = () => { activeElement = element; };
+    element._blur = () => { if (activeElement === element) activeElement = null; };
+    return element;
+  }
+  const elements = new Map(Array.from(elementClasses, ([id, className]) => [id, bindFocus(makeElement(id, className))]));
   const shell = elements.get("game-shell");
   if (shell) {
     const topLevelIds = [
       "game", "canvas-instructions", "orientation-overlay", "hud", "boss-hud",
       "objective-hud", "meters", "announcement", "menu-overlay", "pause-overlay",
-      "gameover-overlay", "controls-modal", "settings-modal", "touch-controls"
+      "gameover-overlay", "controls-modal", "settings-modal", "stage-select-modal", "touch-controls"
     ];
     shell.children = topLevelIds.map((id) => elements.get(id)).filter(Boolean);
     for (const child of shell.children) child.parentElement = shell;
@@ -166,7 +173,8 @@ function buildBrowser(options) {
   const listeners = new Map();
   const frameQueue = [];
   let now = 0;
-  const storage = new Map();
+  const storage = settings.storage || new Map();
+  const createdElements = [];
 
   const document = {
     readyState: "loading",
@@ -175,13 +183,18 @@ function buildBrowser(options) {
     fullscreenElement: null,
     body: makeElement("body", ""),
     documentElement: makeElement("html", ""),
+    get activeElement() { return activeElement; },
     getElementById: (id) => elements.get(id) || null,
     querySelector(selector) {
       if (selector.startsWith("#")) return elements.get(selector.slice(1)) || null;
       return null;
     },
     querySelectorAll() { return []; },
-    createElement(tag) { return makeElement(`created-${tag}`, ""); },
+    createElement(tag) {
+      const element = bindFocus(makeElement(`created-${tag}-${createdElements.length}`, "", tag));
+      createdElements.push(element);
+      return element;
+    },
     addEventListener(type, listener) {
       if (!listeners.has(type)) listeners.set(type, []);
       listeners.get(type).push(listener);
@@ -264,9 +277,15 @@ function buildBrowser(options) {
     performance: { now: () => now },
     Date: FixedDate,
     localStorage: {
-      getItem: (key) => storage.has(key) ? storage.get(key) : null,
-      setItem: (key, value) => storage.set(key, String(value)),
-      removeItem: (key) => storage.delete(key)
+      getItem: (key) => typeof storage.getItem === "function"
+        ? storage.getItem(key)
+        : storage.has(key) ? storage.get(key) : null,
+      setItem: (key, value) => typeof storage.setItem === "function"
+        ? storage.setItem(key, String(value))
+        : storage.set(key, String(value)),
+      removeItem: (key) => typeof storage.removeItem === "function"
+        ? storage.removeItem(key)
+        : storage.delete(key)
     },
     matchMedia(query) {
       return {
@@ -343,7 +362,7 @@ function buildBrowser(options) {
     }
   }
 
-  return { window, document, elements, context, emit, pumpFrames, frameQueue };
+  return { window, document, elements, createdElements, storage, context, emit, pumpFrames, frameQueue };
 }
 
 function register(test) {

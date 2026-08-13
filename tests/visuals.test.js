@@ -172,4 +172,25 @@ module.exports = function register(test) {
     assert.equal(bounded.speed, 1800);
     approximately(Math.hypot(bounded.direction.x, bounded.direction.y), 1, 1e-12, "fallback streak direction length");
   });
+
+  test("asteroid cracks reveal exactly three progressive pre-break damage stages", () => {
+    const debug = loadRenderer();
+    assert.equal(typeof debug.asteroidCrackStage, "function");
+    const asteroid = { health: 100, maxHealth: 100 };
+    assert.equal(debug.asteroidCrackStage(asteroid), 0);
+    asteroid.health = 75;
+    assert.equal(debug.asteroidCrackStage(asteroid), 0);
+    asteroid.health = 74.99;
+    assert.equal(debug.asteroidCrackStage(asteroid), 1);
+    asteroid.health = 50;
+    assert.equal(debug.asteroidCrackStage(asteroid), 1);
+    asteroid.health = 49.99;
+    assert.equal(debug.asteroidCrackStage(asteroid), 2);
+    asteroid.health = 25;
+    assert.equal(debug.asteroidCrackStage(asteroid), 2);
+    asteroid.health = 24.99;
+    assert.equal(debug.asteroidCrackStage(asteroid), 3);
+    asteroid.health = -Infinity;
+    assert.equal(debug.asteroidCrackStage(asteroid), 0, "invalid damage state produced cracks");
+  });
 };

@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage 1.2.3 configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "1.2.3");
+  test("Neon Voyage 1.3.0 configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "1.3.0");
     collectFrozen(CONFIG, new Set());
   });
 
@@ -105,6 +105,13 @@ module.exports = function register(test) {
     }
     assert.equal("asteroidPursuit" in CONFIG, false, "asteroid pursuit must be removed from configuration");
     assert.ok(CONFIG.asteroids.volatile.deathBurst.fragments >= 6);
+    assert.deepEqual(JSON.parse(JSON.stringify(CONFIG.asteroids.colossal.split)), {
+      count: 3,
+      into: "rock",
+      radiusScale: 0.46,
+      generations: 2
+    });
+    assert.equal(CONFIG.asteroids.rock.split.generations, 1, "ordinary rocks must not split recursively");
     assert.ok(CONFIG.asteroids.titan.healthGates.length >= 3);
     assert.ok(Object.keys(CONFIG.aliens).length >= 4);
     assert.ok(Object.values(CONFIG.aliens).every((alien) => alien.pattern && alien.pattern.type));

@@ -62,7 +62,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "1.2.3",
+    version: "1.3.0",
 
     world: {
       fixedStep: 1 / 60,
@@ -114,8 +114,6 @@
       threatBoundaryPadding: 8,
       threatBoundaryBounce: 0.32,
       asteroidRestitution: 0.72,
-      asteroidImpactDamageScale: 0.038,
-      asteroidImpactMinimumSpeed: 34,
       asteroidCollisionGraceSeconds: 0.22,
       waveSpawnRetrySeconds: 0.08,
       interWaveSeconds: 0.7
@@ -397,7 +395,7 @@
         contactDamage: 24,
         score: 70,
         threatCost: 1,
-        split: { count: 2, radiusScale: 0.55 }
+        split: { count: 2, radiusScale: 0.55, generations: 1 }
       },
       crystal: {
         label: "Crystal",
@@ -429,7 +427,7 @@
         threatCost: 3,
         damageTakenMultiplier: 0.58,
         weakSpotMultiplier: 1.8,
-        split: { count: 2, into: "rock" }
+        split: { count: 2, into: "rock", generations: 1 }
       },
       colossal: {
         label: "Colossal",
@@ -439,8 +437,7 @@
         contactDamage: 46,
         score: 520,
         threatCost: 7,
-        healthGates: [0.66, 0.33],
-        gateFragments: { count: 2, into: "rock" }
+        split: { count: 3, into: "rock", radiusScale: 0.46, generations: 2 }
       },
       titan: {
         label: "Titan",
@@ -618,18 +615,18 @@
       },
       rapid: {
         label: "OVERDRIVE",
-        weight: 22,
+        weight: 24,
         duration: 10,
         cooldownMultiplier: 0.68
       },
       repair: {
         label: "HULL REPAIR",
-        weight: 18,
+        weight: 20,
         amount: 34
       },
       triShot: {
         label: "TRI-SHOT",
-        weight: 20,
+        weight: 22,
         duration: 10,
         extraProjectiles: 2,
         minimumSpread: 0.22
