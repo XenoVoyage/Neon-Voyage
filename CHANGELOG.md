@@ -25,7 +25,7 @@ All notable user-facing changes to Neon Voyage are documented here. Versions fol
 
 - Expanded the dependency-free release audit to **111/111** checks, covering clean-field progression, optional and requeued threats, boss escorts, autonomous passive-module bounds, local pulse reach/damage, mixed encounters, local celestial resources, mobile HUD rules, and repository governance.
 - Rendered and inspected the six new celestial assets through the Canvas renderer. No installed browser executable was available for a hands-on local candidate play; the live GitHub Pages smoke remains required after merge.
-- Formalized a pull-request-only `main` workflow with the required `Offline audit / audit` check and prohibitions on force pushes, deletion, and bypass. Server-side branch protection is not claimed as enabled yet: the connected integration cannot administer it and the browser session still requires GitHub sign-in.
+- Enabled and verified the active `Protect main` ruleset: pull requests are required, `Offline audit / audit` must pass against the latest commit, force pushes and branch deletion are blocked, and no bypass actor is configured. Approval remains optional for solo maintenance and should be raised to one only when a genuine independent reviewer is available.
 
 ## [1.3.0] — 2026-08-13
 

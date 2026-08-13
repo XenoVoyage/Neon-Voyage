@@ -2,7 +2,7 @@
 
 - Audited: 2026-08-13
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 111/111 automated checks; protection enforcement, merge, deployment, and live Play pending**
+- Result: **PASS — 111/111 automated checks; protection verified; merge, deployment, and live Play pending**
 
 Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated browser viewports and Pointer Events and is not a claim of acceptance on physical touch hardware.
 
@@ -143,6 +143,6 @@ Automated checks validate contracts, safety, determinism, and simulated browser 
 
 - The repository contains the `Offline audit` pull-request workflow, whose required check context is exactly `Offline audit / audit`.
 - Project governance requires pull requests into `main`, blocks direct/force pushes and branch deletion, and permits one required approval only when a genuine independent reviewer is available.
-- Server-side branch protection is **not yet verified or claimed as applied**. The connected GitHub integration cannot administer branch rules, and the available browser session requires GitHub sign-in. This candidate must remain on its release branch until an authenticated repository administrator enables and verifies the rules.
+- Server-side protection is **active and verified** through the `Protect main` ruleset (ID `20790923`) targeting the default branch. It requires pull requests and the strict `audit` status context, blocks deletion and non-fast-forward pushes, has no bypass actors, and currently requires zero approvals for solo maintenance.
 
-`SHA256SUMS` must be regenerated only after all release files are frozen. The release pull request, required check, merge, Pages deployment, repository metadata, and live URL must then be observed; this local audit does not claim those later checks have completed.
+`SHA256SUMS` must be regenerated only after all release files are frozen. The release pull request and required check are observed; merge, Pages deployment, repository metadata, and the live URL must still be verified before publication is complete.
