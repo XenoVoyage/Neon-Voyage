@@ -1,6 +1,6 @@
 # Neon Voyage contributor instructions
 
-Read this file at the start of every task before inspecting or changing the project, and re-read it if it changes or after switching branches. Keep it current: update it only when an enduring project invariant, architecture boundary, verification gate, or release workflow changes; do not use it as a changelog or task log. Read the related runtime, tests, and documentation before editing a connected system; do not infer behavior from filenames or old release notes.
+Read this file at the start of every task, in full, before inspecting or changing the project, even when the contributor or coding agent has no access to earlier conversations. Re-read it if it changes or after switching branches. This is the canonical project handoff: update it only when an enduring project invariant, architecture boundary, verification gate, or release workflow changes, and do not use it as a changelog or task log. Read the related runtime, tests, and documentation before editing a connected system; do not infer behavior from filenames or old release notes.
 
 ## Project facts
 
@@ -53,16 +53,25 @@ Read this file at the start of every task before inspecting or changing the proj
 
 ## Coherent release updates
 
+Release labels use the actual public-release date, not the date development started:
+
+- The first coherent release published on a calendar date is `vYYYY.M.D`, with no leading zeroes in the month or day; for example, `v2026.8.13`.
+- Each additional coherent release published on that same date appends the next lowercase letter in order: `v2026.8.13a`, then `v2026.8.13b`, `v2026.8.13c`, and so on.
+- Inspect the changelog and repository history before choosing a label. Never reuse a label, skip an available unsuffixed first release, invent a suffix for work that was not published, or renumber historical releases.
+- Synchronize the exact leading-`v` label across runtime configuration, visible UI, `VERSION.txt`, README badge/evidence, changelog, audit, asset notes where applicable, and permanent version assertions.
+- If publication moves to a different calendar date after the candidate was labeled, update every version surface and affected verification evidence, then regenerate checksums before publication.
+
 Every coherent public update must include all of the following in one clean publication:
 
-1. Bump the semantic version in runtime metadata and `VERSION.txt`.
+1. Select the next unused calendar release label under the policy above and update runtime metadata plus `VERSION.txt`.
 2. Add a professional, user-facing entry to `CHANGELOG.md`.
-3. Update `README.md` and `AUDIT.md` to match implemented behavior only.
-4. Add or update permanent deterministic tests and run the full suite.
-5. Complete and document the browser-smoke gate above; if local preview is blocked, record that boundary and require the immediate post-deploy live Play check.
-6. Regenerate `SHA256SUMS` only after all release files are frozen, then verify every entry.
-7. Review the complete diff and publish the coherent update as one release pull request from a short-lived branch into protected `main`.
-8. Wait for the required `Offline audit / audit` status and any configured human approval, then merge without bypassing protection.
-9. Verify CI, Pages deployment, and the live repository-subpath URL after merge, including one final live Play action.
+3. Review this file against the complete change. Update it only when an enduring invariant, boundary, gate, or workflow changed; otherwise leave it stable.
+4. Update `README.md` and `AUDIT.md` to match implemented behavior only.
+5. Add or update permanent deterministic tests and run the full suite.
+6. Complete and document the browser-smoke gate above; if local preview is blocked, record that boundary and require the immediate post-deploy live Play check.
+7. Regenerate `SHA256SUMS` only after all release files are frozen, then verify every entry.
+8. Review the complete diff and publish the coherent update as one release pull request from a short-lived branch into protected `main`.
+9. Wait for the required `Offline audit / audit` status and any configured human approval, then merge without bypassing protection.
+10. Verify CI, Pages deployment, and the live repository-subpath URL after merge, including one final live Play action.
 
 Do not split one coherent update across partial public merges. A release branch may contain iterative commits, but its pull request must present one frozen, coherent candidate and should normally be squash-merged. Do not claim publication, CI, Pages, checksum, or live-site success before it is observed. If access or deployment blocks final verification, report the exact blocker and leave the repository in a tested, recoverable state.

@@ -6,11 +6,11 @@ Run from the repository root with Node.js installed on the auditing machine:
 node tests/run.js
 ```
 
-Observed for Neon Voyage 1.5.0 on 2026-08-13: **118/118 tests passed** with Node v24.14.0 on Linux x64. The focused mobile input suite contributes **36/36** checks.
+Observed for Neon Voyage v2026.8.13 on 2026-08-13: **119/119 tests passed** with Node v24.14.0 on Linux x64. The focused mobile input suite contributes **36/36** checks.
 
 The browser game does not require Node or any dependency. This harness uses only Node built-ins and verifies:
 
-- immutable 1.5 configuration, nine ordered finite stages, asteroid-only pre-contact progression, Titan at Stage 5, mixed asteroid-and-alien waves at Stages 6–8, and the Harrower boss at Stage 9;
+- immutable v2026.8.13 configuration, nine ordered finite stages, asteroid-only pre-contact progression, Titan at Stage 5, mixed asteroid-and-alien waves at Stages 6–8, and the Harrower boss at Stage 9;
 - exact opening composition, capped finite waves, no premature clear, dynamically counted descendants, exact bounded colossal 1→3→6 splitting, and a clean-field gate that waits for every same-encounter asteroid, alien, optional hazard, descendant, carrier child, and boss escort;
 - exact hard-cull restoration for required and optional encounter threats, including preserved objective ownership and no queue duplication;
 - a 1,024-seed opening-placement sweep at six phone, tablet, and desktop sizes, including visibility, 72 px ship-surface clearance, 18 px threat separation, 2.2-second minimum predicted contact time, first-tick stability, and a protected opening window;

@@ -1,8 +1,8 @@
 # Changelog
 
-All notable user-facing changes to Neon Voyage are documented here. Versions follow semantic versioning.
+All notable user-facing changes to Neon Voyage are documented here. Starting with `v2026.8.13`, the first release published each day uses `vYYYY.M.D` without leading zeroes; additional releases that day append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
-## [1.5.0] — 2026-08-13
+## [v2026.8.13] — 2026-08-13
 
 ### Added
 
@@ -19,10 +19,11 @@ All notable user-facing changes to Neon Voyage are documented here. Versions fol
 
 - Condensed the README's mobile/tablet and expedition guidance while preserving the input lifecycle, landscape, finite-stage, collision, and clean-field rules players need.
 - Migrated valid schema-1 progress safely: earned stages and the last-played checkpoint are retained, with conservative base loadouts synthesized where older saves could not contain weapon data.
+- Adopted calendar release labels: `vYYYY.M.D` for the first release on its actual publication date, followed by ordered lowercase suffixes for additional same-day releases.
 
 ### Quality
 
-- Expanded the dependency-free release audit to **118/118** checks, including schema migration and corruption guards, checkpoint loadout restore/reset boundaries, accessible New Game dialog behavior, finite game-over feedback, and local README asset coverage.
+- Expanded the dependency-free release audit to **119/119** checks, including calendar-label validation, schema migration and corruption guards, checkpoint loadout restore/reset boundaries, accessible New Game dialog behavior, finite game-over feedback, and local README asset coverage.
 - Kept release publication pending until the frozen candidate, required pull-request audit, Pages deployment, checksum manifest, and live Play action are observed.
 
 ## [1.4.0] — 2026-08-13

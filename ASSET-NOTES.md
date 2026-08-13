@@ -1,6 +1,6 @@
 # Local visual asset notes
 
-Neon Voyage 1.5.0 bundles nine AI-assisted runtime raster assets, optimized as local WebP files:
+Neon Voyage v2026.8.13 bundles nine AI-assisted runtime raster assets, optimized as local WebP files:
 
 - `assets/deep-space.webp` — a wide, dark star field with restrained blue and violet nebulae and a clear central play area.
 - `assets/earth.webp` — the illuminated Earth departure landmark.
