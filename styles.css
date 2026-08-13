@@ -1418,39 +1418,201 @@ kbd {
 }
 
 @media (orientation: landscape) and (max-height: 820px) {
+  .is-touch-capable .hud {
+    grid-template-columns: minmax(78px, 1fr) minmax(104px, 34vw) minmax(52px, 1fr);
+    gap: 6px;
+  }
+
+  .is-touch-capable .record-readout {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .is-touch-capable .hud-label,
+  .is-touch-capable .sector-line,
+  .is-touch-capable .meter-label,
+  .is-touch-capable .objective-label {
+    font-size: 0.45rem;
+    letter-spacing: 0.12em;
+  }
+
+  .is-touch-capable .score {
+    font-size: 0.82rem;
+  }
+
+  .is-touch-capable .combo {
+    margin-top: 3px;
+    font-size: 0.45rem;
+  }
+
+  .is-touch-capable .encounter-badge {
+    min-width: 0;
+    padding: 3px 7px 5px;
+  }
+
+  .is-touch-capable .encounter-name {
+    margin-top: 2px;
+    font-size: 0.56rem;
+    letter-spacing: 0.08em;
+  }
+
   .is-touch-capable .quick-controls .hud-button:not(#pause-button) {
     display: none;
   }
 
+  .is-touch-capable .hud-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 6px;
+    font-size: 0.44rem;
+  }
+
+  .is-touch-capable .boss-hud {
+    top: calc(var(--safe-top) + 43px);
+    width: min(72vw, 520px);
+  }
+
+  .is-touch-capable .boss-heading {
+    margin-bottom: 4px;
+    font-size: 0.48rem;
+    letter-spacing: 0.1em;
+  }
+
+  .is-touch-capable .boss-health-track {
+    height: 5px;
+  }
+
+  .is-touch-capable .objective-hud {
+    top: calc(var(--safe-top) + 47px);
+    max-width: 66vw;
+  }
+
+  .is-touch-capable .boss-hud:not(.is-hidden) + .objective-hud {
+    top: calc(var(--safe-top) + 75px);
+  }
+
+  .is-touch-capable .objective-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .is-touch-capable .objective-hud strong {
+    margin-top: 0;
+    font-size: 0.54rem;
+    letter-spacing: 0.06em;
+  }
+
+  .is-touch-capable .announcement {
+    top: 23%;
+    width: 72vw;
+    font-size: clamp(0.76rem, 3.4vh, 1.12rem);
+    letter-spacing: 0.11em;
+  }
+
   .is-touch-capable .stick-zone {
     bottom: calc(var(--safe-bottom) + 2px);
-    width: 118px;
-    height: 118px;
+    width: 110px;
+    height: 110px;
   }
 
   .is-touch-capable .stick-ring {
-    width: 92px;
-    height: 92px;
+    width: 84px;
+    height: 84px;
   }
 
   .is-touch-capable .touch-actions {
-    right: calc(var(--safe-right) + 126px);
+    right: calc(var(--safe-right) + 118px);
     bottom: calc(var(--safe-bottom) + 4px);
   }
 
   .is-touch-capable .touch-button {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
+    font-size: 0.48rem;
   }
 
   .is-touch-capable .systems-hud {
-    right: 24%;
+    right: 23%;
     bottom: var(--safe-bottom);
-    left: 24%;
+    left: 23%;
+    gap: 12px;
+  }
+
+  .is-touch-capable .systems-hud .meter-label {
+    margin-bottom: 3px;
+  }
+
+  .is-touch-capable .systems-hud .meter-track {
+    height: 5px;
   }
 
   .is-touch-capable .systems-hud .module-console {
+    position: absolute;
+    display: block;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .is-touch-capable .hud {
+    grid-template-columns: minmax(70px, 1fr) minmax(96px, 32vw) minmax(48px, 1fr);
+  }
+
+  .is-touch-capable .hud-label,
+  .is-touch-capable .sector-line,
+  .is-touch-capable .meter-label {
+    font-size: 0.4rem;
+  }
+
+  .is-touch-capable .score {
+    font-size: 0.74rem;
+  }
+
+  .is-touch-capable .combo {
     display: none;
+  }
+
+  .is-touch-capable .encounter-name,
+  .is-touch-capable .objective-hud strong,
+  .is-touch-capable .boss-heading {
+    font-size: 0.46rem;
+  }
+
+  .is-touch-capable .boss-hud {
+    top: calc(var(--safe-top) + 38px);
+  }
+
+  .is-touch-capable .objective-hud {
+    top: calc(var(--safe-top) + 40px);
+  }
+
+  .is-touch-capable .boss-hud:not(.is-hidden) + .objective-hud {
+    top: calc(var(--safe-top) + 66px);
+  }
+
+  .is-touch-capable .announcement {
+    font-size: 0.74rem;
   }
 }
 

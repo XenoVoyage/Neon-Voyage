@@ -27,7 +27,6 @@
     healthMultiplier: 3,
     bossHealthMultiplier: 3.6,
     damageMultiplier: 2,
-    threatMultiplier: 2.5,
     speedMultiplier: 1.45,
     fireRateMultiplier: 1.65,
     scoreMultiplier: 2.4
@@ -45,10 +44,6 @@
     return Math.min(difficultyCaps.damageMultiplier, 1 + Math.log2(safeSector(sector)) * 0.16);
   }
 
-  function threatScale(sector) {
-    return Math.min(difficultyCaps.threatMultiplier, 1 + sectorRoot(sector) * 0.2);
-  }
-
   function speedScale(sector) {
     return Math.min(difficultyCaps.speedMultiplier, 1 + sectorRoot(sector) * 0.055);
   }
@@ -62,7 +57,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "1.3.0",
+    version: "1.4.0",
 
     world: {
       fixedStep: 1 / 60,
@@ -135,7 +130,7 @@
       hardCullViewports: 3.1,
       projectileMargin: 180,
       landmarkChunkRadius: 2,
-      requeueRequiredThreats: true
+      requeueEncounterThreats: true
     },
 
     caps: {
@@ -157,7 +152,6 @@
 
     sector: {
       encountersPerSector: 9,
-      bossRotation: ["harrower"],
       encounters: [
         {
           index: 1,
@@ -305,6 +299,9 @@
               label: "SCOUT SCREEN",
               required: [
                 { family: "alien", kinds: ["scout"], count: 4, sectorStep: 0.6, cap: 6 }
+              ],
+              hazards: [
+                { family: "asteroid", kinds: ["rock", "crystal"], count: 2, cap: 2 }
               ]
             }
           ]
@@ -331,6 +328,9 @@
               required: [
                 { family: "alien", kinds: ["striker"], count: 3, sectorStep: 0.5, cap: 5 },
                 { family: "alien", kinds: ["bomber"], count: 2, sectorStep: 0.35, cap: 3 }
+              ],
+              hazards: [
+                { family: "asteroid", kinds: ["crystal", "armored"], count: 2, cap: 2 }
               ]
             }
           ]
@@ -347,6 +347,9 @@
               required: [
                 { family: "alien", kinds: ["scout", "striker"], count: 4, sectorStep: 0.6, cap: 6 },
                 { family: "alien", kinds: ["bomber"], count: 2, sectorStep: 0.35, cap: 3 }
+              ],
+              hazards: [
+                { family: "asteroid", kinds: ["volatile", "armored"], count: 2, cap: 2 }
               ]
             },
             {
@@ -366,9 +369,7 @@
           id: "boss",
           label: "CAPITAL SHIP DETECTED",
           completion: "bossDefeated",
-          goal: { type: "boss" },
-          suspendWorldStreaming: true,
-          reward: "moduleUpgrade"
+          goal: { type: "boss" }
         }
       ]
     },
@@ -542,7 +543,7 @@
 
     weapons: {
       maxModuleTier: 3,
-      maxInstalledModules: 5,
+      maxInstalledModules: 7,
       stacking: "allOwnedModulesFire",
       startingModules: { pulse: 1 },
       modules: {
@@ -555,6 +556,28 @@
             { cooldown: 0.18, damage: 1, projectiles: 1, speed: 840, life: 0.95, spread: 0 },
             { cooldown: 0.165, damage: 0.95, projectiles: 2, speed: 860, life: 0.98, spread: 0.07 },
             { cooldown: 0.15, damage: 0.9, projectiles: 3, speed: 880, life: 1, spread: 0.11 }
+          ]
+        },
+        homingSalvo: {
+          label: "Homing Salvo",
+          activation: "autonomous",
+          projectileType: "missile",
+          color: "#ffd166",
+          tiers: [
+            { cooldown: 4.6, damage: 2.3, projectiles: 1, speed: 400, life: 2.5, turnRate: 3.4, blastRadius: 34, range: 820 },
+            { cooldown: 4, damage: 2.1, projectiles: 2, speed: 420, life: 2.6, turnRate: 3.7, blastRadius: 38, range: 860 },
+            { cooldown: 3.4, damage: 2.4, projectiles: 2, speed: 445, life: 2.7, turnRate: 4, blastRadius: 42, range: 900 }
+          ]
+        },
+        radialArray: {
+          label: "Radial Array",
+          activation: "autonomous",
+          projectileType: "radial",
+          color: "#9d8cff",
+          tiers: [
+            { cooldown: 5.8, damage: 0.9, projectiles: 8, speed: 470, life: 1.05, range: 560 },
+            { cooldown: 5.1, damage: 0.95, projectiles: 10, speed: 500, life: 1.1, range: 600 },
+            { cooldown: 4.5, damage: 1, projectiles: 12, speed: 530, life: 1.15, range: 640 }
           ]
         },
         prism: {
@@ -602,6 +625,17 @@
           ]
         }
       }
+    },
+
+    voidPulse: {
+      rechargePerSecond: 4.2,
+      activationThreshold: 99.5,
+      radius: 280,
+      asteroidDamage: 2.25,
+      alienDamage: 2.5,
+      bossDamage: 2.25,
+      clearEnemyProjectiles: true,
+      clearMines: true
     },
 
     powerups: {
@@ -680,7 +714,6 @@
       healthScale: healthScale,
       bossHealthScale: bossHealthScale,
       damageScale: damageScale,
-      threatScale: threatScale,
       speedScale: speedScale,
       fireRateScale: fireRateScale,
       cooldownScale: function (sector) {

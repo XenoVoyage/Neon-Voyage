@@ -14,7 +14,7 @@
   const PROGRESS_STORAGE_KEY = "neon-voyage-progress-v1";
   const PROGRESS_STORAGE_LIMIT = 256;
   const TOUCH_INPUT_EPSILON = 0.0001;
-  const MODULE_ORDER = ["pulse", "prism", "seeker", "massDriver", "drone"];
+  const MODULE_ORDER = Object.keys(CONFIG.weapons.modules).slice(0, CONFIG.weapons.maxInstalledModules);
   const THREAT_ARRAYS = ["asteroids", "aliens"];
 
   const byId = (id) => global.document.getElementById(id);
@@ -408,7 +408,7 @@
       piercingTimer: 0,
       arcBurstTimer: 0,
       novaLanceTimer: 0,
-      modules: { pulse: 1 },
+      modules: { ...CONFIG.weapons.startingModules },
       weaponTimers: Object.create(null),
       drones: []
     };
@@ -1107,6 +1107,7 @@
       playerKills: 0,
       environmentalKills: 0,
       lastDeathCause: null,
+      bossDefeated: false,
       killsSincePowerup: 0
     };
     announce(isBoss ? "Alien capital ship — arena forming" : spec.label, isBoss ? 2.6 : 1.5);
@@ -1222,7 +1223,7 @@
     ship.piercingTimer = Math.max(0, ship.piercingTimer - dt);
     ship.arcBurstTimer = Math.max(0, ship.arcBurstTimer - dt);
     ship.novaLanceTimer = Math.max(0, ship.novaLanceTimer - dt);
-    ship.pulse = clamp(ship.pulse + dt * 4.2, 0, 100);
+    ship.pulse = clamp(ship.pulse + dt * CONFIG.voidPulse.rechargePerSecond, 0, 100);
 
     if ((input.pressed.shift || input.pressed.dash) && ship.dashCooldown <= 0) {
       const dashAngle = Math.hypot(move.x, move.y) > 0.1 ? Math.atan2(move.y, move.x) : ship.angle;
@@ -1236,7 +1237,7 @@
       audio.dash();
     }
 
-    if ((input.pressed.e || input.pressed.pulse) && ship.pulse >= 99.5) activatePulse();
+    if ((input.pressed.e || input.pressed.pulse) && ship.pulse >= CONFIG.voidPulse.activationThreshold) activatePulse();
     if (state.mode !== "playing") return;
 
     if (ship.dashTime <= 0) {
@@ -1266,11 +1267,16 @@
     if (shouldFire()) fireModules(dt);
     else tickWeaponTimers(dt);
     updateDrones(dt);
+    updatePassiveModules(dt);
   }
 
   function tickWeaponTimers(dt) {
     const timers = state.ship.weaponTimers;
-    for (const id of MODULE_ORDER) timers[id] = Math.max(0, (timers[id] || 0) - dt);
+    for (const id of MODULE_ORDER) {
+      if (CONFIG.weapons.modules[id].activation !== "autonomous") {
+        timers[id] = Math.max(0, (timers[id] || 0) - dt);
+      }
+    }
   }
 
   function fireModules(dt) {
@@ -1278,10 +1284,10 @@
     const rapid = ship.rapidTimer > 0 ? CONFIG.powerups.rapid.cooldownMultiplier : 1;
     for (const id of MODULE_ORDER) {
       const tier = ship.modules[id] || 0;
-      if (!tier || id === "drone") continue;
+      const definition = CONFIG.weapons.modules[id];
+      if (!tier || definition.activation === "autonomous") continue;
       ship.weaponTimers[id] = Math.max(0, (ship.weaponTimers[id] || 0) - dt);
       if (ship.weaponTimers[id] > 0) continue;
-      const definition = CONFIG.weapons.modules[id];
       const values = definition.tiers[tier - 1];
       ship.weaponTimers[id] = values.cooldown * rapid;
       const baseCount = values.projectiles || 1;
@@ -1348,7 +1354,7 @@
   }
 
   function spawnPlayerBullet(moduleId, x, y, angle, values, droneShot) {
-    if (state.playerBullets.length >= CONFIG.caps.playerProjectiles) return;
+    if (state.playerBullets.length >= CONFIG.caps.playerProjectiles) return null;
     const definition = CONFIG.weapons.modules[moduleId] || CONFIG.weapons.modules.drone;
     const kind = moduleId === "massDriver" ? "rail" : moduleId === "seeker" ? "missile" : definition.projectileType;
     const bullet = {
@@ -1370,6 +1376,7 @@
       dead: false
     };
     state.playerBullets.push(bullet);
+    return bullet;
   }
 
   function updateDrones(dt) {
@@ -1399,24 +1406,59 @@
     }
   }
 
+  function updatePassiveModules(dt) {
+    const ship = state.ship;
+    for (const id of ["homingSalvo", "radialArray"]) {
+      const tier = ship.modules[id] || 0;
+      if (!tier) continue;
+      const definition = CONFIG.weapons.modules[id];
+      const values = definition.tiers[tier - 1];
+      ship.weaponTimers[id] = Math.max(0, (ship.weaponTimers[id] || 0) - dt);
+      if (ship.weaponTimers[id] > 0) continue;
+      const target = nearestTarget(ship.x, ship.y, values.range);
+      if (!target) continue;
+      ship.weaponTimers[id] = values.cooldown;
+      if (id === "homingSalvo") {
+        const targetAngle = Math.atan2(target.y - ship.y, target.x - ship.x);
+        for (let index = 0; index < values.projectiles; index += 1) {
+          const offset = values.projectiles === 1 ? 0 : (index / (values.projectiles - 1) - 0.5) * 0.16;
+          const angle = targetAngle + offset;
+          spawnPlayerBullet(id, ship.x + Math.cos(angle) * 23, ship.y + Math.sin(angle) * 23, angle, values, false);
+        }
+        audio.shoot("plasma");
+      } else {
+        for (let index = 0; index < values.projectiles; index += 1) {
+          const angle = ship.angle + index / values.projectiles * TAU;
+          spawnPlayerBullet(id, ship.x + Math.cos(angle) * 19, ship.y + Math.sin(angle) * 19, angle, values, false);
+        }
+        audio.shoot("scatter");
+      }
+    }
+  }
+
   function activatePulse() {
     const ship = state.ship;
     ship.pulse = 0;
-    const radius = 430;
+    const values = CONFIG.voidPulse;
+    const radius = values.radius;
     const radiusSquared = radius * radius;
-    for (const bullet of state.enemyBullets) {
-      if (distanceSquared(ship.x, ship.y, bullet.x, bullet.y) <= radiusSquared) bullet.dead = true;
+    if (values.clearEnemyProjectiles) {
+      for (const bullet of state.enemyBullets) {
+        if (distanceSquared(ship.x, ship.y, bullet.x, bullet.y) <= radiusSquared) bullet.dead = true;
+      }
     }
-    for (const mine of state.mines) {
-      if (distanceSquared(ship.x, ship.y, mine.x, mine.y) <= radiusSquared) mine.dead = true;
+    if (values.clearMines) {
+      for (const mine of state.mines) {
+        if (distanceSquared(ship.x, ship.y, mine.x, mine.y) <= radiusSquared) mine.dead = true;
+      }
     }
     for (const asteroid of state.asteroids) {
-      if (distanceSquared(ship.x, ship.y, asteroid.x, asteroid.y) <= radiusSquared) damageThreat(asteroid, 5, null);
+      if (distanceSquared(ship.x, ship.y, asteroid.x, asteroid.y) <= radiusSquared) damageThreat(asteroid, values.asteroidDamage, null);
     }
     for (const alien of state.aliens) {
-      if (distanceSquared(ship.x, ship.y, alien.x, alien.y) <= radiusSquared) damageThreat(alien, 6, null);
+      if (distanceSquared(ship.x, ship.y, alien.x, alien.y) <= radiusSquared) damageThreat(alien, values.alienDamage, null);
     }
-    if (state.boss && distanceSquared(ship.x, ship.y, state.boss.x, state.boss.y) <= radiusSquared) damageBoss(7);
+    if (state.boss && distanceSquared(ship.x, ship.y, state.boss.x, state.boss.y) <= radiusSquared) damageBoss(values.bossDamage);
     addRing(ship.x, ship.y, "#ff58df", 8, 0.75, radius);
     burst(ship.x, ship.y, "#81fbff", settings.reducedEffects ? 18 : 42, 1.8);
     state.shake = Math.max(state.shake, 12);
@@ -1679,15 +1721,21 @@
     return alien;
   }
 
-  function encounterLivingRequired() {
+  function encounterLivingThreats() {
     const generation = state.encounterData && state.encounterData.generation;
     let total = 0;
     for (const name of THREAT_ARRAYS) {
       for (const entity of state[name]) {
-        if (!entity.dead && entity.required && entity.generation === generation) total += 1;
+        if (!entity.dead && entity.generation === generation) total += 1;
       }
     }
     return total;
+  }
+
+  function encounterThreatsRemaining() {
+    const data = state.encounterData;
+    if (!data) return 0;
+    return encounterLivingThreats() + data.pendingSpawns.length + data.requeue.length;
   }
 
   function scaledGroupCount(group) {
@@ -1787,7 +1835,7 @@
         data.waveDelay = spawned ? 0 : CONFIG.combatField.waveSpawnRetrySeconds;
       }
     }
-    const waveClear = data.waveSpawned && data.waveRequiredCleared >= data.waveRequiredTotal && encounterLivingRequired() === 0;
+    const waveClear = data.waveSpawned && data.waveRequiredCleared >= data.waveRequiredTotal && encounterThreatsRemaining() === 0;
     if (!waveClear) return;
     data.goalProgress = Math.max(data.goalProgress, data.waveNumber);
     if (data.waveIndex + 1 < data.waveCount) {
@@ -2258,6 +2306,12 @@
       if (state.arena.warning <= 0 && !state.boss) spawnBoss();
       return;
     }
+    if (state.encounterData.bossDefeated) {
+      if (encounterThreatsRemaining() === 0 && !state.encounterData.complete) {
+        finishEncounter(`${CONFIG.bosses.harrower.label} defeated`);
+      }
+      return;
+    }
     if (state.boss) updateBoss(dt);
   }
 
@@ -2495,6 +2549,7 @@
     const boss = state.boss;
     if (!boss || boss.dead) return;
     boss.dead = true;
+    state.encounterData.bossDefeated = true;
     state.score += Math.round(boss.score * CONFIG.difficulty.scoreScale(state.sector));
     state.bossesDefeated += 1;
     state.stats.kills += 1;
@@ -2503,15 +2558,16 @@
     addRing(boss.x, boss.y, "#ffffff", 12, 1.1, state.arena.radius * 0.85);
     state.enemyBullets.length = 0;
     state.mines.length = 0;
-    state.aliens.length = 0;
-    state.asteroids.length = 0;
+    if (boss.nodes) for (const node of boss.nodes) node.health = 0;
     state.shake = 20;
     state.flash = 1;
     state.flashColor = "#ffffff";
     audio.explode(true);
     grantModuleUpgrade("BOSS CORE");
-    finishEncounter(`${CONFIG.bosses[boss.type].label} defeated`);
+    state.boss = null;
     show(dom.bossHud, false);
+    if (encounterThreatsRemaining() === 0) finishEncounter(`${CONFIG.bosses[boss.type].label} defeated`);
+    else announce("Capital ship down — clear the escorts", 1.6);
   }
 
   function nearestTarget(x, y, range) {
@@ -3061,11 +3117,11 @@
           if (entity.dead || !Core.beyondRadius(entity, ship.x, ship.y, hardRadius)) continue;
           entity.dead = true;
           state.stats.culled += 1;
-          if (CONFIG.culling.requeueRequiredThreats && entity.required && data && !data.complete && entity.generation === data.generation) {
+          if (CONFIG.culling.requeueEncounterThreats && data && !data.complete && entity.generation === data.generation) {
             data.requeue.push({
               family: entity.type ? "alien" : "asteroid",
               kind: entity.type || entity.kind,
-              required: true,
+              required: entity.required !== false,
               waveIndex: entity.waveIndex,
               health: entity.health,
               maxHealth: entity.maxHealth,
@@ -3229,7 +3285,8 @@
       number.textContent = String(index + 1).padStart(2, "0");
       const name = global.document.createElement("span");
       name.className = "module-name";
-      name.textContent = tier ? CONFIG.weapons.modules[id].label : "Empty";
+      const definition = CONFIG.weapons.modules[id];
+      name.textContent = tier ? `${definition.activation === "autonomous" ? "Auto · " : ""}${definition.label}` : "Empty";
       const rank = global.document.createElement("span");
       rank.className = "module-rank";
       rank.textContent = tier ? `Mk ${roman(tier)}` : "—";
@@ -3246,12 +3303,13 @@
     if (state.mode === "transition" && state.cinematic.active) return `Transit ${Math.round(state.cinematic.progress * 100)}%`;
     if (data.spec.id === "boss") {
       if (state.arena.warning > 0) return `Arena lock in ${state.arena.warning.toFixed(1)}s`;
+      if (data.bossDefeated) return `Clear remaining threats · ${encounterThreatsRemaining()}`;
       if (state.boss) return `Break ${CONFIG.bosses[state.boss.type].label}`;
       return "Signal collapsing";
     }
-    const remaining = Math.max(0, data.waveRequiredTotal - data.waveRequiredCleared);
-    if (data.goalType === "titan") return remaining ? "Destroy the titan" : "Titan destroyed";
-    return `Wave ${data.waveNumber}/${data.waveCount} · ${remaining} required`;
+    const remaining = encounterThreatsRemaining();
+    if (data.goalType === "titan") return remaining ? `Destroy all threats · ${remaining}` : "Area clear";
+    return `Wave ${data.waveNumber}/${data.waveCount} · ${remaining} threats`;
   }
 
   function updateUI(force) {
@@ -3351,7 +3409,9 @@
         triShotTimer: state.ship.triShotTimer,
         piercingTimer: state.ship.piercingTimer,
         arcBurstTimer: state.ship.arcBurstTimer,
-        novaLanceTimer: state.ship.novaLanceTimer
+        novaLanceTimer: state.ship.novaLanceTimer,
+        modules: { ...state.ship.modules },
+        weaponTimers: { ...state.ship.weaponTimers }
       } : null,
       objective: state.encounterData ? {
         type: state.encounterData.goalType,
@@ -3369,6 +3429,8 @@
         stageRequiredCleared: state.encounterData.stageRequiredCleared,
         pendingSpawns: state.encounterData.pendingSpawns.length,
         requeue: state.encounterData.requeue.length,
+        threatsRemaining: encounterThreatsRemaining(),
+        bossDefeated: state.encounterData.bossDefeated,
         playerKills: state.encounterData.playerKills,
         environmentalKills: state.encounterData.environmentalKills,
         lastDeathCause: state.encounterData.lastDeathCause
@@ -3444,6 +3506,7 @@
     killThreat: (entity, cause) => killThreat(entity, cause || "player"),
     collideThreats: collideAsteroidsAndAliens,
     damageBoss,
+    activatePulse,
     progress: Object.freeze({
       get maxUnlockedStage() { return progress.maxUnlockedStage; },
       get lastPlayedStage() { return progress.lastPlayedStage; }

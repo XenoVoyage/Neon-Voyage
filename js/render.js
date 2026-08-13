@@ -6,36 +6,46 @@
   const mod = (value, span) => ((value % span) + span) % span;
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const DEFAULT_TRAVEL_DIRECTION = Object.freeze({ x: 0, y: -1 });
+  const CELESTIAL_ASSET_SOURCES = Object.freeze({
+    earth: "assets/earth.webp",
+    mars: "assets/mars.webp",
+    "frontier-world": "assets/frontier-world.webp",
+    "titan-world": "assets/titan-world.webp",
+    "signal-world": "assets/signal-world.webp",
+    "shard-world": "assets/shard-world.webp",
+    "fleet-world": "assets/fleet-world.webp",
+    "command-world": "assets/command-world.webp"
+  });
   const SCENE_KEYFRAMES = Object.freeze([
     Object.freeze({ depth: 0.08, hue: 205, bodies: Object.freeze([
-      Object.freeze({ id: "earth", type: "earth", x: 0.88, y: 0.58, size: 0.62, alpha: 0.92, hue: 205, rings: 0 }),
-      Object.freeze({ id: "mars", type: "mars", x: 0.07, y: 0.16, size: 0.025, alpha: 0.025, hue: 18, rings: 0 })
+      Object.freeze({ id: "earth", type: "earth", x: 0.88, y: 0.58, size: 0.62, alpha: 0.92, hue: 205 }),
+      Object.freeze({ id: "mars", type: "mars", x: 0.07, y: 0.16, size: 0.025, alpha: 0.025, hue: 18 })
     ]) }),
     Object.freeze({ depth: 0.18, hue: 25, bodies: Object.freeze([
-      Object.freeze({ id: "earth", type: "earth", x: 0.08, y: 0.82, size: 0.14, alpha: 0.28, hue: 205, rings: 0 }),
-      Object.freeze({ id: "mars", type: "mars", x: 0.8, y: 0.25, size: 0.27, alpha: 0.72, hue: 18, rings: 0 })
+      Object.freeze({ id: "earth", type: "earth", x: 0.08, y: 0.82, size: 0.14, alpha: 0.28, hue: 205 }),
+      Object.freeze({ id: "mars", type: "mars", x: 0.8, y: 0.25, size: 0.27, alpha: 0.72, hue: 18 })
     ]) }),
     Object.freeze({ depth: 0.32, hue: 238, bodies: Object.freeze([
-      Object.freeze({ id: "earth", type: "earth", x: 0.015, y: 0.9, size: 0.052, alpha: 0.1, hue: 205, rings: 0 }),
-      Object.freeze({ id: "mars", type: "mars", x: 0.965, y: 0.1, size: 0.072, alpha: 0.16, hue: 18, rings: 0 })
+      Object.freeze({ id: "earth", type: "earth", x: 0.015, y: 0.9, size: 0.052, alpha: 0.1, hue: 205 }),
+      Object.freeze({ id: "mars", type: "mars", x: 0.965, y: 0.1, size: 0.072, alpha: 0.16, hue: 18 })
     ]) }),
     Object.freeze({ depth: 0.47, hue: 174, bodies: Object.freeze([
-      Object.freeze({ id: "frontier", type: "exotic", x: 0.82, y: 0.72, size: 0.33, alpha: 0.56, hue: 174, rings: 0.18 })
+      Object.freeze({ id: "frontier", type: "frontier-world", x: 0.82, y: 0.72, size: 0.33, alpha: 0.64, hue: 174 })
     ]) }),
     Object.freeze({ depth: 0.6, hue: 36, bodies: Object.freeze([
-      Object.freeze({ id: "titan-gate", type: "exotic", x: 0.16, y: 0.33, size: 0.5, alpha: 0.68, hue: 36, rings: 0.88 })
+      Object.freeze({ id: "titan-gate", type: "titan-world", x: 0.16, y: 0.33, size: 0.5, alpha: 0.76, hue: 36 })
     ]) }),
     Object.freeze({ depth: 0.71, hue: 142, bodies: Object.freeze([
-      Object.freeze({ id: "signal-moon", type: "exotic", x: 0.84, y: 0.22, size: 0.22, alpha: 0.5, hue: 142, rings: 0.08 })
+      Object.freeze({ id: "signal-moon", type: "signal-world", x: 0.84, y: 0.22, size: 0.22, alpha: 0.58, hue: 142 })
     ]) }),
     Object.freeze({ depth: 0.8, hue: 304, bodies: Object.freeze([
-      Object.freeze({ id: "shard-world", type: "exotic", x: 0.12, y: 0.76, size: 0.31, alpha: 0.58, hue: 304, rings: 0.42 })
+      Object.freeze({ id: "shard-world", type: "shard-world", x: 0.12, y: 0.76, size: 0.31, alpha: 0.66, hue: 304 })
     ]) }),
     Object.freeze({ depth: 0.9, hue: 256, bodies: Object.freeze([
-      Object.freeze({ id: "fleet-world", type: "exotic", x: 0.74, y: 0.63, size: 0.46, alpha: 0.64, hue: 256, rings: 0.92 })
+      Object.freeze({ id: "fleet-world", type: "fleet-world", x: 0.74, y: 0.63, size: 0.46, alpha: 0.72, hue: 256 })
     ]) }),
     Object.freeze({ depth: 1, hue: 344, bodies: Object.freeze([
-      Object.freeze({ id: "command-world", type: "exotic", x: 0.52, y: 0.16, size: 0.39, alpha: 0.74, hue: 344, rings: 0.34 })
+      Object.freeze({ id: "command-world", type: "command-world", x: 0.52, y: 0.16, size: 0.39, alpha: 0.82, hue: 344 })
     ]) })
   ]);
 
@@ -55,8 +65,7 @@
       y: body.y,
       size: body.size,
       alpha: body.alpha,
-      hue: body.hue,
-      rings: body.rings
+      hue: body.hue
     };
   }
 
@@ -77,7 +86,7 @@
           { x: 0.2, y: 0.25, size: 0.17, alpha: 0.32 },
           { x: 0.045, y: 0.84, size: 0.07, alpha: 0.13 }
         ][safeStage - 1];
-        bodies.push({ id: "waypoint", type: "exotic", ...waypoint, hue: mod(188 + hueShift, 360), rings: 0.24 });
+        bodies.push({ id: "waypoint", type: "frontier-world", ...waypoint, hue: mod(188 + hueShift, 360) });
       }
     }
     return {
@@ -107,8 +116,7 @@
       y: source.y + (target.y - source.y) * amount,
       size: source.size + (target.size - source.size) * amount,
       alpha: source.alpha + (target.alpha - source.alpha) * amount,
-      hue: source.hue + (target.hue - source.hue) * amount,
-      rings: source.rings + (target.rings - source.rings) * amount
+      hue: source.hue + (target.hue - source.hue) * amount
     };
   }
 
@@ -141,7 +149,7 @@
 
   function bodyById(scene, id) {
     return scene.bodies.find((body) => body.id === id) || {
-      id, type: id, x: 0, y: 0, size: 0, alpha: 0, hue: id === "earth" ? 205 : 18, rings: 0
+      id, type: id, x: 0, y: 0, size: 0, alpha: 0, hue: id === "earth" ? 205 : 18
     };
   }
 
@@ -250,6 +258,39 @@
     };
   }
 
+  const previewAssets = Object.create(null);
+
+  function assetSource(type) {
+    return Object.prototype.hasOwnProperty.call(CELESTIAL_ASSET_SOURCES, type)
+      ? CELESTIAL_ASSET_SOURCES[type]
+      : null;
+  }
+
+  function previewAsset(type, canvas, stage, sector) {
+    const source = assetSource(type);
+    if (!source || typeof global.Image !== "function") return null;
+    let record = previewAssets[type];
+    if (!record) {
+      const image = new global.Image();
+      record = previewAssets[type] = { image, pending: [], failed: false };
+      image.decoding = "async";
+      image.onload = () => {
+        const pending = record.pending.splice(0);
+        for (const request of pending) renderStagePreview(request.canvas, request.stage, request.sector);
+      };
+      image.onerror = () => {
+        record.failed = true;
+        record.pending.length = 0;
+      };
+      image.src = source;
+    }
+    if (record.image.complete && record.image.naturalWidth) return record.image;
+    if (!record.failed && !record.pending.some((request) => request.canvas === canvas)) {
+      record.pending.push({ canvas, stage, sector });
+    }
+    return null;
+  }
+
   function renderStagePreview(canvas, stage, sector) {
     if (!canvas || typeof canvas.getContext !== "function") return false;
     const ctx = canvas.getContext("2d");
@@ -287,36 +328,27 @@
       const y = body.y * height;
       const radius = Math.max(1.5, body.size * unit * 0.5);
       ctx.save();
+      const halo = ctx.createRadialGradient(x, y, radius * 0.12, x, y, radius * 1.18);
+      halo.addColorStop(0, `hsla(${body.hue} 86% 64% / 0.2)`);
+      halo.addColorStop(1, `hsla(${body.hue} 78% 38% / 0)`);
       ctx.globalAlpha = clamp(body.alpha, 0, 1);
-      if (body.rings > 0.02) {
-        ctx.strokeStyle = `hsla(${body.hue} 78% 72% / ${clamp(0.18 + body.rings * 0.38, 0, 0.62)})`;
-        ctx.lineWidth = Math.max(1, radius * 0.045);
-        ctx.beginPath();
-        ctx.ellipse(x, y, radius * (1.35 + body.rings * 0.32), radius * 0.36, -0.26, 0, TAU);
-        ctx.stroke();
-      }
-      const planet = ctx.createRadialGradient(x - radius * 0.34, y - radius * 0.38, radius * 0.06, x, y, radius);
-      if (body.type === "earth") {
-        planet.addColorStop(0, "#bdf9ff");
-        planet.addColorStop(0.35, "#3ca7d6");
-        planet.addColorStop(0.66, "#337b69");
-        planet.addColorStop(1, "#071323");
-      } else if (body.type === "mars") {
-        planet.addColorStop(0, "#ffd1a3");
-        planet.addColorStop(0.45, "#b65031");
-        planet.addColorStop(1, "#1a0808");
+      ctx.fillStyle = halo;
+      ctx.fillRect(x - radius * 1.2, y - radius * 1.2, radius * 2.4, radius * 2.4);
+      const image = previewAsset(body.type, canvas, stage, sector);
+      if (image) {
+        const drawHeight = radius * 2;
+        const drawWidth = drawHeight * (image.naturalWidth / image.naturalHeight);
+        ctx.drawImage(image, x - drawWidth * 0.5, y - drawHeight * 0.5, drawWidth, drawHeight);
       } else {
-        planet.addColorStop(0, `hsl(${body.hue} 90% 82%)`);
-        planet.addColorStop(0.42, `hsl(${body.hue} 64% 44%)`);
-        planet.addColorStop(1, `hsl(${body.hue} 54% 8%)`);
+        const planet = ctx.createRadialGradient(x - radius * 0.34, y - radius * 0.38, radius * 0.06, x, y, radius);
+        planet.addColorStop(0, `hsl(${mod(body.hue + 20, 360)} 72% 78%)`);
+        planet.addColorStop(0.46, `hsl(${body.hue} 56% 38%)`);
+        planet.addColorStop(1, "#030610");
+        ctx.fillStyle = planet;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, TAU);
+        ctx.fill();
       }
-      ctx.fillStyle = planet;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = `hsla(${body.hue} 84% 82% / 0.46)`;
-      ctx.lineWidth = Math.max(0.7, radius * 0.025);
-      ctx.stroke();
       ctx.restore();
     }
     return true;
@@ -327,7 +359,8 @@
     planetFrame,
     cinematicProfile,
     screenAnchor,
-    asteroidCrackStage
+    asteroidCrackStage,
+    assetSource
   });
   ND.StagePreview = Object.freeze({ render: renderStagePreview });
 
@@ -350,11 +383,7 @@
 
     loadAssets() {
       if (typeof global.Image !== "function") return;
-      const sources = {
-        space: "assets/deep-space.webp",
-        earth: "assets/earth.webp",
-        mars: "assets/mars.webp"
-      };
+      const sources = { space: "assets/deep-space.webp", ...CELESTIAL_ASSET_SOURCES };
       for (const [name, source] of Object.entries(sources)) {
         const image = new global.Image();
         image.decoding = "async";
@@ -585,7 +614,7 @@
       }
       ctx.restore();
       this.drawSpeedDust(flowDistance, cinematic, time);
-      this.drawCelestials(scene, time);
+      this.drawCelestials(scene);
 
       ctx.fillStyle = this.vignetteGradient;
       ctx.fillRect(0, 0, this.width, this.height);
@@ -642,85 +671,51 @@
       ctx.restore();
     }
 
-    drawCelestials(scene, time) {
+    drawCelestials(scene) {
       const unit = Math.min(this.width, this.height);
       for (const item of scene.visibleBodies) {
         const screenX = item.x * this.width;
         const screenY = item.y * this.height;
         const width = item.size * unit;
         if (!this.onScreen(screenX, screenY, width)) continue;
-        if (item.type === "earth" || item.type === "mars") this.drawAssetPlanet(item, screenX, screenY, width);
-        else this.drawExoticPlanet(item, screenX, screenY, width, time);
+        this.drawAssetPlanet(item, screenX, screenY, width);
       }
     }
 
     drawAssetPlanet(item, screenX, screenY, width) {
       const image = this.assets[item.type];
-      if (!image || !image.complete || !image.naturalWidth) return;
-      const height = width * (image.naturalHeight / image.naturalWidth);
       const ctx = this.ctx;
+      const loaded = Boolean(image && image.complete && image.naturalWidth && image.naturalHeight);
+      const height = loaded ? width * (image.naturalHeight / image.naturalWidth) : width;
+      const radius = Math.min(width, height) * 0.5;
       ctx.save();
-      ctx.globalAlpha = item.alpha;
-      const radius = Math.min(width, height) * 0.49;
-      ctx.beginPath();
-      ctx.arc(screenX, screenY, radius, 0, TAU);
-      ctx.clip();
-      ctx.drawImage(image, screenX - width / 2, screenY - height / 2, width, height);
-      ctx.restore();
-    }
-
-    drawExoticPlanet(item, screenX, screenY, width, time) {
-      const ctx = this.ctx;
-      const radius = width * 0.5;
       const hue = mod(item.hue, 360);
-      ctx.save();
-      ctx.translate(screenX, screenY);
-      ctx.globalAlpha = item.alpha;
-      if (item.rings > 0.03) {
-        ctx.save();
-        ctx.rotate(-0.2 + item.rings * 0.34);
-        ctx.strokeStyle = `hsla(${mod(hue + 28, 360)},80%,72%,${0.16 + item.rings * 0.38})`;
-        ctx.lineWidth = Math.max(1.2, radius * (0.035 + item.rings * 0.025));
-        ctx.beginPath();
-        ctx.ellipse(0, 0, radius * (1.24 + item.rings * 0.42), radius * (0.2 + item.rings * 0.08), 0, 0, TAU);
-        ctx.stroke();
-        ctx.restore();
-      }
-      const surface = ctx.createRadialGradient(-radius * 0.34, -radius * 0.38, radius * 0.04, 0, 0, radius);
-      surface.addColorStop(0, `hsl(${mod(hue + 22, 360)},82%,72%)`);
-      surface.addColorStop(0.38, `hsl(${hue},62%,40%)`);
-      surface.addColorStop(0.78, `hsl(${mod(hue - 18, 360)},58%,20%)`);
-      surface.addColorStop(1, "#030610");
-      ctx.fillStyle = surface;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius, 0, TAU);
-      ctx.fill();
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(0, 0, radius * 0.98, 0, TAU);
-      ctx.clip();
-      ctx.globalAlpha *= 0.22;
-      ctx.strokeStyle = `hsl(${mod(hue + 64, 360)},85%,75%)`;
-      ctx.lineWidth = Math.max(1, radius * 0.055);
-      for (let band = -2; band <= 2; band += 1) {
-        ctx.beginPath();
-        ctx.ellipse(
-          Math.sin(time * 0.015 + band * 2.1) * radius * 0.08,
-          band * radius * 0.27,
-          radius * 0.88,
-          radius * (0.08 + (band & 1) * 0.025),
-          -0.12,
-          0,
-          TAU
+      const halo = ctx.createRadialGradient(screenX, screenY, radius * 0.12, screenX, screenY, radius * 1.08);
+      halo.addColorStop(0, `hsla(${hue} 84% 64% / 0.16)`);
+      halo.addColorStop(0.72, `hsla(${hue} 76% 48% / 0.05)`);
+      halo.addColorStop(1, `hsla(${hue} 70% 34% / 0)`);
+      ctx.globalAlpha = clamp(item.alpha, 0, 1);
+      ctx.fillStyle = halo;
+      ctx.fillRect(screenX - radius * 1.1, screenY - radius * 1.1, radius * 2.2, radius * 2.2);
+      if (loaded) {
+        ctx.drawImage(image, screenX - width * 0.5, screenY - height * 0.5, width, height);
+      } else {
+        const surface = ctx.createRadialGradient(
+          screenX - radius * 0.32,
+          screenY - radius * 0.36,
+          radius * 0.06,
+          screenX,
+          screenY,
+          radius
         );
-        ctx.stroke();
+        surface.addColorStop(0, `hsl(${mod(hue + 20, 360)} 72% 78%)`);
+        surface.addColorStop(0.46, `hsl(${hue} 56% 38%)`);
+        surface.addColorStop(1, "#030610");
+        ctx.fillStyle = surface;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, radius, 0, TAU);
+        ctx.fill();
       }
-      ctx.restore();
-      ctx.strokeStyle = `hsla(${mod(hue + 18, 360)},90%,78%,0.55)`;
-      ctx.lineWidth = Math.max(1, radius * 0.018);
-      ctx.beginPath();
-      ctx.arc(0, 0, radius * 1.015, 0, TAU);
-      ctx.stroke();
       ctx.restore();
     }
 

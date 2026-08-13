@@ -2,6 +2,31 @@
 
 All notable user-facing changes to Neon Voyage are documented here. Versions follow semantic versioning.
 
+## [1.4.0] — 2026-08-13
+
+### Added
+
+- Added **Homing Salvo** and **Radial Array** as rare, bounded permanent modules for the current run. The first periodically launches guided rockets at a nearby threat; the second emits an autonomous ring of projectiles.
+- Added a finite asteroid hazard mix to every alien wave in Stages 6–8, keeping the physical battlefield active during first contact, strike-wing, and raid-fleet encounters.
+- Replaced the six procedural striped exoplanets beyond Mars with locally bundled photoreal worlds for the frontier, Titan Gate, unknown signal, shard, fleet, and command scenes. Earth and Mars remain unchanged.
+
+### Fixed
+
+- Prevented waves and stages from clearing while any same-encounter threat remains. Optional hazards, required descendants, carrier children, boss escorts, deferred spawns, and hard-cull requeues must now all resolve before progression.
+- Made the Harrower victory wait for its surviving escorts instead of beginning hyperspace over a visibly occupied arena.
+
+### Changed
+
+- Reduced Void Pulse from a near-screen-clearing attack to a local 280 px defensive burst, with lower asteroid, alien, and boss damage while retaining nearby projectile and mine clearing.
+- Compacted the phone-class landscape HUD so the score, objective, modules, and controls leave more of the battlefield visible.
+- Removed the obsolete procedural exoplanet band/ring renderer and its unused balance/configuration paths while preserving the local Canvas craft, asteroid, projectile, pickup, and effects art.
+
+### Quality and governance
+
+- Expanded the dependency-free release audit to **111/111** checks, covering clean-field progression, optional and requeued threats, boss escorts, autonomous passive-module bounds, local pulse reach/damage, mixed encounters, local celestial resources, mobile HUD rules, and repository governance.
+- Rendered and inspected the six new celestial assets through the Canvas renderer. No installed browser executable was available for a hands-on local candidate play; the live GitHub Pages smoke remains required after merge.
+- Enabled and verified the active `Protect main` ruleset: pull requests are required, `Offline audit / audit` must pass against the latest commit, force pushes and branch deletion are blocked, and no bypass actor is configured. Approval remains optional for solo maintenance and should be raised to one only when a genuine independent reviewer is available.
+
 ## [1.3.0] — 2026-08-13
 
 ### Added

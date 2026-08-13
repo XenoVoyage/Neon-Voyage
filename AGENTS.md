@@ -1,6 +1,6 @@
 # Neon Voyage contributor instructions
 
-Read this file before changing the project. Read the related runtime, tests, and documentation before editing a connected system; do not infer behavior from filenames or old release notes.
+Read this file at the start of every task before inspecting or changing the project, and re-read it if it changes or after switching branches. Keep it current: update it only when an enduring project invariant, architecture boundary, verification gate, or release workflow changes; do not use it as a changelog or task log. Read the related runtime, tests, and documentation before editing a connected system; do not infer behavior from filenames or old release notes.
 
 ## Project facts
 
@@ -21,6 +21,7 @@ Read this file before changing the project. Read the related runtime, tests, and
 - Put logic in the file that already owns the responsibility. Generalize only when current behavior has proven reuse.
 - Keep hot fixed-step and render paths allocation-conscious. Reuse state, enforce caps, expire transient objects, and clean inactive world state.
 - Preserve restrictive CSP, relative local resource paths, safe optional storage, and zero runtime network surface.
+- Treat `main` as protected. Never push directly to it, force-push it, delete it, or bypass branch protection. Work on a short-lived branch and merge through a pull request only after the required `Offline audit / audit` check passes. If approval protection is enabled, wait for one genuine independent approval; never self-approve or fabricate review.
 - Keep input, dialogs, live status, progress indicators, focus behavior, and reduced-effects support accessible across keyboard, pointer, touch, and gamepad paths.
 - Detect touch capability from device signals and observed touch input, not only the primary pointer; hybrid tablets with a trackpad must retain their touch controls.
 - Treat document visibility as the touch lifecycle boundary: browser-chrome focus changes must not pause a touch run, while a hidden document must pause and clear transient input. Preserve desktop blur-to-pause behavior.
@@ -30,10 +31,11 @@ Read this file before changing the project. Read the related runtime, tests, and
 - A non-boss stage is a finite sequence of configured waves followed by a controlled hyperspace transition. The boss stage uses its direct configured defeat goal. Do not reintroduce endless replenishment disguised as progression.
 - Do not hardcode stage-specific branches when the stage/wave configuration can express the rule clearly.
 - Keep the authored journey legible: the first five stages progress from Earth orbit through increasingly unfamiliar asteroid space and the Titan Gate; ordinary alien spacecraft do not appear before Stage 6, and the alien command arena remains Stage 9.
-- Stage clear requires the configured finite wave to be fully spawned and all required living objectives to be resolved. Required asteroid descendants dynamically join that objective and must be destroyed; optional hazards must not corrupt objective counts.
+- Stage and wave clear require the configured finite wave to be fully spawned, its pending and requeue lists to be empty, every required objective to be resolved, and no living same-generation asteroid or alien to remain. Optional hazards, descendants, carrier children, and boss escorts all belong to this clean-field gate even when they do not increase required-objective counters.
 - During hyperspace, gameplay input is locked, autopilot and cinematic state are finite, old combat entities are cleaned, and the ship keeps its pre-transition screen anchor and travel direction through the stage handoff. Never hide a discontinuity with a world-position teleport.
 - Asteroids remain ballistic physical hazards; normal ranged attacks belong to alien spacecraft. Asteroid pairs use mass-aware separation and bounce without damaging or destroying one another. A genuine approaching asteroid-to-alien impact remains lethal to the alien and may damage the asteroid, but it must never duplicate objective credit or grant score, combo, or pickup rewards.
 - Splitting hazards must use an explicit, bounded remaining-generation value. Preserve descendant objective ownership and hard-cull restoration, and never add an unbounded recursive split path.
+- Hard culling must requeue every living same-generation encounter threat, preserve its required flag and finite gameplay state, and never duplicate, drop, or silently resolve it.
 - Temporary weapon pickups use independent finite timers and must visibly change firing behavior while active. Rare permanent module upgrades remain bounded and persist only for the current run.
 - Campaign progress is a strict, size-limited local record separate from score/preferences. Continue exposes only earned authored-stage checkpoints, and selecting one starts a fresh Sector 1 run at that stage; it is not a live-state save. Debug and automation stage jumps must never unlock campaign progress.
 - Add deterministic regression coverage for every gameplay fix. Fixed seed plus fixed input must reproduce equivalent state.
@@ -58,7 +60,8 @@ Every coherent public update must include all of the following in one clean publ
 4. Add or update permanent deterministic tests and run the full suite.
 5. Complete and document the browser-smoke gate above; if local preview is blocked, record that boundary and require the immediate post-deploy live Play check.
 6. Regenerate `SHA256SUMS` only after all release files are frozen, then verify every entry.
-7. Review the complete diff and publish one clean commit to public `main`.
-8. Verify CI, Pages deployment, and the live repository-subpath URL after publication, including one final live Play action.
+7. Review the complete diff and publish the coherent update as one release pull request from a short-lived branch into protected `main`.
+8. Wait for the required `Offline audit / audit` status and any configured human approval, then merge without bypassing protection.
+9. Verify CI, Pages deployment, and the live repository-subpath URL after merge, including one final live Play action.
 
-Do not split one coherent update across partial public commits. Do not claim publication, CI, Pages, checksum, or live-site success before it is observed. If access or deployment blocks final verification, report the exact blocker and leave the repository in a tested, recoverable state.
+Do not split one coherent update across partial public merges. A release branch may contain iterative commits, but its pull request must present one frozen, coherent candidate and should normally be squash-merged. Do not claim publication, CI, Pages, checksum, or live-site success before it is observed. If access or deployment blocks final verification, report the exact blocker and leave the repository in a tested, recoverable state.

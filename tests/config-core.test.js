@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage 1.3.0 configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "1.3.0");
+  test("Neon Voyage 1.4.0 configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "1.4.0");
     collectFrozen(CONFIG, new Set());
   });
 
@@ -83,7 +83,11 @@ module.exports = function register(test) {
     assert.equal(firstWave.required[0].cap, 3, "first wave must not scale above three asteroids");
     assert.equal("minimumSeconds" in stages[4].goal, false, "Titan victory must not be time-gated");
     assert.ok(stages[4].waves.some((wave) => wave.required.some((group) => group.kinds.includes("titan"))), "Stage 5 lacks its Titan");
-    assert.equal(stages[8].suspendWorldStreaming, true);
+    for (const stage of stages.slice(5, 8)) {
+      for (const wave of stage.waves) {
+        assert.ok((wave.hazards || []).some((group) => group.family === "asteroid"), `${stage.id}/${wave.label} lacks mixed asteroid pressure`);
+      }
+    }
     assert.ok(CONFIG.bossArena.warningSeconds > 0);
   });
 
@@ -142,7 +146,6 @@ module.exports = function register(test) {
       ["healthScale", "healthMultiplier"],
       ["bossHealthScale", "bossHealthMultiplier"],
       ["damageScale", "damageMultiplier"],
-      ["threatScale", "threatMultiplier"],
       ["speedScale", "speedMultiplier"],
       ["fireRateScale", "fireRateMultiplier"],
       ["scoreScale", "scoreMultiplier"]
@@ -160,18 +163,38 @@ module.exports = function register(test) {
     }
   });
 
-  test("five permanent weapon modules have bounded viable tiers", () => {
+  test("seven permanent weapon modules include two bounded autonomous passives", () => {
     const modules = CONFIG.weapons.modules;
-    assert.equal(Object.keys(modules).length, 5);
+    assert.equal(Object.keys(modules).length, 7);
+    assert.equal(CONFIG.weapons.maxInstalledModules, 7);
     assert.equal(CONFIG.weapons.startingModules.pulse, 1);
     assert.equal(CONFIG.weapons.stacking, "allOwnedModulesFire");
     for (const [name, module] of Object.entries(modules)) {
       assert.equal(module.tiers.length, CONFIG.weapons.maxModuleTier, `${name} tier count`);
       for (const tier of module.tiers) {
-        assert.ok(tier.cooldown > 0.04 && tier.cooldown <= 2);
+        assert.ok(tier.cooldown > 0.04 && tier.cooldown <= (module.activation === "autonomous" ? 6 : 2));
         assert.ok(tier.damage > 0 && tier.damage < 10);
       }
     }
+    assert.equal(modules.homingSalvo.activation, "autonomous");
+    assert.equal(modules.radialArray.activation, "autonomous");
+    for (const id of ["homingSalvo", "radialArray"]) {
+      for (const tier of modules[id].tiers) {
+        assert.ok(tier.range > 0 && tier.range <= 1000);
+        assert.ok(Number.isSafeInteger(tier.projectiles) && tier.projectiles > 0 && tier.projectiles <= 12);
+      }
+    }
+  });
+
+  test("Void Pulse is a finite local defense with bounded damage", () => {
+    const pulse = CONFIG.voidPulse;
+    assert.ok(pulse.radius >= 180 && pulse.radius <= 320);
+    assert.ok(pulse.asteroidDamage > 0 && pulse.asteroidDamage <= 3);
+    assert.ok(pulse.alienDamage > 0 && pulse.alienDamage <= 3);
+    assert.ok(pulse.bossDamage > 0 && pulse.bossDamage <= 3);
+    assert.equal(pulse.clearEnemyProjectiles, true);
+    assert.equal(pulse.clearMines, true);
+    assert.ok(pulse.rechargePerSecond > 0 && pulse.rechargePerSecond <= 5);
   });
 
   const Core = loadBrowserScript("js/core.js").window.ND.Core;
