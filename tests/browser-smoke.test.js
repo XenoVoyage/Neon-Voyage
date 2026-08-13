@@ -155,7 +155,8 @@ function buildBrowser(options) {
     const topLevelIds = [
       "game", "canvas-instructions", "orientation-overlay", "hud", "boss-hud",
       "objective-hud", "meters", "announcement", "menu-overlay", "pause-overlay",
-      "gameover-overlay", "controls-modal", "settings-modal", "stage-select-modal", "touch-controls"
+      "gameover-overlay", "controls-modal", "settings-modal", "stage-select-modal",
+      "new-game-modal", "touch-controls"
     ];
     shell.children = topLevelIds.map((id) => elements.get(id)).filter(Boolean);
     for (const child of shell.children) child.parentElement = shell;

@@ -1,8 +1,8 @@
-# Neon Voyage 1.4.0 — release audit
+# Neon Voyage 1.5.0 — release audit
 
 - Audited: 2026-08-13
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 111/111 automated checks; protection verified; merge, deployment, and live Play pending**
+- Result: **PASS — 118/118 automated checks; pull request, required check, merge, Pages deployment, and live Play pending**
 
 Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated browser viewports and Pointer Events and is not a claim of acceptance on physical touch hardware.
 
@@ -13,14 +13,14 @@ Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; 
 - Required local server: **none**
 - Remote runtime requests: **0 by design**
 - Runtime files: local HTML, CSS, JavaScript, and nine WebP scenery assets
-- Persistent data: separate strict local records for high score/preferences and unlocked-stage progress
+- Persistent data: separate strict local records for high score/preferences and schema-2 per-stage campaign loadouts
 - License: MIT
 
 ## Journey and finite objectives
 
 Passed:
 
-- The immutable 1.4 configuration defines nine ordered stages: Earth Orbit, Inner Belt, Deep Drift, Shattered Frontier, Titan Gate, First Contact, Strike Wing, Raid Fleet, and Command Arena.
+- The immutable 1.5 configuration defines nine ordered stages: Earth Orbit, Inner Belt, Deep Drift, Shattered Frontier, Titan Gate, First Contact, Strike Wing, Raid Fleet, and Command Arena.
 - Stages 1–4 contain asteroid and non-sentient anomaly hazards only. The Titan is Stage 5, ordinary alien spacecraft first appear at Stage 6, and the alien Harrower boss remains Stage 9.
 - The first Earth Orbit wave contains exactly three required rocks, all visible at entry, and cannot over-spawn its configured total.
 - Across 1,024 fixed seeds at each of six phone, tablet, and desktop viewports, every Earth Orbit opening rock preserves at least 72 px of ship-surface clearance, 18 px of threat separation, and 2.2 seconds of predicted contact time.
@@ -78,13 +78,14 @@ Passed in automated browser-VM regressions:
 
 Passed:
 
-- Progress uses a separate, size-limited `neon-voyage-progress-v1` record with strict schema 1 and Stage 1–9 integer bounds. Missing, malformed, oversized, unknown-schema, and denied storage fall back safely.
-- High score and sound/effects preferences remain intact when progress data is invalid. Storage failure cannot block New Game.
-- New Game always starts Stage 1 while retaining the highest earned checkpoint.
+- Progress keeps the existing `neon-voyage-progress-v1` storage key but uses a strict, size-limited schema-2 record with Stage 1–9 integer bounds and whitelisted per-stage loadouts. Missing, malformed, oversized, unknown-schema, and denied storage fall back safely.
+- Valid schema-1 records migrate without losing the highest earned or last-played stage. Because earlier records contained no weapons, migration synthesizes a conservative base loadout for their unlocked checkpoints.
+- Every checkpoint stores only bounded permanent module tiers and remaining temporary-weapon timers. Continue restores that selected loadout while score, hull, shield, pulse charge, position, velocity, clocks, cooldown phase, entities, effects, and battlefield state start fresh in Sector 1.
+- Genuine campaign play can refresh the current checkpoint as the loadout changes and persists the next stage after its guaranteed reward. Debug stages and later sectors cannot unlock or rewrite campaign data.
+- New Game with existing campaign progress opens an accessible overwrite confirmation. Cancel is the safe default; confirmation resets campaign checkpoints and begins Stage 1 while retaining local record and sound/effects preferences. Restart and Play Again remain non-destructive.
 - Continue remains disabled until Stage 2 is genuinely unlocked. Its responsive grid contains all nine ordered stages, disables locked cards, marks the last-played stage, and repeats the lock check in runtime logic.
-- Selecting an unlocked checkpoint starts a fresh Sector 1 run at that stage with score 0, full hull, and only the base pulse module. It is explicitly not a live-state save.
-- A genuine stage clear persists the next checkpoint before hyperspace. Debug and automated stage jumps cannot unlock campaign progress, and progress clamps at Stage 9.
-- Menu, pause, game-over, dialogs, and portrait mode use correct `inert` and `aria-hidden` ownership. Canvas focus exists only during active play; primary actions receive focus once per real mode transition without stealing dialog or restored control focus.
+- Menu, pause, game-over, confirmation, Continue, and portrait mode retain correct `inert` and `aria-hidden` ownership. Canvas focus exists only during active play; primary actions receive focus once per real mode transition without stealing dialog or restored control focus.
+- Game-over camera shake/flash decays for a finite presentation interval even though simulation is stopped, and returning to the menu clears any residual feedback. The Local Record value uses the cyan interface accent instead of the former gold.
 - Phone-class landscape CSS compacts secondary HUD labels, the objective panel, module text, and system meters while preserving their accessible names and touch targets.
 
 ## Weapons and pickups verification
@@ -94,8 +95,8 @@ Passed:
 - Rapid Fire, Tri-Shot, Arc Burst, and Nova Lance use independent finite timers and visibly distinct firing behavior. Refreshing or expiring one cannot change another.
 - Pickup selection retains its global drop chance and pity boundary. Only the requested weights changed: Rapid Fire 24, Tri-Shot 22, and Hull Repair 20.
 - The deterministic weighted sample includes survival pickups and temporary weapons. Pickup collection remains capped.
-- Rare permanent module upgrades change one eligible module, last only for the current run, and remain within the three-tier limit.
-- Homing Salvo and Radial Array are reachable through the normal bounded module-upgrade path, persist only for the current run, wait for an eligible in-range target, obey their configured cooldowns, and stay under the player-projectile cap.
+- Rare permanent module upgrades change one eligible module, remain within the three-tier limit, and persist through genuine per-stage campaign checkpoints until a confirmed New Game reset.
+- Homing Salvo and Radial Array are reachable through the normal bounded module-upgrade path, survive through the saved checkpoint loadout, wait for an eligible in-range target, obey their configured cooldowns, and stay under the player-projectile cap.
 - Void Pulse reads its reach and damage from immutable configuration. Its 280 px radius affects only nearby threats, enemy projectiles, and mines, and its reduced asteroid, alien, and boss damage cannot reproduce the old screen-wide clear.
 
 ## Offline, security, and repository verification
@@ -105,9 +106,10 @@ Passed:
 - The Content Security Policy denies unspecified sources and blocks runtime connections, frames, objects, fonts, media, workers, forms, and base-URI changes.
 - Runtime source contains no remote URL, network API, telemetry, dynamic code, worker, service worker, module loader, package manifest, lockfile, or `node_modules`.
 - All nine raster resources—including the six AI-generated deep-space worlds—are repository-local, referenced exactly once from the renderer's celestial manifest, and absent from external URLs. No outside source image is used.
+- The two README gameplay captures are small repository-local WebP files under `docs/assets/`, are referenced with meaningful alternative text, and are documentation-only rather than runtime resources.
 - Every runtime resource is local, relative, and valid beneath the `/Neon-Voyage/` GitHub Pages repository subpath. Direct `file://` launch requires no server.
 - Runtime JavaScript passes syntax checking. The release tree contains no symlinks and stays below conservative offline payload limits.
-- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version 1.4.0.
+- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version 1.5.0.
 - The dependency-free browser VM loads every local script, draws Canvas frames and local stage previews, launches a run, exposes the HUD, and maintains one animation loop.
 - CI and Pages workflows publish the unchanged repository root without installing dependencies or running a production build.
 
@@ -125,15 +127,15 @@ Passed:
 node tests/run.js
 ```
 
-Expected result for this source snapshot: `111/111 tests passed`.
+Expected result for this source snapshot: `118/118 tests passed`.
 
 ## Browser smoke and acceptance
 
 - The automated rendered/browser-VM smoke loads every local script, draws Canvas and Continue previews, starts a run, drives Pointer Events through movement, aim, fire, Dash, Pulse, pause, malformed terminals, lifecycle cleanup, and simulation, then verifies neutral stick state.
 - Phone- and tablet-class landscape behavior is exercised through deterministic simulated viewports and pointer sequences. This is automated coverage, not physical-device acceptance.
-- The six new celestial assets were rendered through `@napi-rs/canvas` and inspected in their stage compositions. This is a rendered asset check, not a hands-on browser playthrough.
+- The six runtime celestial assets and two documentation captures were rendered from the local Canvas game and inspected in their intended compositions. This is a rendered asset check, not a hands-on browser playthrough.
 - No installed browser executable was available for hands-on local candidate play, and the available cloud browser cannot open the local/file preview URL. No prepublication browser play is claimed.
-- A live desktop Play from the GitHub Pages repository-subpath URL is required immediately after deployment. This release must not be declared complete until that action and the deployed 1.4.0 version are observed successfully.
+- A live desktop Play from the GitHub Pages repository-subpath URL is required immediately after deployment. This release must not be declared complete until that action and the deployed 1.5.0 version are observed successfully.
 
 ## Acceptance and publication boundary
 
@@ -145,4 +147,4 @@ Automated checks validate contracts, safety, determinism, and simulated browser 
 - Project governance requires pull requests into `main`, blocks direct/force pushes and branch deletion, and permits one required approval only when a genuine independent reviewer is available.
 - Server-side protection is **active and verified** through the `Protect main` ruleset (ID `20790923`) targeting the default branch. It requires pull requests and the strict `audit` status context, blocks deletion and non-fast-forward pushes, has no bypass actors, and currently requires zero approvals for solo maintenance.
 
-`SHA256SUMS` must be regenerated only after all release files are frozen. The release pull request and required check are observed; merge, Pages deployment, repository metadata, and the live URL must still be verified before publication is complete.
+`SHA256SUMS` must be regenerated only after all release files are frozen. The 1.5.0 pull request, required check, merge, Pages deployment, repository metadata, and live URL have not yet been verified for this candidate.

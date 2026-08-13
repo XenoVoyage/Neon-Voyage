@@ -253,4 +253,12 @@ module.exports = function register(test) {
     const tight = css.slice(css.indexOf("@media (orientation: landscape) and (max-height: 500px)"));
     assert.match(tight, /\.is-touch-capable\s+\.combo\s*\{[^}]*display:\s*none/s, "very short screens retain nonessential combo text");
   });
+
+  test("the menu local record uses the space-theme cyan accent", () => {
+    const css = readProject("styles.css");
+    const match = css.match(/\.menu-meta\s+strong\s*\{([^}]*)\}/s);
+    assert.ok(match, "menu record style is missing");
+    assert.match(match[1], /color:\s*var\(--cyan(?:-strong)?\)/);
+    assert.doesNotMatch(match[1], /var\(--gold\)/);
+  });
 };

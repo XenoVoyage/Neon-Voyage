@@ -2,6 +2,29 @@
 
 All notable user-facing changes to Neon Voyage are documented here. Versions follow semantic versioning.
 
+## [1.5.0] — 2026-08-13
+
+### Added
+
+- Upgraded campaign progress to strict schema 2 with bounded per-stage weapon checkpoints. Continue now restores the selected stage's permanent module tiers and remaining temporary-weapon timers while starting score, hull, position, and the battlefield fresh.
+- Added an accessible confirmation before New Game overwrites existing campaign checkpoints. Cancel is the safe default, and local record plus sound/effects preferences remain untouched.
+- Added two lightweight, locally generated gameplay captures to the README for the Earth-orbit opening and the Harrower command arena.
+
+### Fixed
+
+- Bounded the defeat camera shake to a short presentation-only decay and cleared residual shake/flash when returning to the menu, preventing game-over feedback from shaking later screens indefinitely.
+- Recolored the Local Record value from gold to cyan so it matches the established deep-space interface palette.
+
+### Changed
+
+- Condensed the README's mobile/tablet and expedition guidance while preserving the input lifecycle, landscape, finite-stage, collision, and clean-field rules players need.
+- Migrated valid schema-1 progress safely: earned stages and the last-played checkpoint are retained, with conservative base loadouts synthesized where older saves could not contain weapon data.
+
+### Quality
+
+- Expanded the dependency-free release audit to **118/118** checks, including schema migration and corruption guards, checkpoint loadout restore/reset boundaries, accessible New Game dialog behavior, finite game-over feedback, and local README asset coverage.
+- Kept release publication pending until the frozen candidate, required pull-request audit, Pages deployment, checksum manifest, and live Play action are observed.
+
 ## [1.4.0] — 2026-08-13
 
 ### Added

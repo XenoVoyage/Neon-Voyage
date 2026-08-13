@@ -1,6 +1,7 @@
 "use strict";
 
 const childProcess = require("node:child_process");
+const crypto = require("node:crypto");
 const {
   assert,
   fs,
@@ -96,6 +97,31 @@ module.exports = function register(test) {
     }
   });
 
+  test("README gameplay images are local, lightweight, complete WebP documentation assets", () => {
+    const readme = readProject("README.md");
+    const references = Array.from(
+      readme.matchAll(/!\[[^\]]*\]\((docs\/assets\/[a-z0-9-]+\.webp)\)/gi),
+      (match) => match[1]
+    );
+    assert.equal(references.length, 2, "README should use exactly two restrained gameplay images");
+    assert.equal(new Set(references).size, references.length, "README gameplay images must be unique");
+
+    for (const reference of references) {
+      const file = localFile(reference);
+      assert.ok(fs.statSync(file).size <= 256 * 1024, `${reference} exceeds the documentation image budget`);
+      const header = fs.readFileSync(file).subarray(0, 12);
+      assert.equal(header.subarray(0, 4).toString("ascii"), "RIFF", `${reference} is not a WebP RIFF file`);
+      assert.equal(header.subarray(8, 12).toString("ascii"), "WEBP", `${reference} is not a WebP file`);
+    }
+
+    const directory = path.join(PROJECT_ROOT, "docs", "assets");
+    const files = listFiles(directory)
+      .filter((file) => file.endsWith(".webp"))
+      .map((file) => path.relative(PROJECT_ROOT, file).split(path.sep).join("/"))
+      .sort();
+    assert.deepEqual(files, references.slice().sort(), "every README gameplay image must be referenced exactly once");
+  });
+
   test("plain scripts use deterministic dependency order with no module loader", () => {
     const scripts = Array.from(html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi), (match) => match[1]);
     assert.ok(scripts.length >= 5, "expected the local runtime systems");
@@ -158,14 +184,47 @@ module.exports = function register(test) {
     for (const script of scripts) childProcess.execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
   });
 
-  test("release metadata and public documentation agree on version 1.4.0", () => {
+  test("release metadata and public documentation agree on version 1.5.0", () => {
     const version = readProject("VERSION.txt").trim();
-    assert.equal(version, "Neon Voyage 1.4.0");
-    assert.match(readProject("js/config.js"), /version:\s*["']1\.4\.0["']/);
-    assert.match(readProject("README.md"), /Version 1\.4\.0/);
-    assert.match(readProject("CHANGELOG.md"), /^## \[1\.4\.0\]/m);
-    assert.match(readProject("AUDIT.md"), /^# Neon Voyage 1\.4\.0/m);
+    assert.equal(version, "Neon Voyage 1.5.0");
+    assert.match(readProject("js/config.js"), /version:\s*["']1\.5\.0["']/);
+    assert.match(readProject("README.md"), /Version 1\.5\.0/);
+    assert.match(readProject("CHANGELOG.md"), /^## \[1\.5\.0\]/m);
+    assert.match(readProject("AUDIT.md"), /^# Neon Voyage 1\.5\.0/m);
     assert.ok(fs.existsSync(path.join(PROJECT_ROOT, "AGENTS.md")), "project contributor instructions are required");
+  });
+
+  test("SHA256SUMS exactly covers and verifies every release file", () => {
+    const manifest = readProject("SHA256SUMS").trim().split(/\r?\n/);
+    const entries = new Map();
+    for (const line of manifest) {
+      const match = line.match(/^([a-f0-9]{64})  ([^\r\n]+)$/);
+      assert.ok(match, `invalid checksum line: ${line}`);
+      const relative = match[2];
+      assert.ok(!entries.has(relative), `duplicate checksum entry: ${relative}`);
+      assert.ok(relative !== "SHA256SUMS" && !path.isAbsolute(relative), `invalid checksum path: ${relative}`);
+      const absolute = path.resolve(PROJECT_ROOT, relative);
+      assert.ok(absolute.startsWith(PROJECT_ROOT + path.sep), `checksum path escapes repository: ${relative}`);
+      assert.ok(fs.existsSync(absolute) && fs.statSync(absolute).isFile(), `checksum target is missing: ${relative}`);
+      const actual = crypto.createHash("sha256").update(fs.readFileSync(absolute)).digest("hex");
+      assert.equal(actual, match[1], `checksum mismatch: ${relative}`);
+      entries.set(relative, match[1]);
+    }
+
+    const roots = [".github/workflows", "assets", "docs/assets", "js", "tests"];
+    const expected = [];
+    for (const entry of fs.readdirSync(PROJECT_ROOT, { withFileTypes: true })) {
+      if (!entry.isFile() || entry.name === "SHA256SUMS" || /\.(?:log|zip)$/i.test(entry.name)) continue;
+      expected.push(entry.name);
+    }
+    for (const root of roots) {
+      const directory = path.join(PROJECT_ROOT, root);
+      for (const file of listFiles(directory)) {
+        expected.push(path.relative(PROJECT_ROOT, file).split(path.sep).join("/"));
+      }
+    }
+    expected.sort();
+    assert.deepEqual(Array.from(entries.keys()).sort(), expected, "checksum manifest must exactly cover release files");
   });
 
   test("GitHub Pages publishes the repository root without a production build", () => {

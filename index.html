@@ -152,7 +152,7 @@
 
         <div class="menu-meta">
           <span>Local record <strong id="menu-high-score">000000</strong></span>
-          <span>Version 1.4.0</span>
+          <span>Version 1.5.0</span>
         </div>
       </div>
     </section>
@@ -244,7 +244,7 @@
           <button id="settings-fullscreen-button" class="toggle-button" type="button">Enter</button>
         </div>
       </div>
-      <p class="settings-note">Only preferences, the local high score, and unlocked stages are stored in this browser.</p>
+      <p class="settings-note">Only preferences, the local record, unlocked stages, and checkpoint weapons are stored in this browser.</p>
     </dialog>
 
     <dialog
@@ -256,11 +256,31 @@
       <div class="modal-heading">
         <div>
           <h2 id="stage-select-title">Continue</h2>
-          <p id="stage-select-description">Choose an unlocked stage. Each checkpoint begins a fresh run.</p>
+          <p id="stage-select-description">Choose an unlocked stage. Its saved weapons return in a fresh run.</p>
         </div>
         <button id="stage-select-close-button" class="close-button" type="button" aria-label="Close stage selection">Close</button>
       </div>
       <div id="stage-grid" class="stage-grid" aria-label="Unlocked voyage stages"></div>
+    </dialog>
+
+    <dialog
+      id="new-game-modal"
+      class="modal-dialog confirm-dialog"
+      aria-labelledby="new-game-title"
+      aria-describedby="new-game-warning"
+    >
+      <div class="modal-heading">
+        <div>
+          <h2 id="new-game-title">Start a new game?</h2>
+        </div>
+      </div>
+      <div class="confirm-copy">
+        <p id="new-game-warning">Starting a new game erases all unlocked stages and saved weapons. Your local record and settings are kept.</p>
+        <div class="confirm-actions">
+          <button id="new-game-cancel-button" class="menu-button" type="button"><span>Cancel</span></button>
+          <button id="new-game-confirm-button" class="menu-button danger-button" type="button"><span>Erase and start</span></button>
+        </div>
+      </div>
     </dialog>
 
     <section id="touch-controls" class="touch-controls" aria-label="Touch controls">
