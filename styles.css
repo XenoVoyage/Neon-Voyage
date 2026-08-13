@@ -980,14 +980,36 @@ kbd {
 
 .stick-zone {
   position: absolute;
+  z-index: 1;
   bottom: calc(var(--safe-bottom) + 4px);
   display: grid;
   justify-items: center;
   gap: 6px;
   width: 132px;
   height: 132px;
-  pointer-events: auto;
+  pointer-events: none;
   touch-action: none;
+}
+
+.stick-zone.is-engaged {
+  top: var(--stick-y);
+  right: auto;
+  bottom: auto;
+  left: var(--stick-x);
+  display: block;
+  width: 0;
+  height: 0;
+}
+
+.stick-zone.is-engaged .stick-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.stick-zone.is-engaged > span {
+  opacity: 0;
 }
 
 .move-zone {
@@ -1054,6 +1076,7 @@ kbd {
 
 .touch-actions {
   position: absolute;
+  z-index: 2;
   right: calc(var(--safe-right) + 140px);
   bottom: calc(var(--safe-bottom) + 14px);
   display: grid;

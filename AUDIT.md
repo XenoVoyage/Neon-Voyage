@@ -1,10 +1,10 @@
-# Neon Voyage 1.2.2 — release audit
+# Neon Voyage 1.2.3 — release audit
 
 - Audited: 2026-08-13
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 73/73 automated checks**
+- Result: **PASS — 81/81 automated checks; post-deployment live Play pending**
 
-Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game.
+Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game. An independent final audit found the frozen candidate clean.
 
 ## Release properties
 
@@ -58,13 +58,15 @@ Passed:
 
 ## Mobile input and lifecycle verification
 
-Passed:
+Passed in automated browser-VM regressions:
 
 - Touch capability is detected from `maxTouchPoints`, any available coarse pointer, or an observed touch gesture. Hybrid iPads and other fine-primary-pointer tablets retain the touch-control shell.
-- Real Pointer Event sequences keep the move and aim sticks assigned to independent pointer IDs. Holding the aim stick fires without stealing movement; releasing one stick does not clear the other.
-- Stick input is calculated radially from each visible circular ring rather than its larger labeled capture zone. Configured deadzones, nonlinear response curves, and output caps are symmetric in eight tested directions; exact ring-center touches remain neutral and cannot fire.
-- Touch aiming follows the requested vector at a configured bounded turn rate. Low-band firing uses that same bounded turn path and emits along the resulting ship heading; barely-active aim uses the same ownership threshold, turns without snapping, and stays below the fire threshold. Releasing the aim stick preserves the chosen heading and reanchors the aim vector as the ship moves instead of snapping toward a stale target.
-- An observed touch clears stale mouse targeting on a hybrid device. Pointer up, pointer cancel, lost pointer capture, document hiding, portrait blocking, and touch pause return the relevant stick and transient actions to neutral, preventing stuck movement or fire after interruption.
+- Fresh touches on the playable canvas left and right halves establish dynamic movement and aim-stick origins respectively. The new origin begins neutral and stays fixed while the knob follows its owning pointer; crossing the center line cannot swap that pointer's role. Cleanup returns the control to its idle visual position.
+- Real Pointer Event sequences keep the move and aim sticks assigned to independent pointer IDs. Holding the aim stick fires without stealing movement; releasing one stick does not clear the other, and Dash, Void Pulse, and HUD controls remain independent of canvas stick ownership.
+- Stick input is calculated radially from each dynamic origin. Configured deadzones, nonlinear response curves, and output caps remain symmetric; exact origin touches remain neutral and cannot move or fire.
+- Movement strength scales with radial deflection. Touch aim turning also scales with the shaped magnitude and reaches its configured 7.2-radian-per-second cap only at full output, preserving fine control at partial deflection.
+- Touch aiming follows the requested vector through its magnitude-scaled turn path. Low-band firing uses that same path and emits along the resulting ship heading; barely-active aim uses the same ownership threshold, turns without snapping, and stays below the fire threshold. Releasing the aim stick preserves the chosen heading and reanchors the aim vector as the ship moves instead of snapping toward a stale target.
+- An observed touch clears stale mouse targeting on a hybrid device. Canvas and global pointer termination, lost capture, document hiding, page exit, portrait blocking, mode changes, and touch pause return the relevant stick and transient actions to neutral. A rejected capture still receives terminal cleanup, and firing additionally requires live aim-stick ownership, preventing a stale attack latch.
 - Touch Dash and Void Pulse activate gameplay without opening pause. Ordinary mobile browser focus loss does not pause a visible run, while hiding or switching away from the document still pauses safely and clears captured touch ownership.
 - A manual mobile pause releases both pointer captures, clears all held touch actions, stops residual ship velocity, and ignores stale movement from the old pointer IDs after resume. Fresh finger input takes ownership normally.
 - Desktop focus loss retains automatic pause behavior.
@@ -90,7 +92,7 @@ Passed:
 - Runtime source contains no remote URL, network API, telemetry, dynamic code, worker, service worker, module loader, package manifest, lockfile, or `node_modules`.
 - Every runtime resource is local, relative, and valid beneath the `/Neon-Voyage/` GitHub Pages repository subpath. No `<base>` tag or root-relative runtime path is present.
 - Runtime JavaScript passes syntax checking. The release tree contains no symlinks and stays below conservative offline payload limits.
-- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version 1.2.2.
+- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version 1.2.3.
 - The dependency-free browser VM loads every local script, draws Canvas frames, launches a run, exposes the HUD, and maintains one animation loop.
 - CI and Pages workflows use the unchanged repository root without installing dependencies or running a production build.
 
@@ -108,10 +110,17 @@ Passed:
 node tests/run.js
 ```
 
-Expected result for this source snapshot: `73/73 tests passed`.
+Expected result for this source snapshot: `81/81 tests passed`.
+
+## Browser smoke and acceptance
+
+- The automated rendered/browser-VM smoke loaded every local script, drew Canvas frames, started a run, drove real Pointer Event objects through movement, aim, fire, Dash, Pulse, pause, lifecycle cleanup, and simulation, then returned both sticks to neutral.
+- Phone- and tablet-class landscape behavior was exercised through deterministic simulated viewports and pointer sequences. This is automated coverage, not a claim that the 1.2.3 candidate was accepted on physical phone or tablet hardware.
+- The available cloud browser rejected the local/file preview URL under its URL security policy, so no hands-on prepublication candidate play is claimed.
+- A live desktop Play from the GitHub Pages repository-subpath URL is required immediately after deployment. This release must not be declared complete until that action and the deployed version are observed successfully.
 
 ## Acceptance and publication boundary
 
-Automated checks validate contracts, safety, determinism, and simulated browser behavior. They do not establish human acceptance of balance, difficulty, visual quality, responsiveness, audio, or overall game feel.
+Automated checks validate contracts, safety, determinism, and simulated browser behavior. They do not establish human acceptance of balance, difficulty, visual quality, responsiveness, audio, or overall game feel. The post-deployment live desktop check described above remains the publication acceptance boundary.
 
 `SHA256SUMS` must be regenerated only after all release files are frozen. CI, Pages deployment, repository metadata, and the live URL must then be observed after the single public `main` publication; this local audit does not claim those later checks have completed.

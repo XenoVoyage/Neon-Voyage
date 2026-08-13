@@ -62,7 +62,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "1.2.2",
+    version: "1.2.3",
 
     world: {
       fixedStep: 1 / 60,
@@ -77,6 +77,7 @@
     },
 
     mobileControls: {
+      stickRadius: 46,
       moveDeadzone: 0.16,
       moveCurve: 1.45,
       moveMaxOutput: 0.72,
@@ -84,7 +85,7 @@
       aimCurve: 1.25,
       aimMaxOutput: 1,
       aimFireThreshold: 0.12,
-      aimTurnRate: 8
+      aimTurnRate: 7.2
     },
 
     camera: {

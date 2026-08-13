@@ -217,6 +217,29 @@ function buildBrowser(options) {
     static now() { return Number.isFinite(settings.now) ? settings.now : 1700000000000; }
   }
 
+  class FakePointerEvent {
+    constructor(type, initial) {
+      Object.assign(this, {
+        type,
+        pointerId: 0,
+        pointerType: "",
+        isPrimary: false,
+        clientX: 0,
+        clientY: 0,
+        button: 0,
+        buttons: 0,
+        cancelable: true,
+        defaultPrevented: false
+      }, initial || {});
+    }
+
+    preventDefault() {
+      if (this.cancelable) this.defaultPrevented = true;
+    }
+
+    stopPropagation() {}
+  }
+
   const mediaMatches = Object.assign({}, settings.mediaMatches || {});
   const orientation = settings.orientation === false ? undefined : Object.assign({
     type: "landscape-primary",
@@ -271,7 +294,7 @@ function buildBrowser(options) {
     clearTimeout,
     setInterval,
     clearInterval,
-    PointerEvent: function PointerEvent() {},
+    PointerEvent: FakePointerEvent,
     KeyboardEvent: function KeyboardEvent() {},
     AudioContext: undefined,
     webkitAudioContext: undefined

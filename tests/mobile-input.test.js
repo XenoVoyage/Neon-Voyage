@@ -19,7 +19,34 @@ function bootMobile(options) {
 }
 
 function pointer(browser, elementId, type, pointerId, clientX, clientY) {
-  browser.emit(browser.elements.get(elementId), type, {
+  const isStick = elementId === "move-zone" || elementId === "aim-zone";
+  if (!isStick) return rawPointer(browser, browser.elements.get(elementId), type, pointerId, clientX, clientY);
+
+  const sessions = browser._legacyStickPointers || (browser._legacyStickPointers = new Map());
+  const zone = browser.elements.get(elementId);
+  const canvas = browser.elements.get("game");
+  if (type === "pointerdown") {
+    const ring = zone._stickRing;
+    const ringBounds = ring.getBoundingClientRect();
+    const canvasBounds = canvas.getBoundingClientRect();
+    const oldCenterX = ringBounds.left + ringBounds.width / 2;
+    const oldCenterY = ringBounds.top + ringBounds.height / 2;
+    const originX = canvasBounds.left + canvasBounds.width * (elementId === "move-zone" ? 0.22 : 0.78);
+    const originY = canvasBounds.top + canvasBounds.height * 0.55;
+    const session = { offsetX: originX - oldCenterX, offsetY: originY - oldCenterY };
+    sessions.set(pointerId, session);
+    rawPointer(browser, canvas, type, pointerId, originX, originY);
+    return rawPointer(browser, canvas, "pointermove", pointerId, clientX + session.offsetX, clientY + session.offsetY);
+  }
+
+  const session = sessions.get(pointerId) || { offsetX: 0, offsetY: 0 };
+  const event = rawPointer(browser, canvas, type, pointerId, clientX + session.offsetX, clientY + session.offsetY);
+  if (type === "pointerup" || type === "pointercancel" || type === "lostpointercapture") sessions.delete(pointerId);
+  return event;
+}
+
+function rawPointer(browser, target, type, pointerId, clientX, clientY, additions) {
+  const event = new browser.window.PointerEvent(type, Object.assign({
     pointerId,
     pointerType: "touch",
     isPrimary: pointerId === 11,
@@ -27,7 +54,11 @@ function pointer(browser, elementId, type, pointerId, clientX, clientY) {
     clientY,
     button: 0,
     buttons: type === "pointerup" || type === "pointercancel" || type === "lostpointercapture" ? 0 : 1
-  });
+  }, additions || {}));
+  if (target === browser.window) browser.window.dispatchEvent(event);
+  else if (target === browser.document) browser.emit(browser.document, type, event);
+  else target.dispatchEvent(event);
+  return event;
 }
 
 function key(browser, type, value, code) {
@@ -61,6 +92,7 @@ module.exports = function register(test) {
     assert.deepEqual(
       JSON.parse(JSON.stringify(CONFIG.mobileControls)),
       {
+        stickRadius: 46,
         moveDeadzone: 0.16,
         moveCurve: 1.45,
         moveMaxOutput: 0.72,
@@ -68,14 +100,14 @@ module.exports = function register(test) {
         aimCurve: 1.25,
         aimMaxOutput: 1,
         aimFireThreshold: 0.12,
-        aimTurnRate: 8
+        aimTurnRate: 7.2
       }
     );
 
     const centerX = 250;
     const centerY = 200;
     const size = 100;
-    const limit = size * 0.29;
+    const limit = CONFIG.mobileControls.stickRadius;
     const directions = Array.from({ length: 8 }, (_, index) => {
       const angle = index * Math.PI / 4;
       return { x: Math.cos(angle), y: Math.sin(angle), label: `${index * 45} degrees` };
@@ -127,7 +159,7 @@ module.exports = function register(test) {
     game.state.ship.vx = 0;
     game.state.ship.vy = 0;
 
-    pointer(browser, "aim-zone", "pointerdown", 22, 250, 171);
+    pointer(browser, "aim-zone", "pointerdown", 22, 250, 200 - CONFIG.mobileControls.stickRadius);
     const requested = -Math.PI / 2;
     approximately(Math.atan2(game.input.touchAimY, game.input.touchAimX), requested, 1e-9, "touch aim vector");
     let previous = game.state.ship.angle;
@@ -146,7 +178,7 @@ module.exports = function register(test) {
       1e-7,
       "touch aim world vector"
     );
-    pointer(browser, "aim-zone", "pointerup", 22, 250, 171);
+    pointer(browser, "aim-zone", "pointerup", 22, 250, 200 - CONFIG.mobileControls.stickRadius);
   });
 
   test("low-band touch fire turns and shoots along its shaped aim vector", () => {
@@ -155,7 +187,7 @@ module.exports = function register(test) {
     const centerX = 250;
     const centerY = 200;
     const size = 100;
-    const limit = size * 0.29;
+    const limit = CONFIG.mobileControls.stickRadius;
     aimZone._stickRing.setBoundingClientRect({ left: centerX - size / 2, top: centerY - size / 2, width: size, height: size });
     game.start();
     game.state.asteroids.length = 0;
@@ -292,6 +324,30 @@ module.exports = function register(test) {
     approximately(game.state.ship.angle, heading, 1e-9, "released hybrid touch aim snapped back to mouse");
   });
 
+  test("desktop mouse aim and fire remain independent from dynamic touch sticks", () => {
+    const { browser, game, CONFIG } = bootMobile({ maxTouchPoints: 0 });
+    const canvas = browser.elements.get("game");
+    game.start();
+    game.state.asteroids.length = 0;
+    game.state.aliens.length = 0;
+    game.state.playerBullets.length = 0;
+    game.state.ship.weaponTimers.pulse = 0;
+
+    rawPointer(browser, canvas, "pointermove", 1, 780, 100, { pointerType: "mouse" });
+    rawPointer(browser, canvas, "pointerdown", 1, 780, 100, { pointerType: "mouse" });
+    assert.equal(game.input.pointerActive, true);
+    assert.equal(game.input.pointerFire, true);
+    assert.equal(game.mobile.movePointerId, null);
+    assert.equal(game.mobile.aimPointerId, null);
+    assert.equal(game.input.touchFire, false);
+    game.step(CONFIG.world.fixedStep);
+    assert.ok(game.state.playerBullets.length > 0, "desktop mouse fire stopped working");
+
+    rawPointer(browser, browser.window, "pointerup", 1, 780, 100, { pointerType: "mouse" });
+    assert.equal(game.input.pointerFire, false, "desktop mouse release did not stop firing");
+    assert.equal(game.mobile.touchCapable, false, "mouse input incorrectly promoted desktop to touch mode");
+  });
+
   test("two touch sticks track independent pointer IDs and aim stick fires", () => {
     const { browser, game } = bootMobile();
     game.start();
@@ -305,10 +361,14 @@ module.exports = function register(test) {
     assert.equal(game.input.touchMoveX, moveX, "aim finger stole movement pointer state");
 
     pointer(browser, "move-zone", "pointermove", 22, 520, 360);
-    assert.equal(game.input.touchMoveX, moveX, "wrong pointer ID moved the movement stick");
+    assert.equal(game.input.touchMoveX, moveX, "aim pointer changed the movement stick after crossing halves");
+    assert.equal(game.mobile.aimPointerId, 22, "aim pointer changed ownership after crossing halves");
+    const crossedAimMagnitude = Math.hypot(game.input.touchAimX, game.input.touchAimY);
+    assert.ok(crossedAimMagnitude > 0.2, "aim pointer stopped responding after crossing halves");
     pointer(browser, "move-zone", "pointerup", 11, 760, 360);
     assert.equal(game.input.touchMoveX, 0);
-    assert.ok(game.input.touchAimY < -0.2, "releasing movement also released aim");
+    approximately(Math.hypot(game.input.touchAimX, game.input.touchAimY), crossedAimMagnitude, 1e-9, "releasing movement changed aim magnitude");
+    assert.equal(game.mobile.aimPointerId, 22, "releasing movement also released aim ownership");
     assert.equal(game.input.touchFire, true);
     pointer(browser, "aim-zone", "pointerup", 22, 640, 250);
     assert.equal(game.input.touchAimX, 0);
@@ -316,42 +376,138 @@ module.exports = function register(test) {
     assert.equal(game.input.touchFire, false);
   });
 
-  test("sticks use each visible ring center and edge while capture stays on its larger zone", () => {
+  test("dynamic sticks relocate to arbitrary touches and clamp knob travel to the configured radius", () => {
     const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
     const moveZone = browser.elements.get("move-zone");
     const aimZone = browser.elements.get("aim-zone");
-    moveZone.setBoundingClientRect({ left: 14, top: 250, width: 132, height: 132 });
-    aimZone.setBoundingClientRect({ left: 698, top: 250, width: 132, height: 132 });
-    moveZone._stickRing.setBoundingClientRect({ left: 28, top: 250, width: 104, height: 104 });
-    aimZone._stickRing.setBoundingClientRect({ left: 712, top: 250, width: 104, height: 104 });
+    const moveKnob = browser.elements.get("move-knob");
+    const aimKnob = browser.elements.get("aim-knob");
+    canvas.setBoundingClientRect({ left: 10, top: 20, width: 844, height: 390 });
     game.start();
 
-    // The visible ring centers intentionally differ from their larger zone
-    // centers. A center touch must still be neutral.
-    pointer(browser, "move-zone", "pointerdown", 11, 80, 302);
-    pointer(browser, "aim-zone", "pointerdown", 22, 764, 302);
+    const moveDown = rawPointer(browser, canvas, "pointerdown", 11, 103, 137);
+    const aimDown = rawPointer(browser, canvas, "pointerdown", 22, 747, 286);
+    assert.equal(moveDown.defaultPrevented, true, "movement activation did not own its browser gesture");
+    assert.equal(aimDown.defaultPrevented, true, "aim activation did not own its browser gesture");
+    assert.equal(game.mobile.movePointerId, 11);
+    assert.equal(game.mobile.aimPointerId, 22);
+    assert.deepEqual(JSON.parse(JSON.stringify(game.mobile.moveOrigin)), { x: 103, y: 137 });
+    assert.deepEqual(JSON.parse(JSON.stringify(game.mobile.aimOrigin)), { x: 747, y: 286 });
+    assert.equal(moveZone.classList.contains("is-engaged"), true);
+    assert.equal(aimZone.classList.contains("is-engaged"), true);
+    assert.equal(moveZone.style["--stick-x"], "93px");
+    assert.equal(moveZone.style["--stick-y"], "117px");
+    assert.equal(aimZone.style["--stick-x"], "737px");
+    assert.equal(aimZone.style["--stick-y"], "266px");
     assert.equal(game.input.touchMoveX, 0);
     assert.equal(game.input.touchMoveY, 0);
     assert.equal(game.input.touchAimX, 0);
     assert.equal(game.input.touchAimY, 0);
     assert.equal(game.input.touchFire, false);
-    assert.equal(moveZone.hasPointerCapture(11), true, "movement capture moved off its touch zone");
-    assert.equal(aimZone.hasPointerCapture(22), true, "aim capture moved off its touch zone");
+    assert.equal(moveKnob.style.transform, "translate(-50%, -50%)");
+    assert.equal(aimKnob.style.transform, "translate(-50%, -50%)");
+    assert.equal(canvas.hasPointerCapture(11), true);
+    assert.equal(canvas.hasPointerCapture(22), true);
 
-    // Move to each ring's right edge: deflection clamps to the full range,
-    // and aim deflection starts firing without disturbing movement ownership.
-    pointer(browser, "move-zone", "pointermove", 11, 132, 302);
-    pointer(browser, "aim-zone", "pointermove", 22, 816, 302);
+    rawPointer(browser, canvas, "pointermove", 11, 103 + CONFIG.mobileControls.stickRadius * 4, 137);
+    rawPointer(browser, canvas, "pointermove", 22, 747, 286 - CONFIG.mobileControls.stickRadius * 4);
     assert.ok(game.input.touchMoveX > CONFIG.mobileControls.moveMaxOutput - 0.01 && game.input.touchMoveX <= CONFIG.mobileControls.moveMaxOutput);
     assert.equal(game.input.touchMoveY, 0);
-    assert.ok(game.input.touchAimX > CONFIG.mobileControls.aimMaxOutput - 0.01 && game.input.touchAimX <= CONFIG.mobileControls.aimMaxOutput);
-    assert.equal(game.input.touchAimY, 0);
+    assert.equal(game.input.touchAimX, 0);
+    assert.ok(game.input.touchAimY < -CONFIG.mobileControls.aimMaxOutput + 0.01 && game.input.touchAimY >= -CONFIG.mobileControls.aimMaxOutput);
     assert.equal(game.input.touchFire, true);
-    assert.equal(moveZone.hasPointerCapture(11), true);
-    assert.equal(aimZone.hasPointerCapture(22), true);
+    assert.equal(moveKnob.style.transform, `translate(calc(-50% + ${CONFIG.mobileControls.stickRadius}px), calc(-50% + 0px))`);
+    assert.equal(aimKnob.style.transform, `translate(calc(-50% + 0px), calc(-50% + ${-CONFIG.mobileControls.stickRadius}px))`);
 
-    pointer(browser, "move-zone", "pointerup", 11, 132, 302);
-    pointer(browser, "aim-zone", "pointerup", 22, 816, 302);
+    rawPointer(browser, browser.window, "pointerup", 11, 900, 137);
+    rawPointer(browser, browser.window, "pointerup", 22, 747, -20);
+    assert.equal(moveZone.classList.contains("is-engaged"), false);
+    assert.equal(aimZone.classList.contains("is-engaged"), false);
+    assert.equal(moveZone.style["--stick-x"], undefined);
+    assert.equal(aimZone.style["--stick-y"], undefined);
+    assert.equal(moveKnob.style.transform, "translate(-50%, -50%)");
+    assert.equal(aimKnob.style.transform, "translate(-50%, -50%)");
+  });
+
+  test("canvas touch activation classifies playable halves and rejects non-playfield starts", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    canvas.setBoundingClientRect({ left: 20, top: 10, width: 800, height: 360 });
+    game.start();
+
+    for (const [pointerId, x, y] of [
+      [31, 19, 180],
+      [32, 821, 180],
+      [33, 200, 9],
+      [34, 600, 371]
+    ]) {
+      const event = rawPointer(browser, canvas, "pointerdown", pointerId, x, y);
+      assert.equal(event.defaultPrevented, false, `outside pointer ${pointerId} was incorrectly claimed`);
+      assert.equal(game.mobile.movePointerId, null);
+      assert.equal(game.mobile.aimPointerId, null);
+    }
+
+    for (const id of ["touch-dash", "touch-pulse", "pause-button", "sound-button"]) {
+      rawPointer(browser, browser.elements.get(id), "pointerdown", 40, 700, 200);
+      assert.equal(game.mobile.movePointerId, null, `${id} activated movement`);
+      assert.equal(game.mobile.aimPointerId, null, `${id} activated aim`);
+      assert.equal(game.input.touchFire, false, `${id} activated fire`);
+    }
+
+    rawPointer(browser, canvas, "pointerdown", 51, 21, 18);
+    assert.equal(game.mobile.movePointerId, 51, "top-left playable point did not activate movement");
+    rawPointer(browser, canvas, "pointermove", 51, 800, 18);
+    assert.ok(game.input.touchMoveX > CONFIG.mobileControls.moveMaxOutput - 0.01, "movement pointer stopped when crossing into the other half");
+    assert.equal(game.mobile.aimPointerId, null, "movement pointer changed ownership after crossing halves");
+    assert.equal(game.input.touchFire, false);
+
+    rawPointer(browser, canvas, "pointerdown", 52, 200, 300);
+    assert.equal(game.mobile.movePointerId, 51, "second left-side pointer stole movement ownership");
+    assert.equal(game.mobile.aimPointerId, null, "ignored left-side pointer activated aim");
+
+    rawPointer(browser, canvas, "pointerdown", 61, 420, 369);
+    assert.equal(game.mobile.aimPointerId, 61, "midpoint/right playable point did not activate aim");
+    rawPointer(browser, canvas, "pointermove", 61, 420, 369 - CONFIG.mobileControls.stickRadius);
+    assert.equal(game.input.touchFire, true);
+    assert.equal(game.mobile.movePointerId, 51, "aim activation stole movement ownership");
+
+    rawPointer(browser, browser.window, "pointerup", 51, 800, 18);
+    rawPointer(browser, browser.window, "pointerup", 61, 420, 320);
+    assert.equal(game.mobile.movePointerId, null);
+    assert.equal(game.mobile.aimPointerId, null);
+  });
+
+  test("aim turn speed scales with stick magnitude and stays below its configured maximum", () => {
+    function measure(rawMagnitude, pointerId) {
+      const { browser, game, CONFIG, Core } = bootMobile();
+      const canvas = browser.elements.get("game");
+      game.start();
+      game.state.asteroids.length = 0;
+      game.state.aliens.length = 0;
+      game.state.ship.angle = 0;
+      game.state.ship.vx = 0;
+      game.state.ship.vy = 0;
+      const originX = 700;
+      const originY = 210;
+      rawPointer(browser, canvas, "pointerdown", pointerId, originX, originY);
+      rawPointer(browser, canvas, "pointermove", pointerId, originX, originY - CONFIG.mobileControls.stickRadius * rawMagnitude);
+      const shapedMagnitude = Math.hypot(game.input.touchAimX, game.input.touchAimY);
+      game.step(CONFIG.world.fixedStep);
+      const actualTurn = Math.abs(Core.angleDelta(0, game.state.ship.angle));
+      const expectedTurn = CONFIG.mobileControls.aimTurnRate * CONFIG.world.fixedStep *
+        Math.min(1, shapedMagnitude / CONFIG.mobileControls.aimMaxOutput);
+      approximately(actualTurn, expectedTurn, 1e-9, `aim turn at raw magnitude ${rawMagnitude}`);
+      rawPointer(browser, browser.window, "pointerup", pointerId, originX, originY);
+      return { actualTurn, shapedMagnitude, CONFIG };
+    }
+
+    const half = measure(0.5, 71);
+    const full = measure(1, 72);
+    assert.ok(half.shapedMagnitude > 0 && half.shapedMagnitude < full.shapedMagnitude, "aim shaping lost its analog range");
+    assert.ok(half.actualTurn > 0 && half.actualTurn < full.actualTurn, "partial aim deflection did not turn more slowly");
+    approximately(full.actualTurn, full.CONFIG.mobileControls.aimTurnRate * full.CONFIG.world.fixedStep, 1e-9, "full aim turn cap");
+    assert.equal(full.CONFIG.mobileControls.aimTurnRate, 7.2);
   });
 
   test("pointer cancel and lost capture always neutralize their own touch stick", () => {
@@ -371,6 +527,173 @@ module.exports = function register(test) {
     assert.equal(game.input.touchFire, false, "stale lost-capture pointer regained control");
   });
 
+  test("outside terminal events clear fire when pointer capture is missing or throws", () => {
+    for (const captureMode of ["missing", "throws"]) {
+      const { browser, game, CONFIG } = bootMobile();
+      const canvas = browser.elements.get("game");
+      if (captureMode === "missing") {
+        canvas.setPointerCapture = undefined;
+        canvas.releasePointerCapture = undefined;
+        canvas.hasPointerCapture = undefined;
+      } else {
+        canvas.setPointerCapture = () => { throw new Error("capture denied"); };
+        canvas.releasePointerCapture = () => { throw new Error("release denied"); };
+        canvas.hasPointerCapture = () => true;
+      }
+      game.start();
+      const pointerId = captureMode === "missing" ? 81 : 82;
+      rawPointer(browser, canvas, "pointerdown", pointerId, 700, 200);
+      rawPointer(browser, browser.window, "pointermove", pointerId, 700, 200 - CONFIG.mobileControls.stickRadius);
+      assert.equal(game.input.touchFire, true, `${captureMode} capture did not reproduce active fire`);
+
+      const terminal = captureMode === "missing" ? "pointerup" : "pointercancel";
+      rawPointer(browser, browser.window, terminal, pointerId, 900, -40);
+      assert.equal(game.mobile.aimPointerId, null, `${captureMode} capture retained aim ownership`);
+      assert.equal(game.input.touchAimX, 0);
+      assert.equal(game.input.touchAimY, 0);
+      assert.equal(game.input.touchFire, false, `${captureMode} capture left automatic fire latched`);
+
+      rawPointer(browser, browser.window, "pointermove", pointerId, 720, 180);
+      assert.equal(game.input.touchFire, false, `${captureMode} stale pointer restarted fire`);
+      const freshId = pointerId + 20;
+      rawPointer(browser, canvas, "pointerdown", freshId, 650, 220);
+      rawPointer(browser, browser.window, "pointermove", freshId, 650 + CONFIG.mobileControls.stickRadius, 220);
+      assert.equal(game.mobile.aimPointerId, freshId, `${captureMode} capture blocked a fresh pointer`);
+      assert.equal(game.input.touchFire, true);
+      rawPointer(browser, browser.window, "pointerup", freshId, 700, 220);
+    }
+  });
+
+  test("Pulse and Dash cannot create or preserve stuck automatic fire", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    game.start();
+    rawPointer(browser, canvas, "pointerdown", 91, 690, 210);
+    rawPointer(browser, canvas, "pointermove", 91, 690, 210 - CONFIG.mobileControls.stickRadius);
+    assert.equal(game.input.touchFire, true);
+
+    browser.elements.get("touch-pulse").click();
+    browser.elements.get("touch-dash").click();
+    game.step(CONFIG.world.fixedStep);
+    assert.ok(game.state.ship.dashCooldown > 0, "Dash was not consumed during aim fire");
+    assert.ok(game.state.ship.pulse < 99.5, "Pulse was not consumed during aim fire");
+    rawPointer(browser, browser.window, "pointerup", 91, 690, 100);
+    assert.equal(game.input.touchFire, false, "action-button sequence left fire latched");
+
+    browser.elements.get("touch-pulse").click();
+    browser.elements.get("touch-dash").click();
+    assert.equal(game.input.touchFire, false, "action buttons created fire without an aim pointer");
+    assert.equal(game.mobile.aimPointerId, null);
+  });
+
+  test("touch blur clears active sticks without pausing and stale IDs stay inert", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    game.start();
+    rawPointer(browser, canvas, "pointerdown", 101, 160, 210);
+    rawPointer(browser, canvas, "pointermove", 101, 160 + CONFIG.mobileControls.stickRadius, 210);
+    rawPointer(browser, canvas, "pointerdown", 102, 680, 210);
+    rawPointer(browser, canvas, "pointermove", 102, 680, 210 - CONFIG.mobileControls.stickRadius);
+    assert.equal(game.input.touchFire, true);
+
+    browser.window.dispatchEvent({ type: "blur" });
+    assert.equal(game.state.mode, "playing", "touch browser-chrome blur paused the run");
+    assert.equal(game.mobile.movePointerId, null);
+    assert.equal(game.mobile.aimPointerId, null);
+    assert.equal(game.input.touchMoveX, 0);
+    assert.equal(game.input.touchFire, false);
+    rawPointer(browser, browser.window, "pointermove", 102, 720, 100);
+    assert.equal(game.input.touchFire, false, "blurred stale pointer restarted fire");
+
+    rawPointer(browser, canvas, "pointerdown", 103, 700, 200);
+    rawPointer(browser, canvas, "pointermove", 103, 700 + CONFIG.mobileControls.stickRadius, 200);
+    assert.equal(game.input.touchFire, true, "fresh aim pointer failed after blur");
+    rawPointer(browser, browser.window, "pointerup", 103, 760, 200);
+  });
+
+  test("pagehide and run-mode transitions clear aim ownership and fire", () => {
+    const terminalCases = [
+      {
+        label: "pagehide",
+        trigger(browser) { browser.window.dispatchEvent({ type: "pagehide" }); },
+        expectedMode: "paused"
+      },
+      {
+        label: "pause",
+        trigger(browser) { browser.elements.get("pause-button").click(); },
+        expectedMode: "paused"
+      },
+      {
+        label: "menu",
+        trigger(browser, game) { game.state.mode = "paused"; browser.elements.get("pause-menu-button").click(); },
+        expectedMode: "menu"
+      }
+    ];
+
+    for (const [index, item] of terminalCases.entries()) {
+      const { browser, game, CONFIG } = bootMobile();
+      const canvas = browser.elements.get("game");
+      game.start();
+      const pointerId = 111 + index;
+      rawPointer(browser, canvas, "pointerdown", pointerId, 690, 210);
+      rawPointer(browser, canvas, "pointermove", pointerId, 690, 210 - CONFIG.mobileControls.stickRadius);
+      assert.equal(game.input.touchFire, true, `${item.label} precondition failed`);
+      item.trigger(browser, game);
+      assert.equal(game.state.mode, item.expectedMode, `${item.label} mode mismatch`);
+      assert.equal(game.mobile.aimPointerId, null, `${item.label} retained aim ownership`);
+      assert.equal(game.input.touchFire, false, `${item.label} retained fire`);
+      rawPointer(browser, browser.window, "pointermove", pointerId, 750, 80);
+      assert.equal(game.input.touchFire, false, `${item.label} stale pointer restarted fire`);
+    }
+
+    const transition = bootMobile();
+    transition.game.start();
+    const transitionCanvas = transition.browser.elements.get("game");
+    rawPointer(transition.browser, transitionCanvas, "pointerdown", 121, 700, 210);
+    rawPointer(transition.browser, transitionCanvas, "pointermove", 121, 700, 210 - transition.CONFIG.mobileControls.stickRadius);
+    const data = transition.game.state.encounterData;
+    transition.game.state.asteroids.length = 0;
+    transition.game.state.aliens.length = 0;
+    data.waveIndex = data.waveCount - 1;
+    data.waveNumber = data.waveCount;
+    data.pendingSpawns.length = 0;
+    data.requeue.length = 0;
+    data.waveSpawned = true;
+    data.waveRequiredTotal = data.waveRequiredCleared = 1;
+    data.stageRequiredTotal = data.stageRequiredCleared = 1;
+    data.goalProgress = data.goalTarget - 1;
+    transition.game.step(transition.CONFIG.world.fixedStep);
+    assert.equal(transition.game.state.mode, "transition", "stage clear did not enter transition");
+    assert.equal(transition.game.input.touchFire, false, "transition retained touch fire");
+    assert.equal(transition.game.mobile.aimPointerId, null, "transition retained aim ownership");
+
+    const gameover = bootMobile();
+    gameover.game.start();
+    const gameoverCanvas = gameover.browser.elements.get("game");
+    rawPointer(gameover.browser, gameoverCanvas, "pointerdown", 122, 700, 210);
+    rawPointer(gameover.browser, gameoverCanvas, "pointermove", 122, 700, 210 - gameover.CONFIG.mobileControls.stickRadius);
+    const ship = gameover.game.state.ship;
+    gameover.game.state.asteroids.length = 0;
+    gameover.game.state.aliens.length = 0;
+    ship.hull = 1;
+    ship.invulnerable = 0;
+    gameover.game.spawnAsteroid("rock", {
+      x: ship.x,
+      y: ship.y,
+      velocityAngle: 0,
+      speed: 0.25,
+      health: 1000,
+      required: false,
+      threatCost: 0,
+      noDrops: true,
+      collisionGrace: 0
+    });
+    gameover.game.step(gameover.CONFIG.world.fixedStep);
+    assert.equal(gameover.game.state.mode, "gameover", "fatal contact did not enter game over");
+    assert.equal(gameover.game.input.touchFire, false, "game over retained touch fire");
+    assert.equal(gameover.game.mobile.aimPointerId, null, "game over retained aim ownership");
+  });
+
   test("visibility pause resets captured touch ownership before resume", () => {
     const { browser, game } = bootMobile();
     game.start();
@@ -382,8 +705,8 @@ module.exports = function register(test) {
     assert.equal(game.state.mode, "paused");
     assert.equal(game.input.touchMoveX, 0);
     assert.equal(game.input.touchFire, false);
-    assert.equal(browser.elements.get("move-zone").hasPointerCapture(11), false, "visibility pause retained movement capture");
-    assert.equal(browser.elements.get("aim-zone").hasPointerCapture(22), false, "visibility pause retained aim capture");
+    assert.equal(browser.elements.get("game").hasPointerCapture(11), false, "visibility pause retained movement capture");
+    assert.equal(browser.elements.get("game").hasPointerCapture(22), false, "visibility pause retained aim capture");
 
     browser.document.hidden = false;
     browser.document.visibilityState = "visible";
@@ -398,13 +721,12 @@ module.exports = function register(test) {
     game.start();
     game.state.asteroids.length = 0;
     game.state.aliens.length = 0;
-    const moveZone = browser.elements.get("move-zone");
-    const aimZone = browser.elements.get("aim-zone");
+    const canvas = browser.elements.get("game");
 
     pointer(browser, "move-zone", "pointerdown", 11, 760, 360);
     pointer(browser, "aim-zone", "pointerdown", 22, 640, 250);
-    assert.equal(moveZone.hasPointerCapture(11), true);
-    assert.equal(aimZone.hasPointerCapture(22), true);
+    assert.equal(canvas.hasPointerCapture(11), true);
+    assert.equal(canvas.hasPointerCapture(22), true);
     assert.notEqual(game.input.touchMoveX, 0);
     assert.notEqual(game.input.touchAimY, 0);
     game.state.ship.vx = 143;
@@ -417,8 +739,8 @@ module.exports = function register(test) {
     assert.equal(game.input.touchAimX, 0);
     assert.equal(game.input.touchAimY, 0);
     assert.equal(game.input.touchFire, false);
-    assert.equal(moveZone.hasPointerCapture(11), false, "pause retained movement pointer capture");
-    assert.equal(aimZone.hasPointerCapture(22), false, "pause retained aim pointer capture");
+    assert.equal(canvas.hasPointerCapture(11), false, "pause retained movement pointer capture");
+    assert.equal(canvas.hasPointerCapture(22), false, "pause retained aim pointer capture");
     assert.equal(game.state.ship.vx, 0, "paused ship retained horizontal drift");
     assert.equal(game.state.ship.vy, 0, "paused ship retained vertical drift");
 
@@ -442,8 +764,8 @@ module.exports = function register(test) {
     pointer(browser, "aim-zone", "pointerdown", 44, 640, 250);
     assert.notEqual(game.input.touchMoveX, 0, "fresh movement pointer could not take ownership");
     assert.notEqual(game.input.touchAimY, 0, "fresh aim pointer could not take ownership");
-    assert.equal(moveZone.hasPointerCapture(33), true);
-    assert.equal(aimZone.hasPointerCapture(44), true);
+    assert.equal(canvas.hasPointerCapture(33), true);
+    assert.equal(canvas.hasPointerCapture(44), true);
     pointer(browser, "move-zone", "pointerup", 33, 760, 360);
     pointer(browser, "aim-zone", "pointerup", 44, 640, 250);
   });
@@ -475,6 +797,40 @@ module.exports = function register(test) {
     assert.equal(game.state.pausedByVisibility, true);
   });
 
+  test("browser touch smoke moves, aims, fires, and returns to neutral through real PointerEvents", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    game.start();
+    game.state.asteroids.length = 0;
+    game.state.aliens.length = 0;
+    game.state.playerBullets.length = 0;
+    game.state.ship.vx = 0;
+    game.state.ship.vy = 0;
+    game.state.ship.weaponTimers.pulse = 0;
+    const startX = game.state.ship.x;
+
+    rawPointer(browser, canvas, "pointerdown", 131, 160, 230);
+    rawPointer(browser, canvas, "pointermove", 131, 160 + CONFIG.mobileControls.stickRadius, 230);
+    rawPointer(browser, canvas, "pointerdown", 132, 680, 230);
+    rawPointer(browser, canvas, "pointermove", 132, 680, 230 - CONFIG.mobileControls.stickRadius);
+    browser.pumpFrames(30);
+    assert.ok(game.state.ship.x > startX, "touch smoke did not move the ship right");
+    assert.ok(game.state.ship.angle < -0.1, "touch smoke did not turn the ship upward");
+    assert.ok(game.state.playerBullets.length > 0, "touch smoke did not fire a projectile");
+
+    rawPointer(browser, browser.window, "pointerup", 131, 900, 230);
+    rawPointer(browser, browser.window, "pointerup", 132, 680, -20);
+    assert.equal(game.input.touchMoveX, 0);
+    assert.equal(game.input.touchMoveY, 0);
+    assert.equal(game.input.touchAimX, 0);
+    assert.equal(game.input.touchAimY, 0);
+    assert.equal(game.input.touchFire, false);
+    game.state.playerBullets.length = 0;
+    game.state.ship.weaponTimers.pulse = 0;
+    browser.pumpFrames(2);
+    assert.equal(game.state.playerBullets.length, 0, "touch smoke kept firing after both fingers released");
+  });
+
   test("desktop blur retains automatic pause behavior", () => {
     const { browser, game } = bootMobile({ maxTouchPoints: 0 });
     game.start();
@@ -492,8 +848,8 @@ module.exports = function register(test) {
     game.start();
     pointer(browser, "move-zone", "pointerdown", 11, 760, 360);
     pointer(browser, "aim-zone", "pointerdown", 22, 640, 250);
-    assert.equal(browser.elements.get("move-zone").hasPointerCapture(11), true);
-    assert.equal(browser.elements.get("aim-zone").hasPointerCapture(22), true);
+    assert.equal(browser.elements.get("game").hasPointerCapture(11), true);
+    assert.equal(browser.elements.get("game").hasPointerCapture(22), true);
     rotate(browser, game, 390, 844);
     const overlay = browser.elements.get("orientation-overlay");
     assert.equal(game.mobile.orientationBlocked, true);
@@ -518,8 +874,8 @@ module.exports = function register(test) {
     assert.equal(game.state.runTime, before, "portrait mode advanced simulation");
     assert.equal(game.input.touchMoveX, 0, "portrait mode retained movement input");
     assert.equal(game.input.touchFire, false, "portrait mode retained fire input");
-    assert.equal(browser.elements.get("move-zone").hasPointerCapture(11), false, "portrait gate retained movement capture");
-    assert.equal(browser.elements.get("aim-zone").hasPointerCapture(22), false, "portrait gate retained aim capture");
+    assert.equal(browser.elements.get("game").hasPointerCapture(11), false, "portrait gate retained movement capture");
+    assert.equal(browser.elements.get("game").hasPointerCapture(22), false, "portrait gate retained aim capture");
     assert.equal(game.state.mode, "playing", "orientation gate was incorrectly implemented as pause/menu state");
 
     browser.window.innerWidth = 844;

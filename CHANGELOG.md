@@ -2,6 +2,29 @@
 
 All notable user-facing changes to Neon Voyage are documented here. Versions follow semantic versioning.
 
+## [1.2.3] — 2026-08-13
+
+### Added
+
+- Added dynamic mobile joysticks inspired by modern touch games: a fresh canvas touch establishes the movement stick anywhere on the playable left half or the aim/fire stick anywhere on the right half.
+- Made each new stick origin initially neutral and pointer-owned. Its base stays fixed while the knob follows that finger—even across the center line—until a terminal event, then returns to its idle visual position without disturbing the other stick.
+
+### Fixed
+
+- Prevented touch firing from remaining latched after release, cancellation, lost capture, visibility changes, page exit, pause, orientation blocking, or another control-mode transition.
+- Added global pointer termination handling and a live aim-stick ownership guard, so browsers that reject or unexpectedly lose pointer capture cannot leave an attack active.
+- Kept Dash, Void Pulse, and HUD actions independent from the dynamic canvas sticks, including while movement and aim are both held.
+
+### Changed
+
+- Made touch response fully analog across each stick radius. Partial movement remains deliberate while greater deflection smoothly approaches the configured movement maximum.
+- Scaled aim turning by stick magnitude and reduced its full-deflection cap from 8 to 7.2 radians per second, providing finer partial-aim control without removing fast turning at the edge.
+
+### Quality
+
+- Added deterministic mobile regressions for half-screen stick assignment, dynamic origins, neutral initial contact, magnitude-scaled turning, simultaneous action buttons, global terminal cleanup, capture failure, and stale-fire prevention.
+- Added a required rendered browser smoke and honest evidence boundary to `AGENTS.md`: use an allowed prepublication preview when available, otherwise complete a live Play check immediately after Pages deploy; simulated phone/tablet checks are never mislabeled as physical-device acceptance.
+
 ## [1.2.2] — 2026-08-13
 
 ### Fixed

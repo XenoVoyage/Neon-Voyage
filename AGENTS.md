@@ -38,10 +38,12 @@ Read this file before changing the project. Read the related runtime, tests, and
 - Mobile play is landscape-only. Portrait uses a blocking orientation gate that owns covered UI, keyboard, pointer, and gamepad input; it freezes simulation and clears input without changing the run mode. Returning to landscape resumes the same state without replaying held buttons. Screen Orientation locking is best-effort and must never be required for play.
 - Track simultaneous touch sticks by independent pointer IDs, and release each capture on pointer up, pointer cancel, lost capture, visibility loss, and orientation blocking. Cover these paths, hybrid detection, focus/visibility behavior, and rejected orientation locks with browser-VM regressions.
 - Keep mobile stick response radial and config-driven, preserve the chosen heading after aim release, and make touch pause release captures and stop drift until fresh input. Suppress accidental double-tap zoom through gesture ownership without adding a blanket `user-scalable=no` viewport restriction.
+- Mobile joysticks are dynamic controls: a fresh touch on the playable left or right canvas half establishes that stick's logical origin, remains owned by one pointer until a terminal event, and returns to its idle visual position after cleanup. Gameplay overlays and action buttons must remain independently operable.
 - Automatic combat spawns must account for full entity radii, visible-field containment, nearby threats, and a tested minimum contact time. Adapt size only to the configured safe floor; otherwise preserve the pending objective and retry when space becomes available instead of forcing or dropping a spawn. Seed-sweep opening placements across compact and desktop viewports whenever spawn logic changes.
 - Keep the 20-minute stress audit finite and under every configured cap. Never weaken a release test merely to hide an application defect.
 - Run targeted tests while iterating, then `node tests/run.js` for a coherent release candidate.
 - Automated checks establish contracts and regressions. Never claim that visuals, balance, difficulty, responsiveness, or overall game feel were manually accepted unless a human reviewer actually accepted them.
+- Before every public release, exercise the frozen candidate through the rendered browser smoke in addition to the full deterministic suite. When an allowed preview URL is available, also play that candidate in an actual browser before publication. When browser security prevents local preview, perform an actual live Play smoke immediately after Pages deploy and do not declare the release complete until it passes. Cover desktop plus automated phone-class and tablet-class landscape layouts; on real touch hardware, manually check partial/full deflection, two-thumb Dash/Pulse, pause/resume, release/cancel, and stage progress whenever that hardware is available. Record only what was actually observed, and never describe a simulated touch test as manual hardware acceptance.
 
 ## Coherent release updates
 
@@ -51,8 +53,9 @@ Every coherent public update must include all of the following in one clean publ
 2. Add a professional, user-facing entry to `CHANGELOG.md`.
 3. Update `README.md` and `AUDIT.md` to match implemented behavior only.
 4. Add or update permanent deterministic tests and run the full suite.
-5. Regenerate `SHA256SUMS` only after all release files are frozen, then verify every entry.
-6. Review the complete diff and publish one clean commit to public `main`.
-7. Verify CI, Pages deployment, and the live repository-subpath URL after publication.
+5. Complete and document the browser-smoke gate above; if local preview is blocked, record that boundary and require the immediate post-deploy live Play check.
+6. Regenerate `SHA256SUMS` only after all release files are frozen, then verify every entry.
+7. Review the complete diff and publish one clean commit to public `main`.
+8. Verify CI, Pages deployment, and the live repository-subpath URL after publication, including one final live Play action.
 
 Do not split one coherent update across partial public commits. Do not claim publication, CI, Pages, checksum, or live-site success before it is observed. If access or deployment blocks final verification, report the exact blocker and leave the repository in a tested, recoverable state.

@@ -113,7 +113,24 @@
     gamepadFire: false,
     lastGamepadButtons: []
   };
-  const stickCleanups = [];
+  const touchSticks = {
+    move: {
+      kind: "move",
+      zone: dom.moveZone,
+      knob: dom.moveKnob,
+      activeId: null,
+      originX: 0,
+      originY: 0
+    },
+    aim: {
+      kind: "aim",
+      zone: dom.aimZone,
+      knob: dom.aimKnob,
+      activeId: null,
+      originX: 0,
+      originY: 0
+    }
+  };
   let touchCapable = false;
   let orientationBlocked = false;
 
@@ -272,6 +289,7 @@
   }
 
   function setMode(mode) {
+    if (state.mode !== mode) clearTouchSticks();
     state.mode = mode;
     overlay(dom.menuOverlay, mode === "menu");
     overlay(dom.pauseOverlay, mode === "paused");
@@ -496,9 +514,7 @@
     input.gamepadAimY = 0;
     input.gamepadFire = false;
     input.lastGamepadButtons = [];
-    for (const resetStick of stickCleanups) resetStick();
-    if (dom.moveKnob) dom.moveKnob.style.transform = "translate(-50%, -50%)";
-    if (dom.aimKnob) dom.aimKnob.style.transform = "translate(-50%, -50%)";
+    clearTouchSticks();
   }
 
   function resetBlockedInput() {
@@ -536,7 +552,11 @@
   });
 
   canvas.addEventListener("pointermove", (event) => {
-    if (orientationBlocked || event.pointerType === "touch") return;
+    if (orientationBlocked) return;
+    if (event.pointerType === "touch") {
+      updateTouchStick(event);
+      return;
+    }
     const bounds = canvas.getBoundingClientRect();
     input.pointerX = event.clientX - bounds.left;
     input.pointerY = event.clientY - bounds.top;
@@ -544,17 +564,28 @@
   });
   canvas.addEventListener("pointerdown", (event) => {
     noteTouchInteraction(event);
-    if (orientationBlocked || event.pointerType === "touch") return;
+    if (orientationBlocked) return;
+    if (event.pointerType === "touch") {
+      beginTouchStick(event);
+      return;
+    }
     audio.ensure();
     input.pointerFire = true;
     input.pointerActive = true;
     canvas.setPointerCapture?.(event.pointerId);
   });
   canvas.addEventListener("pointerup", (event) => {
-    if (event.pointerType !== "touch") input.pointerFire = false;
+    if (event.pointerType === "touch") endTouchStick(event);
+    else input.pointerFire = false;
   });
-  canvas.addEventListener("pointercancel", () => { input.pointerFire = false; });
-  canvas.addEventListener("lostpointercapture", () => { input.pointerFire = false; });
+  canvas.addEventListener("pointercancel", (event) => {
+    if (event.pointerType === "touch") endTouchStick(event);
+    else input.pointerFire = false;
+  });
+  canvas.addEventListener("lostpointercapture", (event) => {
+    if (event.pointerType === "touch") endTouchStick(event);
+    else input.pointerFire = false;
+  });
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 
   function shapeTouchVector(x, y, deadzone, curve, maxOutput) {
@@ -567,86 +598,130 @@
     return { x: x / length * magnitude, y: y / length * magnitude };
   }
 
-  function bindStick(zone, knob, kind) {
-    if (!zone || !knob) return;
-    let activeId = null;
-    const update = (event) => {
-      const ring = knob.parentElement || zone.querySelector(".stick-ring") || zone;
-      const bounds = ring.getBoundingClientRect();
-      const dx = event.clientX - (bounds.left + bounds.width / 2);
-      const dy = event.clientY - (bounds.top + bounds.height / 2);
-      const limit = Math.max(24, Math.min(bounds.width, bounds.height) * 0.29);
-      const length = Math.hypot(dx, dy);
-      const scale = length > limit ? limit / length : 1;
-      const x = dx * scale;
-      const y = dy * scale;
-      knob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
-      if (kind === "move") {
-        const response = shapeTouchVector(
-          x / limit,
-          y / limit,
-          CONFIG.mobileControls.moveDeadzone,
-          CONFIG.mobileControls.moveCurve,
-          CONFIG.mobileControls.moveMaxOutput
-        );
-        input.touchMoveX = response.x;
-        input.touchMoveY = response.y;
-      } else {
-        const response = shapeTouchVector(
-          x / limit,
-          y / limit,
-          CONFIG.mobileControls.aimDeadzone,
-          CONFIG.mobileControls.aimCurve,
-          CONFIG.mobileControls.aimMaxOutput
-        );
-        input.touchAimX = response.x;
-        input.touchAimY = response.y;
-        input.touchFire = Math.hypot(response.x, response.y) > CONFIG.mobileControls.aimFireThreshold;
-      }
-    };
-    zone.addEventListener("pointerdown", (event) => {
-      noteTouchInteraction(event);
-      if (orientationBlocked) return;
-      if (activeId !== null) return;
-      activeId = event.pointerId;
-      zone.setPointerCapture?.(activeId);
-      audio.ensure();
-      requestLandscapeLock();
-      update(event);
-      event.preventDefault();
-    });
-    zone.addEventListener("pointermove", (event) => {
-      if (event.pointerId === activeId) update(event);
-    });
-    const clear = () => {
-      const capturedId = activeId;
-      activeId = null;
-      if (capturedId !== null && zone.hasPointerCapture?.(capturedId)) {
-        try {
-          zone.releasePointerCapture?.(capturedId);
-        } catch {
-          // Capture may already have ended as part of this same pointer event.
-        }
-      }
-      knob.style.transform = "translate(-50%, -50%)";
-      if (kind === "move") input.touchMoveX = input.touchMoveY = 0;
-      else {
-        input.touchAimX = input.touchAimY = 0;
-        input.touchFire = false;
-      }
-    };
-    const end = (event) => {
-      if (event.pointerId !== activeId) return;
-      clear();
-    };
-    stickCleanups.push(clear);
-    zone.addEventListener("pointerup", end);
-    zone.addEventListener("pointercancel", end);
-    zone.addEventListener("lostpointercapture", end);
+  function touchStickForPointer(pointerId) {
+    if (touchSticks.move.activeId === pointerId) return touchSticks.move;
+    if (touchSticks.aim.activeId === pointerId) return touchSticks.aim;
+    return null;
   }
 
-  bindStick(dom.moveZone, dom.moveKnob, "move");
-  bindStick(dom.aimZone, dom.aimKnob, "aim");
+  function placeTouchStick(stick, clientX, clientY, canvasBounds) {
+    if (!stick.zone) return;
+    stick.zone.classList.add("is-engaged");
+    stick.zone.style.setProperty("--stick-x", `${clientX - canvasBounds.left}px`);
+    stick.zone.style.setProperty("--stick-y", `${clientY - canvasBounds.top}px`);
+  }
+
+  function resetTouchStickVisual(stick) {
+    if (stick.knob) stick.knob.style.transform = "translate(-50%, -50%)";
+    if (!stick.zone) return;
+    stick.zone.classList.remove("is-engaged");
+    stick.zone.style.removeProperty("--stick-x");
+    stick.zone.style.removeProperty("--stick-y");
+  }
+
+  function writeTouchStick(stick, clientX, clientY) {
+    const radius = Math.max(24, Number(CONFIG.mobileControls.stickRadius) || 46);
+    const dx = clientX - stick.originX;
+    const dy = clientY - stick.originY;
+    const length = Math.hypot(dx, dy);
+    const scale = length > radius ? radius / length : 1;
+    const x = dx * scale;
+    const y = dy * scale;
+    if (stick.knob) {
+      stick.knob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+    }
+    if (stick.kind === "move") {
+      const response = shapeTouchVector(
+        x / radius,
+        y / radius,
+        CONFIG.mobileControls.moveDeadzone,
+        CONFIG.mobileControls.moveCurve,
+        CONFIG.mobileControls.moveMaxOutput
+      );
+      input.touchMoveX = response.x;
+      input.touchMoveY = response.y;
+      return;
+    }
+    const response = shapeTouchVector(
+      x / radius,
+      y / radius,
+      CONFIG.mobileControls.aimDeadzone,
+      CONFIG.mobileControls.aimCurve,
+      CONFIG.mobileControls.aimMaxOutput
+    );
+    input.touchAimX = response.x;
+    input.touchAimY = response.y;
+    input.touchFire = Math.hypot(response.x, response.y) > CONFIG.mobileControls.aimFireThreshold;
+  }
+
+  function beginTouchStick(event) {
+    if (!event || event.pointerType !== "touch" || orientationBlocked || state.mode !== "playing") return false;
+    if (touchStickForPointer(event.pointerId)) return false;
+    const bounds = canvas.getBoundingClientRect();
+    const localX = event.clientX - bounds.left;
+    const localY = event.clientY - bounds.top;
+    if (localX < 0 || localY < 0 || localX > bounds.width || localY > bounds.height) return false;
+    const stick = localX < bounds.width * 0.5 ? touchSticks.move : touchSticks.aim;
+    if (stick.activeId !== null) return false;
+    stick.activeId = event.pointerId;
+    stick.originX = event.clientX;
+    stick.originY = event.clientY;
+    if (stick.kind === "move") input.touchMoveX = input.touchMoveY = 0;
+    else {
+      input.touchAimX = input.touchAimY = 0;
+      input.touchFire = false;
+    }
+    placeTouchStick(stick, event.clientX, event.clientY, bounds);
+    try {
+      canvas.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Global terminal listeners still release the stick when capture is unavailable.
+    }
+    audio.ensure();
+    requestLandscapeLock();
+    event.preventDefault();
+    return true;
+  }
+
+  function updateTouchStick(event) {
+    const stick = event && touchStickForPointer(event.pointerId);
+    if (!stick || orientationBlocked || state.mode !== "playing") return false;
+    writeTouchStick(stick, event.clientX, event.clientY);
+    event.preventDefault?.();
+    return true;
+  }
+
+  function clearTouchStick(stick) {
+    const pointerId = stick.activeId;
+    stick.activeId = null;
+    stick.originX = 0;
+    stick.originY = 0;
+    if (pointerId !== null && typeof canvas.releasePointerCapture === "function") {
+      try {
+        if (!canvas.hasPointerCapture || canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+      } catch {
+        // The browser may have already released capture for this terminal event.
+      }
+    }
+    resetTouchStickVisual(stick);
+    if (stick.kind === "move") input.touchMoveX = input.touchMoveY = 0;
+    else {
+      input.touchAimX = input.touchAimY = 0;
+      input.touchFire = false;
+    }
+  }
+
+  function clearTouchSticks() {
+    clearTouchStick(touchSticks.move);
+    clearTouchStick(touchSticks.aim);
+  }
+
+  function endTouchStick(event) {
+    const stick = event && touchStickForPointer(event.pointerId);
+    if (!stick) return false;
+    clearTouchStick(stick);
+    return true;
+  }
 
   global.addEventListener("resize", () => {
     renderer.resize();
@@ -656,6 +731,17 @@
   });
   global.addEventListener("orientationchange", updateOrientationState);
   global.addEventListener("pointerdown", noteTouchInteraction, { capture: true, passive: true });
+  global.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "touch") updateTouchStick(event);
+  }, { passive: false });
+  global.addEventListener("pointerup", (event) => {
+    if (event.pointerType === "touch") endTouchStick(event);
+    else input.pointerFire = false;
+  }, { capture: true });
+  global.addEventListener("pointercancel", (event) => {
+    if (event.pointerType === "touch") endTouchStick(event);
+    else input.pointerFire = false;
+  }, { capture: true });
   global.document.addEventListener("fullscreenchange", updateSettingsUI);
   global.document.addEventListener("visibilitychange", () => {
     if (global.document.hidden && (state.mode === "playing" || state.mode === "transition")) {
@@ -667,7 +753,16 @@
     if (!touchCapable && (state.mode === "playing" || state.mode === "transition")) {
       state.pausedByVisibility = true;
       togglePause(true);
+    } else if (touchCapable) {
+      clearTouchSticks();
+      input.pointerFire = false;
     }
+  });
+  global.addEventListener("pagehide", () => {
+    if (state.mode === "playing" || state.mode === "transition") {
+      state.pausedByVisibility = true;
+      togglePause(true);
+    } else clearTouchSticks();
   });
 
   function deadzone(value, edge) {
@@ -824,7 +919,8 @@
   }
 
   function shouldFire() {
-    return Boolean(input.keys.space || input.pointerFire || input.touchFire || input.gamepadFire);
+    const touchFire = input.touchFire && (!touchCapable || touchSticks.aim.activeId !== null);
+    return Boolean(input.keys.space || input.pointerFire || touchFire || input.gamepadFire);
   }
 
   function constrainShipToCombatField(ship) {
@@ -855,8 +951,11 @@
     const ship = state.ship;
     const move = readMovement();
     const aim = readAim(ship);
-    if (Math.hypot(input.touchAimX, input.touchAimY) > TOUCH_INPUT_EPSILON) {
-      const turn = clamp(Core.angleDelta(ship.angle, aim), -CONFIG.mobileControls.aimTurnRate * dt, CONFIG.mobileControls.aimTurnRate * dt);
+    const touchAimMagnitude = Math.hypot(input.touchAimX, input.touchAimY);
+    if (touchAimMagnitude > TOUCH_INPUT_EPSILON) {
+      const turnScale = clamp(touchAimMagnitude / Math.max(TOUCH_INPUT_EPSILON, CONFIG.mobileControls.aimMaxOutput), 0, 1);
+      const maximumTurn = CONFIG.mobileControls.aimTurnRate * turnScale * dt;
+      const turn = clamp(Core.angleDelta(ship.angle, aim), -maximumTurn, maximumTurn);
       ship.angle += turn;
       state.aimWorld.x = ship.x + Math.cos(ship.angle) * 400;
       state.aimWorld.y = ship.y + Math.sin(ship.angle) * 400;
@@ -3064,6 +3163,11 @@
     mobile: Object.freeze({
       get touchCapable() { return touchCapable; },
       get orientationBlocked() { return orientationBlocked; },
+      get movePointerId() { return touchSticks.move.activeId; },
+      get aimPointerId() { return touchSticks.aim.activeId; },
+      get moveOrigin() { return { x: touchSticks.move.originX, y: touchSticks.move.originY }; },
+      get aimOrigin() { return { x: touchSticks.aim.originX, y: touchSticks.aim.originY }; },
+      clearTouchSticks,
       updateOrientationState
     }),
     config: CONFIG

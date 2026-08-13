@@ -1,9 +1,9 @@
 # Neon Voyage
 
-[![Version 1.2.2](https://img.shields.io/badge/version-1.2.2-63f7f0)](CHANGELOG.md)
+[![Version 1.2.3](https://img.shields.io/badge/version-1.2.3-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
-[![Local audit: 73/73](https://img.shields.io/badge/local_audit-73%2F73_pass-78ff9f)](AUDIT.md)
+[![Local audit: 81/81](https://img.shields.io/badge/local_audit-81%2F81_pass-78ff9f)](AUDIT.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
 
 Neon Voyage is a fast, fixed-screen 2D space shooter built for a local browser. Leave Earth behind through finite asteroid waves, discover increasingly unfamiliar space, shatter a Titan, and survive first contact before confronting an alien command ship.
@@ -28,13 +28,15 @@ Audio begins after the first click or key press because browsers require a user 
 
 ### Mobile and tablet play
 
-Touch devices use two independent on-screen sticks: move with the left thumb, and aim and fire with the right. Each stick uses a radial deadzone and response curve around its visible neutral point, while the larger surrounding area remains available for reliable pointer capture. Movement output is capped for finer control, touch aiming turns at a bounded rate, and releasing the aim stick preserves the selected heading. Small intentional aim input and low-band firing share the same direction logic, so a shot cannot leave along the ship's old heading while the ship turns elsewhere. Dash and Void Pulse remain separate action buttons. Touch capability is detected from the device, any available coarse pointer, or an actual touch, so an iPad with a connected trackpad keeps the finger controls available without retaining a stale mouse target.
+Touch devices use two independent dynamic sticks. A fresh touch anywhere on the playable left half establishes the movement stick beneath that thumb; the right half does the same for aim and fire. The first contact is neutral, so the ship cannot move or fire until the finger deliberately drags away from that new origin. The base stays anchored there while the knob follows its owning finger—even across the center line—until release or cancellation, after which the control returns to its unobtrusive idle position.
+
+Stick distance is analog rather than all-or-nothing: partial movement produces a slower response, while greater deflection approaches the configured maximum. The same radial response controls aim turning, from deliberate fine adjustment to a full-deflection cap of 7.2 radians per second. Firing begins only after the aim stick crosses its intentional threshold; releasing it preserves the selected heading. Small aim input and low-band firing share the same direction logic, so a shot cannot leave along the ship's old heading while the ship turns elsewhere. Dash and Void Pulse remain independent action buttons and can be used while both sticks are held. Touch capability is detected from the device, any available coarse pointer, or an actual touch, so an iPad with a connected trackpad keeps the finger controls available without retaining a stale mouse target.
 
 The fullscreen shell suppresses accidental double-tap zoom and browser overscroll during direct game interaction. It does not add a blanket `user-scalable=no` viewport restriction, so standard pinch zoom remains available outside the canvas gestures that the game must own.
 
 Touch play is landscape-only. In portrait, a blocking rotate prompt owns all button, keyboard, pointer, and gamepad input; it freezes the simulation and clears held actions without opening the pause menu or discarding the run. Rotating back to landscape continues from the same state without replaying buttons held during portrait. Neon Voyage requests a landscape orientation lock when the browser permits it, but iPhone and iPad browsers do not reliably expose that capability to an ordinary web page, so the player may need to rotate the device manually and turn off the system orientation lock.
 
-Mobile browser-chrome focus changes do not pause an active touch run. Moving the page into the background or switching away still pauses through the document visibility lifecycle. A touch pause clears both stick captures, stops residual ship velocity, and requires fresh finger input before movement or firing can resume.
+Mobile browser-chrome focus changes do not pause an active touch run. Moving the page into the background or switching away still pauses through the document visibility lifecycle. A touch pause clears both stick captures, stops residual ship velocity, and requires fresh finger input before movement or firing can resume. Pointer release, cancellation, lost capture, visibility changes, page exit, control-mode changes, and browsers that reject pointer capture all converge on the same cleanup path; stale aim state cannot keep the weapon firing.
 
 ## Expedition
 
@@ -92,7 +94,7 @@ The runtime uses a small `window.ND` namespace and classic deferred scripts so i
 - Explicit caps and cleanup for every entity and effect family
 - Swept projectile collision and radius-aware stage/arena containment
 - Reduced-effects mode for lower particle density during play and fewer, shorter hyperspace streaks
-- Keyboard, mouse, independent radial dual-touch, and gamepad controls with accessible menus and live status
+- Keyboard, mouse, dynamic half-screen radial dual-touch, and gamepad controls with accessible menus and live status
 - Landscape touch gate, display-safe-area layout, hybrid tablet detection, double-tap protection, and pause-safe capture cleanup
 - Restrictive Content Security Policy and local relative resources
 - No runtime network APIs, analytics, telemetry, ads, external fonts, workers, or service workers
@@ -108,7 +110,7 @@ Node.js is optional and used only by the audit harness:
 node tests/run.js
 ```
 
-The Neon Voyage 1.2.2 source snapshot passes **73/73** dependency-free automated checks. The linked CI and Pages badges report the public workflows independently.
+The frozen Neon Voyage 1.2.3 source snapshot passes **81/81** dependency-free automated checks. Its phone- and tablet-class touch evidence is browser-simulated rather than a claim of physical-device acceptance. The linked CI and Pages badges report the public workflows independently after publication; release completion also requires an observed live Play after deployment.
 
 A coherent release update includes a semantic version bump, [changelog](CHANGELOG.md), synchronized README/audit, deterministic regression coverage, regenerated checksums after files are frozen, one clean public `main` publish, and observed CI, Pages, and live-site verification. See [AUDIT.md](AUDIT.md) and [tests/README.md](tests/README.md) for the current evidence and scope.
 
