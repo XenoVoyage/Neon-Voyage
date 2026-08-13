@@ -14,10 +14,21 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage 1.5.0 configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "1.5.0");
+  test("Neon Voyage v2026.8.13 configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.13");
     assert.ok(CONFIG.presentation.gameoverEffectDuration > 0 && CONFIG.presentation.gameoverEffectDuration <= 1);
     collectFrozen(CONFIG, new Set());
+  });
+
+  test("calendar versions keep year-month-day order with an optional daily revision", () => {
+    const match = CONFIG.version.match(/^v(\d{4})\.(\d{1,2})\.(\d{1,2})([a-z])?$/);
+    assert.ok(match, "version must use vYYYY.M.D with an optional lowercase revision suffix");
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    assert.ok(year >= 2026, "calendar version year cannot predate the adopted scheme");
+    assert.ok(month >= 1 && month <= 12, "calendar version month is invalid");
+    assert.equal(new Date(Date.UTC(year, month - 1, day)).getUTCDate(), day, "calendar version day is invalid");
   });
 
   test("fixed-step simulation and every entity family have conservative finite caps", () => {
