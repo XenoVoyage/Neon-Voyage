@@ -771,7 +771,7 @@ dd {
 
 .menu-meta strong {
   margin-left: 5px;
-  color: var(--gold);
+  color: var(--cyan);
   font-variant-numeric: tabular-nums;
 }
 
@@ -968,6 +968,39 @@ kbd {
   margin: -6px 22px 20px;
   color: var(--ink-faint);
   font-size: 0.62rem;
+}
+
+.confirm-dialog {
+  width: min(calc(100vw - 32px), 460px);
+}
+
+.confirm-copy {
+  padding: 20px 22px 22px;
+}
+
+.confirm-copy p {
+  margin-bottom: 20px;
+  color: var(--ink-dim);
+  font-size: 0.75rem;
+  line-height: 1.65;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.danger-button {
+  border-color: rgba(255, 97, 118, 0.38);
+  color: var(--danger);
+}
+
+.danger-button:hover,
+.danger-button:focus-visible {
+  border-color: rgba(255, 97, 118, 0.68);
+  color: #ffb5c0;
+  background: rgba(255, 97, 118, 0.08);
 }
 
 .stage-select-dialog {

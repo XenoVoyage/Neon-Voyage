@@ -57,7 +57,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "1.4.0",
+    version: "1.5.0",
 
     world: {
       fixedStep: 1 / 60,
@@ -90,6 +90,10 @@
       maxLookAhead: 145,
       maxShake: 24,
       parallaxLayers: [0.08, 0.2, 0.42]
+    },
+
+    presentation: {
+      gameoverEffectDuration: 0.75
     },
 
     combatField: {

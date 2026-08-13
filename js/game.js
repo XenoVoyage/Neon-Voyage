@@ -12,9 +12,17 @@
   const distanceSquared = Core.distanceSquared;
   const STORAGE_KEY = "neon-voyage-v1";
   const PROGRESS_STORAGE_KEY = "neon-voyage-progress-v1";
-  const PROGRESS_STORAGE_LIMIT = 256;
+  const PROGRESS_STORAGE_LIMIT = 4096;
   const TOUCH_INPUT_EPSILON = 0.0001;
   const MODULE_ORDER = Object.keys(CONFIG.weapons.modules).slice(0, CONFIG.weapons.maxInstalledModules);
+  const TEMP_WEAPON_TIMERS = ["rapidTimer", "triShotTimer", "piercingTimer", "arcBurstTimer", "novaLanceTimer"];
+  const TEMP_WEAPON_LIMITS = {
+    rapidTimer: CONFIG.powerups.rapid.duration,
+    triShotTimer: CONFIG.powerups.triShot.duration,
+    piercingTimer: CONFIG.powerups.piercing.duration,
+    arcBurstTimer: CONFIG.powerups.arcBurst.duration,
+    novaLanceTimer: CONFIG.powerups.novaLance.duration
+  };
   const THREAT_ARRAYS = ["asteroids", "aliens"];
 
   const byId = (id) => global.document.getElementById(id);
@@ -72,6 +80,9 @@
     controlsModal: byId("controls-modal"),
     settingsModal: byId("settings-modal"),
     stageSelectModal: byId("stage-select-modal"),
+    newGameModal: byId("new-game-modal"),
+    newGameCancelButton: byId("new-game-cancel-button"),
+    newGameConfirmButton: byId("new-game-confirm-button"),
     stageGrid: byId("stage-grid"),
     orientationOverlay: byId("orientation-overlay"),
     touchControls: byId("touch-controls"),
@@ -88,12 +99,69 @@
       typeof value.settings.sound === "boolean" && typeof value.settings.reducedEffects === "boolean";
   }
 
-  function validProgress(value) {
+  function exactKeys(value, expected) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const keys = Object.keys(value);
+    return keys.length === expected.length && expected.every((key) => keys.includes(key));
+  }
+
+  function baseCheckpoint() {
+    const modules = {};
+    const timers = {};
+    for (const id of MODULE_ORDER) modules[id] = Math.floor(CONFIG.weapons.startingModules[id] || 0);
+    for (const timer of TEMP_WEAPON_TIMERS) timers[timer] = 0;
+    return { modules, timers };
+  }
+
+  function validCheckpoint(value) {
+    if (!exactKeys(value, ["modules", "timers"]) || !exactKeys(value.modules, MODULE_ORDER) ||
+        !exactKeys(value.timers, TEMP_WEAPON_TIMERS)) return false;
+    for (const id of MODULE_ORDER) {
+      const tier = value.modules[id];
+      const minimum = CONFIG.weapons.startingModules[id] || 0;
+      if (!Number.isInteger(tier) || tier < minimum || tier > CONFIG.weapons.maxModuleTier) return false;
+    }
+    for (const timer of TEMP_WEAPON_TIMERS) {
+      const remaining = value.timers[timer];
+      if (!Number.isFinite(remaining) || remaining < 0 || remaining > TEMP_WEAPON_LIMITS[timer]) return false;
+    }
+    return true;
+  }
+
+  function cloneCheckpoint(value) {
+    const fallback = validCheckpoint(value) ? value : baseCheckpoint();
+    return { modules: { ...fallback.modules }, timers: { ...fallback.timers } };
+  }
+
+  function validLegacyProgress(value) {
     const maximum = CONFIG.sector.encountersPerSector;
-    return Boolean(value) && typeof value === "object" && !Array.isArray(value) &&
-      value.schema === 1 &&
+    return exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage"]) && value.schema === 1 &&
       Number.isInteger(value.maxUnlockedStage) && value.maxUnlockedStage >= 1 && value.maxUnlockedStage <= maximum &&
       Number.isInteger(value.lastPlayedStage) && value.lastPlayedStage >= 1 && value.lastPlayedStage <= value.maxUnlockedStage;
+  }
+
+  function validProgress(value) {
+    const maximum = CONFIG.sector.encountersPerSector;
+    if (!exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage", "checkpoints"]) || value.schema !== 2 ||
+        !Number.isInteger(value.maxUnlockedStage) || value.maxUnlockedStage < 1 || value.maxUnlockedStage > maximum ||
+        !Number.isInteger(value.lastPlayedStage) || value.lastPlayedStage < 1 || value.lastPlayedStage > value.maxUnlockedStage) return false;
+    const stageKeys = Array.from({ length: value.maxUnlockedStage }, (_, index) => String(index + 1));
+    return exactKeys(value.checkpoints, stageKeys) && Object.values(value.checkpoints).every(validCheckpoint);
+  }
+
+  function newProgress(maxUnlockedStage, lastPlayedStage) {
+    const maximum = CONFIG.sector.encountersPerSector;
+    const unlocked = clamp(Math.floor(Number(maxUnlockedStage) || 1), 1, maximum);
+    const last = clamp(Math.floor(Number(lastPlayedStage) || 1), 1, unlocked);
+    const checkpoints = {};
+    for (let stage = 1; stage <= unlocked; stage += 1) checkpoints[String(stage)] = baseCheckpoint();
+    return { schema: 2, maxUnlockedStage: unlocked, lastPlayedStage: last, checkpoints };
+  }
+
+  function copyProgress(value) {
+    const copy = newProgress(value.maxUnlockedStage, value.lastPlayedStage);
+    for (const key of Object.keys(copy.checkpoints)) copy.checkpoints[key] = cloneCheckpoint(value.checkpoints[key]);
+    return copy;
   }
 
   const saved = Core.safeReadJSON(null, STORAGE_KEY, {
@@ -104,16 +172,14 @@
     sound: saved.settings.sound,
     reducedEffects: saved.settings.reducedEffects
   };
-  const savedProgress = Core.safeReadJSON(null, PROGRESS_STORAGE_KEY, {
-    schema: 1,
-    maxUnlockedStage: 1,
-    lastPlayedStage: 1
-  }, validProgress, PROGRESS_STORAGE_LIMIT);
-  const progress = {
-    schema: 1,
-    maxUnlockedStage: savedProgress.maxUnlockedStage,
-    lastPlayedStage: savedProgress.lastPlayedStage
-  };
+  const savedProgress = Core.safeReadJSON(null, PROGRESS_STORAGE_KEY, null, (value) =>
+    validProgress(value) || validLegacyProgress(value), PROGRESS_STORAGE_LIMIT);
+  const progress = savedProgress && savedProgress.schema === 2
+    ? copyProgress(savedProgress)
+    : newProgress(savedProgress?.maxUnlockedStage, savedProgress?.lastPlayedStage);
+  if (savedProgress && savedProgress.schema === 1) {
+    Core.safeWriteJSON(null, PROGRESS_STORAGE_KEY, progress, validProgress, PROGRESS_STORAGE_LIMIT);
+  }
   let highScore = Math.floor(saved.highScore);
   const renderer = new ND.Renderer(canvas);
   const audio = new ND.AudioEngine({ muted: !settings.sound, maxNodes: CONFIG.caps.activeAudioNodes });
@@ -164,6 +230,9 @@
   let touchCapable = false;
   let orientationBlocked = false;
   let campaignProgressEligible = false;
+  let gameoverEffectRemaining = 0;
+  let gameoverInitialShake = 0;
+  let gameoverInitialFlash = 0;
   let presentedMode = null;
   const stageButtons = [];
 
@@ -205,6 +274,7 @@
         closeDialog(dom.controlsModal);
         closeDialog(dom.settingsModal);
         closeDialog(dom.stageSelectModal);
+        closeDialog(dom.newGameModal);
       }
     }
     if (changed && dom.orientationOverlay) {
@@ -219,7 +289,7 @@
         }
       }
     }
-    for (const dialog of [dom.controlsModal, dom.settingsModal, dom.stageSelectModal]) {
+    for (const dialog of [dom.controlsModal, dom.settingsModal, dom.stageSelectModal, dom.newGameModal]) {
       if (!dialog) continue;
       if (orientationBlocked) dialog.setAttribute("inert", "");
       else dialog.removeAttribute("inert");
@@ -318,6 +388,44 @@
     return Core.safeWriteJSON(null, PROGRESS_STORAGE_KEY, progress, validProgress, PROGRESS_STORAGE_LIMIT);
   }
 
+  function checkpointFromShip(ship) {
+    const checkpoint = baseCheckpoint();
+    if (!ship) return checkpoint;
+    for (const id of MODULE_ORDER) {
+      const minimum = CONFIG.weapons.startingModules[id] || 0;
+      checkpoint.modules[id] = clamp(Math.floor(Number(ship.modules?.[id]) || 0), minimum, CONFIG.weapons.maxModuleTier);
+    }
+    for (const timer of TEMP_WEAPON_TIMERS) {
+      checkpoint.timers[timer] = clamp(Number(ship[timer]) || 0, 0, TEMP_WEAPON_LIMITS[timer]);
+    }
+    return checkpoint;
+  }
+
+  function saveCurrentStageCheckpoint(stage) {
+    if (!campaignProgressEligible || state.sector !== 1 || !state.ship) return false;
+    const target = clamp(Math.floor(Number(stage) || state.encounter || 1), 1, progress.maxUnlockedStage);
+    progress.checkpoints[String(target)] = checkpointFromShip(state.ship);
+    return saveProgress();
+  }
+
+  function hasSavedCampaign() {
+    if (progress.maxUnlockedStage > 1 || progress.lastPlayedStage > 1) return true;
+    const checkpoint = progress.checkpoints["1"];
+    const base = baseCheckpoint();
+    return MODULE_ORDER.some((id) => checkpoint.modules[id] !== base.modules[id]) ||
+      TEMP_WEAPON_TIMERS.some((timer) => checkpoint.timers[timer] > 0);
+  }
+
+  function resetCampaignProgress() {
+    const fresh = newProgress(1, 1);
+    progress.schema = fresh.schema;
+    progress.maxUnlockedStage = fresh.maxUnlockedStage;
+    progress.lastPlayedStage = fresh.lastPlayedStage;
+    progress.checkpoints = fresh.checkpoints;
+    saveProgress();
+    updateProgressUI();
+  }
+
   function formatScore(value) {
     return String(Math.max(0, Math.floor(value))).padStart(6, "0");
   }
@@ -336,7 +444,8 @@
   }
 
   function anyDialogOpen() {
-    return [dom.controlsModal, dom.settingsModal, dom.stageSelectModal].some((dialog) => Boolean(dialog && dialog.open));
+    return [dom.controlsModal, dom.settingsModal, dom.stageSelectModal, dom.newGameModal]
+      .some((dialog) => Boolean(dialog && dialog.open));
   }
 
   function focusPrimaryModeAction(mode) {
@@ -384,8 +493,9 @@
     }
   }
 
-  function resetRun(startStage) {
+  function resetRun(startStage, savedLoadout) {
     const initialStage = clamp(Math.floor(Number(startStage) || 1), 1, CONFIG.sector.encountersPerSector);
+    const loadout = cloneCheckpoint(savedLoadout);
     resetTransientInput();
     audio.resetTimeline();
     const ship = {
@@ -403,12 +513,12 @@
       dashTime: 0,
       dashCooldown: 0,
       pulse: 100,
-      rapidTimer: 0,
-      triShotTimer: 0,
-      piercingTimer: 0,
-      arcBurstTimer: 0,
-      novaLanceTimer: 0,
-      modules: { ...CONFIG.weapons.startingModules },
+      rapidTimer: loadout.timers.rapidTimer,
+      triShotTimer: loadout.timers.triShotTimer,
+      piercingTimer: loadout.timers.piercingTimer,
+      arcBurstTimer: loadout.timers.arcBurstTimer,
+      novaLanceTimer: loadout.timers.novaLanceTimer,
+      modules: { ...loadout.modules },
       weaponTimers: Object.create(null),
       drones: []
     };
@@ -440,6 +550,9 @@
     state.bossesDefeated = 0;
     state.shake = 0;
     state.flash = 0;
+    gameoverEffectRemaining = 0;
+    gameoverInitialShake = 0;
+    gameoverInitialFlash = 0;
     state.powerupText = "";
     state.powerupTextTimer = 0;
     if (dom.powerupStatus) dom.powerupStatus.textContent = "";
@@ -448,30 +561,66 @@
     beginEncounter();
   }
 
-  function startRunAt(stage) {
+  function startRunAt(stage, eligible) {
     const requestedStage = Math.floor(Number(stage));
     if (!Number.isInteger(requestedStage) || requestedStage < 1 || requestedStage > progress.maxUnlockedStage) return false;
+    const recordsCampaign = eligible !== false;
     audio.ensure();
     requestLandscapeLock();
     closeDialog(dom.controlsModal);
     closeDialog(dom.settingsModal);
     closeDialog(dom.stageSelectModal);
-    progress.lastPlayedStage = requestedStage;
-    saveProgress();
-    updateProgressUI();
-    campaignProgressEligible = true;
-    resetRun(requestedStage);
+    closeDialog(dom.newGameModal);
+    if (recordsCampaign) {
+      progress.lastPlayedStage = requestedStage;
+      saveProgress();
+      updateProgressUI();
+    }
+    campaignProgressEligible = recordsCampaign;
+    resetRun(requestedStage, recordsCampaign ? progress.checkpoints[String(requestedStage)] : baseCheckpoint());
     setMode("playing");
     if (!touchCapable) canvas.focus({ preventScroll: true });
     updateUI(true);
     return true;
   }
 
-  function startNewRun() {
+  function beginNewCampaign() {
+    resetCampaignProgress();
     return startRunAt(1);
   }
 
+  function requestNewCampaign() {
+    if (!hasSavedCampaign()) return beginNewCampaign();
+    closeDialog(dom.controlsModal);
+    closeDialog(dom.settingsModal);
+    closeDialog(dom.stageSelectModal);
+    openDialog(dom.newGameModal);
+    dom.newGameCancelButton?.focus({ preventScroll: true });
+    return false;
+  }
+
+  function cancelNewCampaign() {
+    closeDialog(dom.newGameModal);
+    if (!orientationBlocked) dom.startButton?.focus({ preventScroll: true });
+  }
+
+  function confirmNewCampaign() {
+    closeDialog(dom.newGameModal);
+    return beginNewCampaign();
+  }
+
+  function restartRun() {
+    const stage = clamp(Math.floor(Number(state.encounter) || progress.lastPlayedStage || 1), 1, progress.maxUnlockedStage);
+    return startRunAt(stage, campaignProgressEligible);
+  }
+
   function returnToMenu() {
+    saveCurrentStageCheckpoint();
+    state.shake = 0;
+    state.flash = 0;
+    gameoverEffectRemaining = 0;
+    gameoverInitialShake = 0;
+    gameoverInitialFlash = 0;
     state.ship = null;
     state.boss = null;
     state.arena.active = false;
@@ -501,6 +650,7 @@
 
   function endRun() {
     if (state.mode === "gameover") return;
+    saveCurrentStageCheckpoint();
     const oldHighScore = highScore;
     highScore = Math.max(highScore, Math.floor(state.score));
     saveLocal();
@@ -510,6 +660,9 @@
     if (dom.finalCombo) dom.finalCombo.textContent = `×${state.bestCombo}`;
     if (dom.finalBosses) dom.finalBosses.textContent = String(state.bossesDefeated);
     show(dom.newRecord, highScore > oldHighScore);
+    gameoverEffectRemaining = CONFIG.presentation.gameoverEffectDuration;
+    gameoverInitialShake = Math.max(0, state.shake);
+    gameoverInitialFlash = Math.max(0, state.flash);
     setMode("gameover");
     updateUI(true);
   }
@@ -591,6 +744,7 @@
     updateProgressUI();
     closeDialog(dom.controlsModal);
     closeDialog(dom.settingsModal);
+    closeDialog(dom.newGameModal);
     openDialog(dom.stageSelectModal);
     const target = stageButtons.find((entry) => entry.stage === progress.lastPlayedStage);
     target?.button.focus({ preventScroll: true });
@@ -601,6 +755,7 @@
     const nextStage = Math.min(CONFIG.sector.encountersPerSector, stage + 1);
     progress.maxUnlockedStage = Math.max(progress.maxUnlockedStage, nextStage);
     progress.lastPlayedStage = nextStage;
+    progress.checkpoints[String(nextStage)] = checkpointFromShip(state.ship);
     saveProgress();
     updateProgressUI();
   }
@@ -645,10 +800,10 @@
     });
   }
 
-  bindButton("start-button", startNewRun);
+  bindButton("start-button", requestNewCampaign);
   bindButton("continue-button", openStageSelect);
-  bindButton("restart-button", startNewRun);
-  bindButton("restart-pause-button", startNewRun);
+  bindButton("restart-button", restartRun);
+  bindButton("restart-pause-button", restartRun);
   bindButton("resume-button", () => togglePause(false));
   bindButton("pause-button", () => togglePause());
   bindButton("pause-menu-button", returnToMenu);
@@ -660,12 +815,18 @@
   bindButton("controls-close-button", () => closeDialog(dom.controlsModal));
   bindButton("settings-close-button", () => closeDialog(dom.settingsModal));
   bindButton("stage-select-close-button", () => closeDialog(dom.stageSelectModal));
+  bindButton("new-game-cancel-button", cancelNewCampaign);
+  bindButton("new-game-confirm-button", confirmNewCampaign);
   bindButton("sound-button", toggleSound);
   bindButton("settings-sound-button", toggleSound);
   bindButton("motion-button", toggleEffects);
   bindButton("settings-effects-button", toggleEffects);
   bindButton("fullscreen-button", toggleFullscreen);
   bindButton("settings-fullscreen-button", toggleFullscreen);
+  if (dom.newGameModal) dom.newGameModal.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    cancelNewCampaign();
+  });
   function bindTouchAction(id, action) {
     const button = byId(id);
     if (!button) return;
@@ -735,7 +896,7 @@
     if (!input.keys[key]) input.pressed[key] = true;
     input.keys[key] = true;
     if (["space", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) event.preventDefault();
-    const dialogOpen = Boolean(dom.controlsModal && dom.controlsModal.open || dom.settingsModal && dom.settingsModal.open);
+    const dialogOpen = anyDialogOpen();
     if ((key === "p" || key === "escape") && !dialogOpen && !event.repeat && (state.mode === "playing" || state.mode === "transition" || state.mode === "paused")) {
       event.preventDefault();
       togglePause();
@@ -1923,7 +2084,7 @@
       data.guaranteedGranted = true;
       grantModuleUpgrade("ARMORY LINK");
     }
-    if (campaignProgressEligible) unlockNextStage(state.encounter);
+    if (campaignProgressEligible && state.sector === 1) unlockNextStage(state.encounter);
     state.score += Math.round(300 * state.sector * CONFIG.difficulty.scoreScale(state.sector));
     startCinematic(message || (data.spec.id === "titanGate" ? "Titan shattered" : "Stage clear"));
   }
@@ -2978,6 +3139,7 @@
     } else {
       grantModuleUpgrade("MODULE CACHE");
     }
+    saveCurrentStageCheckpoint();
     burst(pickup.x, pickup.y, "#ffffff", settings.reducedEffects ? 6 : 14, 0.9);
     audio.pickup();
   }
@@ -2996,6 +3158,7 @@
       state.ship.hull = Math.min(state.ship.maxHull, state.ship.hull + 25);
       state.score += 500;
       showPowerup(`${source} // SYSTEM OVERFLOW`);
+      saveCurrentStageCheckpoint();
       return;
     }
     modules[selected] = Math.min(CONFIG.weapons.maxModuleTier, (modules[selected] || 0) + 1);
@@ -3004,6 +3167,7 @@
     announce(`${label} Mk ${roman(modules[selected])}`, 1.7);
     audio.weaponSwitch();
     state.moduleSignature = "";
+    saveCurrentStageCheckpoint();
   }
 
   function showPowerup(text) {
@@ -3245,6 +3409,10 @@
     collidePlayerBullets();
     if (state.mode === "playing" && state.encounterData.spec.id !== "boss") updateEncounter(0);
     if (state.mode === "playing") collidePlayer();
+    if (state.mode === "gameover") {
+      clearPressed();
+      return;
+    }
     updateEffects(dt);
     cullWorld();
     updateCamera(dt);
@@ -3484,9 +3652,7 @@
   }
 
   function debugStartRun() {
-    const started = startNewRun();
-    campaignProgressEligible = false;
-    return started;
+    return startRunAt(1, false);
   }
 
   const debugApi = Object.freeze({
@@ -3508,8 +3674,10 @@
     damageBoss,
     activatePulse,
     progress: Object.freeze({
+      get schema() { return progress.schema; },
       get maxUnlockedStage() { return progress.maxUnlockedStage; },
-      get lastPlayedStage() { return progress.lastPlayedStage; }
+      get lastPlayedStage() { return progress.lastPlayedStage; },
+      checkpoint(stage) { return cloneCheckpoint(progress.checkpoints[String(stage)]); }
     }),
     mobile: Object.freeze({
       get touchCapable() { return touchCapable; },
@@ -3525,6 +3693,19 @@
   });
   ND.GameDebug = debugApi;
   ND.game = debugApi;
+
+  function updateGameoverPresentation(dt) {
+    if (state.mode !== "gameover" || gameoverEffectRemaining <= 0) return;
+    const duration = Math.max(CONFIG.world.fixedStep, CONFIG.presentation.gameoverEffectDuration);
+    gameoverEffectRemaining = Math.max(0, gameoverEffectRemaining - dt);
+    const ratio = gameoverEffectRemaining / duration;
+    state.shake = gameoverInitialShake * ratio;
+    state.flash = gameoverInitialFlash * ratio;
+    if (gameoverEffectRemaining === 0) {
+      state.shake = 0;
+      state.flash = 0;
+    }
+  }
 
   let previousTime = 0;
   let accumulator = 0;
@@ -3546,6 +3727,7 @@
       if (safety >= 5) accumulator = 0;
     } else {
       accumulator = 0;
+      if (state.mode === "gameover") updateGameoverPresentation(frameDelta);
     }
     renderer.render(state, seconds);
     global.requestAnimationFrame(frame);

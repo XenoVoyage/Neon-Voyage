@@ -14,8 +14,9 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage 1.4.0 configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "1.4.0");
+  test("Neon Voyage 1.5.0 configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "1.5.0");
+    assert.ok(CONFIG.presentation.gameoverEffectDuration > 0 && CONFIG.presentation.gameoverEffectDuration <= 1);
     collectFrozen(CONFIG, new Set());
   });
 

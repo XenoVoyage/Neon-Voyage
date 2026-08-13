@@ -1,6 +1,6 @@
 # Local visual asset notes
 
-Neon Voyage 1.4.0 bundles nine AI-assisted raster assets, optimized as local WebP files:
+Neon Voyage 1.5.0 bundles nine AI-assisted runtime raster assets, optimized as local WebP files:
 
 - `assets/deep-space.webp` — a wide, dark star field with restrained blue and violet nebulae and a clear central play area.
 - `assets/earth.webp` — the illuminated Earth departure landmark.
@@ -27,5 +27,12 @@ The original prompt set and 1.4.0 generation briefs were:
 The six deep-space planets added in 1.4.0 were created from these original prompts with OpenAI's built-in image generator and were not copied, traced, or adapted from an outside source. Earth and Mars are preserved. The Canvas renderer clips and interpolates every celestial image from deterministic, stage-authored position, scale, and opacity data; the images are scenery only.
 
 Player craft, alien ships, capital ships, asteroids, projectiles, pickups, and effects remain procedural Canvas vectors. This keeps gameplay assets crisp, recolorable, lightweight, and dependency-free.
+
+Two lightweight documentation images in `docs/assets/` are compressed WebP captures rendered from the real local game code and bundled scenery:
+
+- `docs/assets/neon-voyage-earth-orbit.webp` — Stage 1 gameplay above Earth.
+- `docs/assets/neon-voyage-command-arena.webp` — the Stage 9 Harrower encounter.
+
+These captures are README-only evidence, not additional runtime resources, and require no remote request.
 
 No runtime asset is embedded from Canva, a CDN, or another online service. Every released asset is stored in this repository and remains available offline.
