@@ -184,13 +184,13 @@ module.exports = function register(test) {
     for (const script of scripts) childProcess.execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
   });
 
-  test("release metadata and public documentation agree on version 1.5.0", () => {
+  test("release metadata and public documentation agree on version v2026.8.13", () => {
     const version = readProject("VERSION.txt").trim();
-    assert.equal(version, "Neon Voyage 1.5.0");
-    assert.match(readProject("js/config.js"), /version:\s*["']1\.5\.0["']/);
-    assert.match(readProject("README.md"), /Version 1\.5\.0/);
-    assert.match(readProject("CHANGELOG.md"), /^## \[1\.5\.0\]/m);
-    assert.match(readProject("AUDIT.md"), /^# Neon Voyage 1\.5\.0/m);
+    assert.equal(version, "Neon Voyage v2026.8.13");
+    assert.match(readProject("js/config.js"), /version:\s*["']v2026\.8\.13["']/);
+    assert.match(readProject("README.md"), /Version v2026\.8\.13/);
+    assert.match(readProject("CHANGELOG.md"), /^## \[v2026\.8\.13\]/m);
+    assert.match(readProject("AUDIT.md"), /^# Neon Voyage v2026\.8\.13/m);
     assert.ok(fs.existsSync(path.join(PROJECT_ROOT, "AGENTS.md")), "project contributor instructions are required");
   });
 
