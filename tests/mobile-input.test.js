@@ -1276,8 +1276,8 @@ module.exports = function register(test) {
 
     const zoneWidths = Array.from(css.matchAll(/(?:\.is-touch-capable\s+)?\.stick-zone\s*\{[^{}]*?\bwidth:\s*(\d+)px/g), (match) => Number(match[1]));
     const actionOffsets = Array.from(css.matchAll(/(?:\.is-touch-capable\s+)?\.touch-actions\s*\{[^{}]*?\bright:\s*calc\(var\(--safe-right\)\s*\+\s*(\d+)px\)/g), (match) => Number(match[1]));
-    assert.deepEqual(zoneWidths, [132, 116, 118, 106], "touch-zone width contract changed unexpectedly");
-    assert.deepEqual(actionOffsets, [140, 124, 126, 114], "touch-action offset contract changed unexpectedly");
+    assert.deepEqual(zoneWidths, [132, 116, 110, 106], "touch-zone width contract changed unexpectedly");
+    assert.deepEqual(actionOffsets, [140, 124, 118, 114], "touch-action offset contract changed unexpectedly");
     for (let index = 0; index < zoneWidths.length; index += 1) {
       assert.ok(actionOffsets[index] >= zoneWidths[index] + 8, "touch action overlaps the aim zone");
     }

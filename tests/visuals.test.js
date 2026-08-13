@@ -41,7 +41,7 @@ module.exports = function register(test) {
     }
   });
 
-  test("scene journey leaves Earth for Mars, distant space, and exotic worlds", () => {
+  test("scene journey leaves Earth for Mars and authored deep-space worlds", () => {
     const debug = loadRenderer();
     assert.ok(debug && typeof debug.sceneFrame === "function" && typeof debug.screenAnchor === "function");
     const scenes = Array.from({ length: 9 }, (_, index) => debug.sceneFrame(index + 1, 1, 0));
@@ -58,12 +58,35 @@ module.exports = function register(test) {
     assert.ok(earth3.alpha < earth2.alpha && mars3.alpha < mars2.alpha, "the familiar planets did not recede in Stage 3");
     assert.ok(earth3.size < 0.08 && mars3.size < 0.1, "Stage 3 remains visually too close to the inner system");
     for (let index = 3; index < scenes.length; index += 1) {
-      assert.ok(scenes[index].bodies.some((item) => item.type === "exotic" && item.alpha > 0.4), `Stage ${index + 1} lacks a visible exotic world`);
+      assert.ok(scenes[index].bodies.some((item) => debug.assetSource(item.type) && item.alpha > 0.4), `Stage ${index + 1} lacks a visible authored world`);
+      assert.ok(scenes[index].bodies.every((item) => item.type !== "exotic"), `Stage ${index + 1} retained the old procedural planet type`);
       assert.ok(scenes[index].depth > scenes[index - 1].depth, `Stage ${index + 1} did not move deeper into space`);
     }
     const nextSector = debug.sceneFrame(1, 2, 0);
     assert.ok(nextSector.bodies.filter((item) => item.id === "earth" || item.id === "mars").every((item) => item.alpha === 0));
-    assert.ok(nextSector.bodies.some((item) => item.id === "waypoint" && item.alpha > 0), "later sectors fell back to the Solar System");
+    const waypoint = nextSector.bodies.find((item) => item.id === "waypoint" && item.alpha > 0);
+    assert.ok(waypoint && debug.assetSource(waypoint.type), "later sectors fell back to an unauthored Solar System or procedural world");
+  });
+
+  test("all deep-space planets use explicit local raster art and the banded fallback is removed", () => {
+    const debug = loadRenderer();
+    const expected = [
+      "frontier-world", "titan-world", "signal-world",
+      "shard-world", "fleet-world", "command-world"
+    ];
+    const types = Array.from({ length: 6 }, (_, index) => {
+      const body = debug.sceneFrame(index + 4, 1, 0).visibleBodies.find((item) => item.alpha > 0.4);
+      assert.ok(body, `Stage ${index + 4} lacks its main world`);
+      return body.type;
+    });
+    assert.deepEqual(types, expected);
+    for (const type of ["earth", "mars"].concat(expected)) {
+      assert.equal(debug.assetSource(type), `assets/${type}.webp`);
+    }
+    assert.equal(debug.assetSource("exotic"), null);
+    assert.equal(debug.assetSource("unknown-world"), null);
+    const renderer = readProject("js/render.js");
+    assert.doesNotMatch(renderer, /drawExoticPlanet|type:\s*["']exotic["']|\.rings\b/, "the old procedural ring/band planet path remains in runtime code");
   });
 
   test("all nine scene handoffs interpolate continuously, including the sector wrap", () => {
@@ -80,7 +103,7 @@ module.exports = function register(test) {
       for (const item of middle.bodies) {
         const from = byId(start, item.id);
         const to = byId(end, item.id);
-        for (const key of ["x", "y", "size", "alpha", "hue", "rings"]) {
+        for (const key of ["x", "y", "size", "alpha", "hue"]) {
           approximately(item[key], (from[key] + to[key]) * 0.5, 1e-10, `Stage ${stage} ${item.id}.${key}`);
           assert.ok(Number.isFinite(item[key]));
         }
@@ -91,7 +114,7 @@ module.exports = function register(test) {
       assert.deepEqual(Array.from(ended.keys()).sort(), Array.from(started.keys()).sort(), `Stage ${stage} handoff changed visible bodies`);
       for (const [id, targetBody] of started) {
         const endBody = ended.get(id);
-        for (const key of ["x", "y", "size", "alpha", "hue", "rings"]) approximately(endBody[key], targetBody[key], 1e-10, `Stage ${stage}→${nextStage} ${id}.${key}`);
+        for (const key of ["x", "y", "size", "alpha", "hue"]) approximately(endBody[key], targetBody[key], 1e-10, `Stage ${stage}→${nextStage} ${id}.${key}`);
       }
     }
     assert.equal(debug.sceneFrame(-20, -4, -1).fromStage, 1);
@@ -192,5 +215,42 @@ module.exports = function register(test) {
     assert.equal(debug.asteroidCrackStage(asteroid), 3);
     asteroid.health = -Infinity;
     assert.equal(debug.asteroidCrackStage(asteroid), 0, "invalid damage state produced cracks");
+  });
+
+  test("touch landscape HUD keeps controls accessible while clipping secondary text", () => {
+    const css = readProject("styles.css");
+    const marker = "@media (orientation: landscape) and (max-height: 820px)";
+    const start = css.indexOf(marker);
+    assert.ok(start >= 0, "compact landscape HUD breakpoint is missing");
+    const compact = css.slice(start, css.indexOf("@media (orientation: landscape) and (max-height: 500px)", start));
+    const rule = (selector) => {
+      const ruleStart = compact.lastIndexOf(`${selector} {`);
+      assert.ok(ruleStart >= 0, `${selector} compact rule is missing`);
+      const declarationStart = compact.indexOf("{", ruleStart) + 1;
+      const declarationEnd = compact.indexOf("}", declarationStart);
+      assert.ok(declarationStart > 0 && declarationEnd > declarationStart, `${selector} compact rule is malformed`);
+      return compact.slice(declarationStart, declarationEnd);
+    };
+    for (const selector of [
+      ".is-touch-capable .record-readout",
+      ".is-touch-capable .objective-label",
+      ".is-touch-capable .systems-hud .module-console"
+    ]) {
+      const declarations = rule(selector);
+      assert.match(declarations, /position:\s*absolute/);
+      assert.match(declarations, /width:\s*1px/);
+      assert.match(declarations, /height:\s*1px/);
+      assert.match(declarations, /clip:\s*rect\(0,\s*0,\s*0,\s*0\)/);
+      assert.doesNotMatch(declarations, /display:\s*none/, `${selector} was removed from assistive technology`);
+    }
+    for (const selector of [".is-touch-capable .hud-button", ".is-touch-capable .touch-button"]) {
+      const declarations = rule(selector);
+      const width = declarations.match(/(?:min-)?width:\s*(\d+)px/);
+      const height = declarations.match(/(?:min-)?height:\s*(\d+)px/);
+      assert.ok(width && Number(width[1]) >= 44, `${selector} is narrower than 44px`);
+      assert.ok(height && Number(height[1]) >= 44, `${selector} is shorter than 44px`);
+    }
+    const tight = css.slice(css.indexOf("@media (orientation: landscape) and (max-height: 500px)"));
+    assert.match(tight, /\.is-touch-capable\s+\.combo\s*\{[^}]*display:\s*none/s, "very short screens retain nonessential combo text");
   });
 };

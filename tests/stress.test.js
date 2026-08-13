@@ -51,19 +51,17 @@ function stress(seed, seconds) {
     if (step % 111 === 0) game.input.pressed.dash = true;
     if (step % 997 === 0) game.input.pressed.pulse = true;
 
-    // Deterministically retire the required entity in the active finite wave. Optional hazards
-    // remain live so the director, AI, projectiles, effects, cleanup, and renderer-facing state
-    // keep running while every wave and hyperspace handoff is exercised.
+    // Deterministically retire one current-encounter threat at a time. Every authored asteroid,
+    // alien, optional hazard, descendant, and boss add now belongs to the clean-field gate, so the
+    // stress path must not bypass that contract while exercising every wave and handoff.
     if (step % 18 === 0 && state.encounterData && !state.encounterData.complete) {
       const data = state.encounterData;
-      if (data.spec.id !== "boss") {
-        const target = state.asteroids.concat(state.aliens).find((entity) =>
-          !entity.dead && entity.required && entity.generation === data.generation && entity.waveIndex === data.waveIndex
-        );
-        if (target) {
-          const environmental = Boolean(target.type && step % 36 === 0);
-          game.killThreat(target, environmental ? "asteroid" : "player");
-        }
+      const target = state.asteroids.concat(state.aliens).find((entity) =>
+        !entity.dead && entity.generation === data.generation
+      );
+      if (target) {
+        const environmental = Boolean(target.type && step % 36 === 0);
+        game.killThreat(target, environmental ? "asteroid" : "player");
       }
     }
     if (state.encounter === 9 && state.boss) game.damageBoss(state.boss.maxHealth * 0.2);

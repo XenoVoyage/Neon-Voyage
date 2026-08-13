@@ -81,6 +81,21 @@ module.exports = function register(test) {
     assert.ok(!/<base\b/i.test(html), "base tags make file and repository-subpath behavior fragile");
   });
 
+  test("every local raster asset is referenced by the runtime and every runtime asset exists", () => {
+    const runtimeSources = runtimeSourceFiles().map((file) => fs.readFileSync(file, "utf8")).join("\n");
+    const declared = new Set(Array.from(runtimeSources.matchAll(/["'](assets\/[a-z0-9-]+\.(?:png|jpe?g|webp))["']/gi), (match) => match[1]));
+    assert.ok(declared.size >= 3, "expected authored local raster assets");
+    for (const reference of declared) localFile(reference);
+
+    const assetDirectory = path.join(PROJECT_ROOT, "assets");
+    const assets = listFiles(assetDirectory).filter((file) => /\.(?:png|jpe?g|webp)$/i.test(file));
+    assert.ok(assets.length > 0, "the local asset directory is empty");
+    for (const file of assets) {
+      const relative = path.relative(PROJECT_ROOT, file).split(path.sep).join("/");
+      assert.ok(declared.has(relative), `${relative} is an unused runtime asset`);
+    }
+  });
+
   test("plain scripts use deterministic dependency order with no module loader", () => {
     const scripts = Array.from(html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi), (match) => match[1]);
     assert.ok(scripts.length >= 5, "expected the local runtime systems");
@@ -143,13 +158,13 @@ module.exports = function register(test) {
     for (const script of scripts) childProcess.execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
   });
 
-  test("release metadata and public documentation agree on version 1.3.0", () => {
+  test("release metadata and public documentation agree on version 1.4.0", () => {
     const version = readProject("VERSION.txt").trim();
-    assert.equal(version, "Neon Voyage 1.3.0");
-    assert.match(readProject("js/config.js"), /version:\s*["']1\.3\.0["']/);
-    assert.match(readProject("README.md"), /Version 1\.3\.0/);
-    assert.match(readProject("CHANGELOG.md"), /^## \[1\.3\.0\]/m);
-    assert.match(readProject("AUDIT.md"), /^# Neon Voyage 1\.3\.0/m);
+    assert.equal(version, "Neon Voyage 1.4.0");
+    assert.match(readProject("js/config.js"), /version:\s*["']1\.4\.0["']/);
+    assert.match(readProject("README.md"), /Version 1\.4\.0/);
+    assert.match(readProject("CHANGELOG.md"), /^## \[1\.4\.0\]/m);
+    assert.match(readProject("AUDIT.md"), /^# Neon Voyage 1\.4\.0/m);
     assert.ok(fs.existsSync(path.join(PROJECT_ROOT, "AGENTS.md")), "project contributor instructions are required");
   });
 
@@ -161,5 +176,28 @@ module.exports = function register(test) {
     assert.match(workflow, /actions\/deploy-pages@v\d+/);
     assert.match(workflow, /path:\s*[.'"]+/);
     assert.ok(!/\b(?:npm|yarn|pnpm|bun)\b/i.test(workflow), "Pages must not install or build dependencies");
+  });
+
+  test("repository governance keeps protected main behind the required offline audit", () => {
+    const ci = readProject(".github/workflows/ci.yml");
+    const pages = readProject(".github/workflows/pages.yml");
+    const agents = readProject("AGENTS.md");
+    assert.match(ci, /^name:\s*Offline audit\s*$/m);
+    assert.match(ci, /^\s*pull_request:\s*$/m, "the audit must run for pull requests");
+    assert.match(ci, /^\s*push:\s*\n\s*branches:\s*\[main\]\s*$/m, "the audit must run after main merges");
+    assert.match(ci, /^\s{2}audit:\s*$/m, "the required check context must remain Offline audit / audit");
+    assert.match(ci, /^permissions:\s*\n\s*contents:\s*read\s*$/m, "the audit must keep read-only contents permission");
+    assert.doesNotMatch(ci, /continue-on-error\s*:\s*true/i, "the required audit cannot be advisory");
+    assert.doesNotMatch(ci, /\b(?:contents|actions|checks|pull-requests):\s*write\b/i, "the audit has unnecessary write permission");
+    assert.doesNotMatch(pages, /^\s*pull_request:\s*$/m, "Pages must deploy only after merge to main");
+    assert.match(pages, /^\s*push:\s*\n\s*branches:\s*\[main\]\s*$/m);
+
+    assert.match(agents, /Read this file at the start of every task/);
+    assert.match(agents, /update it only when an enduring project invariant/);
+    assert.match(agents, /Treat `main` as protected/);
+    assert.match(agents, /Never push directly to it, force-push it, delete it, or bypass branch protection/);
+    assert.match(agents, /required `Offline audit \/ audit` check passes/);
+    assert.match(agents, /merge through a pull request/);
+    assert.match(agents, /never self-approve or fabricate review/);
   });
 };

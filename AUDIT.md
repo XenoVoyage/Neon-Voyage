@@ -1,8 +1,8 @@
-# Neon Voyage 1.3.0 — release audit
+# Neon Voyage 1.4.0 — release audit
 
 - Audited: 2026-08-13
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 101/101 automated checks; post-deployment live Play pending**
+- Result: **PASS — 111/111 automated checks; protection enforcement, merge, deployment, and live Play pending**
 
 Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated browser viewports and Pointer Events and is not a claim of acceptance on physical touch hardware.
 
@@ -12,7 +12,7 @@ Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; 
 - Build step: **none**
 - Required local server: **none**
 - Remote runtime requests: **0 by design**
-- Runtime files: local HTML, CSS, JavaScript, and WebP
+- Runtime files: local HTML, CSS, JavaScript, and nine WebP scenery assets
 - Persistent data: separate strict local records for high score/preferences and unlocked-stage progress
 - License: MIT
 
@@ -20,15 +20,17 @@ Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; 
 
 Passed:
 
-- The immutable 1.3 configuration defines nine ordered stages: Earth Orbit, Inner Belt, Deep Drift, Shattered Frontier, Titan Gate, First Contact, Strike Wing, Raid Fleet, and Command Arena.
+- The immutable 1.4 configuration defines nine ordered stages: Earth Orbit, Inner Belt, Deep Drift, Shattered Frontier, Titan Gate, First Contact, Strike Wing, Raid Fleet, and Command Arena.
 - Stages 1–4 contain asteroid and non-sentient anomaly hazards only. The Titan is Stage 5, ordinary alien spacecraft first appear at Stage 6, and the alien Harrower boss remains Stage 9.
 - The first Earth Orbit wave contains exactly three required rocks, all visible at entry, and cannot over-spawn its configured total.
 - Across 1,024 fixed seeds at each of six phone, tablet, and desktop viewports, every Earth Orbit opening rock preserves at least 72 px of ship-surface clearance, 18 px of threat separation, and 2.2 seconds of predicted contact time.
 - An additional 10,240 seeded openings cover Stages 1–5 at 568×320 and 667×375. Large automatic asteroids adapt only to the configured safe radius floor; an unsafe threat remains in the finite pending queue and retries instead of being forced beside the player or discarded.
 - Required descendants inherit encounter and wave ownership and increase the live objective totals. The stage cannot clear while any required descendant remains.
+- Wave and stage completion also wait for every living same-generation asteroid or alien, plus both finite pending and hard-cull requeue lists. Optional hazards, carrier children, and boss escorts block clean-field progression without corrupting the required-objective counter.
+- Every configured alien wave in Stages 6–8 contains a small, finite asteroid hazard mix. Those hazards remain ballistic and must be cleared alongside the spacecraft.
 - The colossal split is exact and bounded: one parent creates three required rock children; each child creates two final fragments; those six final fragments cannot split again. The resulting required tree contains ten total objectives (1+3+6).
 - Fresh fragments spawn separated with collision grace and survive their initial frame. A hard-culled required fragment is requeued with its exact health, radius, required state, remaining split generations, hit-flash state, and collision grace.
-- A deterministic weapon-driven run visits Stages 1–9 in order, defeats the Harrower boss through normal player projectiles, wraps to Sector 2 Stage 1, and remains beneath every configured entity cap.
+- A deterministic weapon-driven run visits Stages 1–9 in order, clears every optional hazard and spawned add, defeats the Harrower boss through normal player projectiles, wraps to Sector 2 Stage 1, and remains beneath every configured entity cap.
 
 ## Physical collision verification
 
@@ -50,8 +52,9 @@ Passed:
 - Autopilot captures the ship's current travel direction and screen anchor. The next battlefield opens around that anchor without a visible world-position teleport.
 - Anchor continuity passes multiple starting positions and headings at desktop, portrait, and landscape dimensions, including all four legal arena edges through the Stage 9-to-Sector 2 wrap.
 - Menu, normal play, and pause keep stars as point sprites. Line streaks activate only during hyperspace and remain bounded in full and reduced-effects modes.
-- Scenery progresses continuously from Earth through Mars-adjacent space into exotic deep-space stages. A sector wrap does not visibly reset the background to Earth.
-- Procedural Continue-card previews are deterministic, stage-distinct, and drawn only from local authored scene data.
+- Scenery progresses continuously from Earth through Mars-adjacent space into six locally bundled photoreal deep-space worlds. The earlier procedural banded exoplanets are no longer a runtime path, and a sector wrap does not visibly reset the background to Earth.
+- The six added planet files resolve through local relative paths, decode successfully, and render as stage-authored Canvas bodies. A rendered `@napi-rs/canvas` inspection covered their clipping, composition, and transparency without adding a browser-game dependency.
+- Continue-card previews are deterministically rendered, stage-distinct, and draw only from local authored scene data and bundled assets.
 - Asteroid damage presentation has exactly three pre-break crack thresholds below 75%, 50%, and 25% health plus a bounded hit flash.
 
 ## Mobile input and lifecycle verification
@@ -82,6 +85,7 @@ Passed:
 - Selecting an unlocked checkpoint starts a fresh Sector 1 run at that stage with score 0, full hull, and only the base pulse module. It is explicitly not a live-state save.
 - A genuine stage clear persists the next checkpoint before hyperspace. Debug and automated stage jumps cannot unlock campaign progress, and progress clamps at Stage 9.
 - Menu, pause, game-over, dialogs, and portrait mode use correct `inert` and `aria-hidden` ownership. Canvas focus exists only during active play; primary actions receive focus once per real mode transition without stealing dialog or restored control focus.
+- Phone-class landscape CSS compacts secondary HUD labels, the objective panel, module text, and system meters while preserving their accessible names and touch targets.
 
 ## Weapons and pickups verification
 
@@ -91,6 +95,8 @@ Passed:
 - Pickup selection retains its global drop chance and pity boundary. Only the requested weights changed: Rapid Fire 24, Tri-Shot 22, and Hull Repair 20.
 - The deterministic weighted sample includes survival pickups and temporary weapons. Pickup collection remains capped.
 - Rare permanent module upgrades change one eligible module, last only for the current run, and remain within the three-tier limit.
+- Homing Salvo and Radial Array are reachable through the normal bounded module-upgrade path, persist only for the current run, wait for an eligible in-range target, obey their configured cooldowns, and stay under the player-projectile cap.
+- Void Pulse reads its reach and damage from immutable configuration. Its 280 px radius affects only nearby threats, enemy projectiles, and mines, and its reduced asteroid, alien, and boss damage cannot reproduce the old screen-wide clear.
 
 ## Offline, security, and repository verification
 
@@ -98,9 +104,10 @@ Passed:
 
 - The Content Security Policy denies unspecified sources and blocks runtime connections, frames, objects, fonts, media, workers, forms, and base-URI changes.
 - Runtime source contains no remote URL, network API, telemetry, dynamic code, worker, service worker, module loader, package manifest, lockfile, or `node_modules`.
+- All nine raster resources—including the six AI-generated deep-space worlds—are repository-local, referenced exactly once from the renderer's celestial manifest, and absent from external URLs. No outside source image is used.
 - Every runtime resource is local, relative, and valid beneath the `/Neon-Voyage/` GitHub Pages repository subpath. Direct `file://` launch requires no server.
 - Runtime JavaScript passes syntax checking. The release tree contains no symlinks and stays below conservative offline payload limits.
-- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version 1.3.0.
+- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version 1.4.0.
 - The dependency-free browser VM loads every local script, draws Canvas frames and local stage previews, launches a run, exposes the HUD, and maintains one animation loop.
 - CI and Pages workflows publish the unchanged repository root without installing dependencies or running a production build.
 
@@ -118,17 +125,24 @@ Passed:
 node tests/run.js
 ```
 
-Expected result for this source snapshot: `101/101 tests passed`.
+Expected result for this source snapshot: `111/111 tests passed`.
 
 ## Browser smoke and acceptance
 
 - The automated rendered/browser-VM smoke loads every local script, draws Canvas and Continue previews, starts a run, drives Pointer Events through movement, aim, fire, Dash, Pulse, pause, malformed terminals, lifecycle cleanup, and simulation, then verifies neutral stick state.
 - Phone- and tablet-class landscape behavior is exercised through deterministic simulated viewports and pointer sequences. This is automated coverage, not physical-device acceptance.
-- The available cloud browser rejected the local/file preview URL under its URL security policy, so no hands-on prepublication candidate play is claimed.
-- A live desktop Play from the GitHub Pages repository-subpath URL is required immediately after deployment. This release must not be declared complete until that action and the deployed 1.3.0 version are observed successfully.
+- The six new celestial assets were rendered through `@napi-rs/canvas` and inspected in their stage compositions. This is a rendered asset check, not a hands-on browser playthrough.
+- No installed browser executable was available for hands-on local candidate play, and the available cloud browser cannot open the local/file preview URL. No prepublication browser play is claimed.
+- A live desktop Play from the GitHub Pages repository-subpath URL is required immediately after deployment. This release must not be declared complete until that action and the deployed 1.4.0 version are observed successfully.
 
 ## Acceptance and publication boundary
 
 Automated checks validate contracts, safety, determinism, and simulated browser behavior. They do not establish human acceptance of balance, difficulty, visual quality, responsiveness, audio, or overall game feel. The post-deployment live desktop check described above remains the publication acceptance boundary.
 
-`SHA256SUMS` must be regenerated only after all release files are frozen. CI, Pages deployment, repository metadata, and the live URL must then be observed after the single public `main` publication; this local audit does not claim those later checks have completed.
+## Repository protection and publication status
+
+- The repository contains the `Offline audit` pull-request workflow, whose required check context is exactly `Offline audit / audit`.
+- Project governance requires pull requests into `main`, blocks direct/force pushes and branch deletion, and permits one required approval only when a genuine independent reviewer is available.
+- Server-side branch protection is **not yet verified or claimed as applied**. The connected GitHub integration cannot administer branch rules, and the available browser session requires GitHub sign-in. This candidate must remain on its release branch until an authenticated repository administrator enables and verifies the rules.
+
+`SHA256SUMS` must be regenerated only after all release files are frozen. The release pull request, required check, merge, Pages deployment, repository metadata, and live URL must then be observed; this local audit does not claim those later checks have completed.
