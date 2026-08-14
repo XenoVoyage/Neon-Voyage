@@ -1,6 +1,6 @@
 # Neon Voyage
 
-[![Version v2026.8.14](https://img.shields.io/badge/version-v2026.8.14-63f7f0)](CHANGELOG.md)
+[![Version v2026.8.15](https://img.shields.io/badge/version-v2026.8.15-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
@@ -18,7 +18,7 @@ Neon Voyage is a fast, fixed-screen space shooter about leaving Earth, crossing 
 | Genre | 2D space arcade shooter |
 | Journey | Nine stages, from Earth Orbit to the Harrower command ship |
 | Play with | Keyboard and mouse, gamepad, or touch controls |
-| Progress | Local stage checkpoints with saved weapon loadouts |
+| Progress | Local stage checkpoints with saved, stacking weapon loadouts |
 | Built with | HTML, CSS, JavaScript, and Canvas |
 
 ## How to play
@@ -36,7 +36,7 @@ On phones and tablets, play in landscape and touch either half of the battlefiel
 
 ## The voyage
 
-Clear each battlefield, collect temporary weapons, install permanent modules, and travel deeper into unknown space. **New Game** begins again at Earth; **Continue** opens the stages you have earned and restores the saved weapons for the selected checkpoint.
+Clear each battlefield, stack temporary weapons, and grow permanent modules through Mk V. Rare **Enigma** signals slow combat to a halt and offer three enhancements, while milestone clears add guided rockets, radial volleys, and guardian drones to the voyage. **New Game** begins again at Earth; **Continue** shows the loadout at each earned stage and restores the selected checkpoint's saved weapons.
 
 ![The Neon Voyage ship confronting the Harrower in the command arena.](docs/assets/neon-voyage-command-arena.webp)
 

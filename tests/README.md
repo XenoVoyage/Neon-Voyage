@@ -13,14 +13,14 @@ Node.js 22 is the minimum verification baseline because both GitHub workflows ru
 
 | Suite | Responsibility |
 | --- | --- |
-| `config-core.test.js` | Immutable configuration, deterministic math, storage, bounds, and caps |
+| `config-core.test.js` | Immutable configuration, Enigma and Mk V balance, milestone rewards, deterministic math, storage, bounds, and caps |
 | `offline.test.js` | CSP, local resources, repository hygiene, documentation, checksums, and workflows |
-| `browser-smoke.test.js` | Dependency-free browser/DOM/Canvas boot and menu integration |
-| `progress.test.js` | Campaign migration, checkpoints, dialogs, focus, and stage selection |
-| `mobile-input.test.js` | Touch ownership, pointer failures, lifecycle cleanup, orientation, and mobile layout |
-| `gameplay.test.js` | Waves, spawning, collision, combat, weapons, progression, and the complete journey |
-| `visuals.test.js` | Scene continuity, planets, hyperspace, damage presentation, and compact HUD rules |
-| `stress.test.js` | Long deterministic simulation, reproducibility, finite state, and enforced caps |
+| `browser-smoke.test.js` | Dependency-free browser/DOM/Canvas boot, menu, and generated upgrade-card integration |
+| `progress.test.js` | Campaign migration, Mk V/stacked checkpoints, milestone rewards, loadout summaries, dialogs, focus, and stage selection |
+| `mobile-input.test.js` | Touch ownership, Enigma input blocking, pointer failures, lifecycle cleanup, orientation, and mobile layout |
+| `gameplay.test.js` | Waves, spawning, collision, Enigma slowdown/selection, stacking weapons, passive cadence, progression, and the complete journey |
+| `visuals.test.js` | Scene continuity, planets, hyperspace, time-fracture/projectile source contracts, damage presentation, and responsive HUD/dialog rules |
+| `stress.test.js` | Long deterministic full-build simulation, reproducibility, finite state, passive exercise, and enforced caps |
 
 The harness exercises the stable `ND.game`, `ND.StagePreview`, and `ND.RenderDebug` test contracts exposed by the classic-script runtime. It installs no package and performs no network request.
 
@@ -42,10 +42,12 @@ Use only the rows affected by the change, plus the release row for a public runt
 | Direct-file baseline | Open `index.html` through `file://`; start a run and confirm local scripts, assets, HUD, movement, aim, fire, Dash, Pulse, pause, and dialogs work without a server |
 | Repository-subpath hosting | Open an allowed candidate preview at a `/Neon-Voyage/` path and confirm local resources, start, Continue cards, and play load without root-relative failures |
 | Desktop input and accessibility | Exercise keyboard and mouse, focus order, dialogs, pause/resume, sound, reduced effects, and fullscreen where supported |
-| Responsive layout | Inspect representative desktop plus 667×375 and 568×320 landscape viewports without clipped primary controls or unreadable objectives |
-| Gamepad | When gamepad paths change, move, aim/fire, Dash, Pulse, pause, disconnect, and resume with the named controller/browser |
+| Enigma draft | Collect Enigma during active pressure; confirm the gradual slowdown reaches a complete combat pause, three distinct cards remain readable, Escape/Pause cannot skip the decision, one choice applies, and protected combat resumes with neutral input |
+| Responsive layout | Inspect representative desktop plus 667×375 and 568×320 landscape viewports; include the three-card chooser and Continue loadout summaries without clipped primary controls, cards, or objectives |
+| Desktop and assistive choice input | Select each card with pointer and `1`–`3`; verify dialog focus, Tab order, full accessible labels, central announcements, and focus return after selection |
+| Gamepad | Move, aim/fire, Dash, Pulse, pause, then use D-pad and primary action through an Enigma choice; verify held controls do not replay after resume |
 | Physical touch | When touch or compact UI changes, use a real phone/tablet in landscape with two simultaneous sticks, action buttons, pause, rotation, background/foreground, and release/capture-loss cleanup |
-| Persistence | When progress changes, exercise a fresh profile, a compatible older record, malformed/denied storage, Continue, checkpoint refresh, and confirmed New Game reset |
+| Persistence | Exercise a fresh profile, a compatible older record, malformed/denied storage, Mk V modules, four-stack timers, Stage 2/4/6/8 rewards, Continue loadout summaries, checkpoint refresh, and confirmed New Game reset |
 | Published runtime | After deployment, open the exact Pages URL on desktop, select **Play**, complete a short combat interaction, and record the deployed commit and result |
 
 ## Evidence boundary

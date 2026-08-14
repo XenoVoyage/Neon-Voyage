@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.14 configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.14");
+  test("Neon Voyage v2026.8.15 configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.15");
     assert.ok(CONFIG.presentation.gameoverEffectDuration > 0 && CONFIG.presentation.gameoverEffectDuration <= 1);
     collectFrozen(CONFIG, new Set());
   });
@@ -102,6 +102,16 @@ module.exports = function register(test) {
       }
     }
     assert.ok(CONFIG.bossArena.warningSeconds > 0);
+
+    const milestoneRewards = JSON.parse(JSON.stringify(stages
+      .filter((stage) => stage.guaranteedReward)
+      .map((stage) => [stage.index, stage.guaranteedReward])));
+    assert.deepEqual(milestoneRewards, [
+      [2, { type: "moduleUpgrade", module: "homingSalvo", tiers: 1 }],
+      [4, { type: "moduleUpgrade", module: "radialArray", tiers: 1 }],
+      [6, { type: "moduleUpgrade", module: "drone", tiers: 1 }],
+      [8, { type: "moduleUpgrade", module: "radialArray", tiers: 1 }]
+    ], "campaign milestones must target the authored autonomous modules");
   });
 
   test("hyperspace configuration is finite, directional, and fast", () => {
@@ -140,19 +150,25 @@ module.exports = function register(test) {
     assert.ok(Object.values(CONFIG.bosses).every((boss) => boss.faction === "alien"));
   });
 
-  test("field buffs include independent timed weapons and a rare permanent run upgrade", () => {
+  test("field buffs include stackable timed weapons, Enigma drafts, and permanent upgrades", () => {
     const powerups = CONFIG.powerups;
-    assert.ok(powerups.dropChance >= 0.15, "field drops are too rare for the arcade target");
-    assert.ok(powerups.pityKills <= 10, "pickup pity counter must guarantee a drop within ten kills");
+    assert.equal(powerups.dropChance, 0.26);
+    assert.equal(powerups.pityKills, 4);
+    assert.equal(powerups.temporaryStackLimit, 4);
     assert.equal(powerups.rapid.duration, 10);
     assert.equal(powerups.triShot.duration, 10);
-    for (const kind of ["shield", "rapid", "triShot", "arcBurst", "novaLance", "repair", "piercing", "pulseCharge", "moduleUpgrade"]) {
+    for (const kind of ["shield", "rapid", "triShot", "arcBurst", "novaLance", "repair", "piercing", "pulseCharge", "enigma", "moduleUpgrade"]) {
       assert.ok(powerups[kind] && powerups[kind].weight > 0, `${kind} must appear in the weighted pool`);
     }
     for (const kind of ["arcBurst", "novaLance"]) {
       assert.ok(powerups[kind].duration >= 6 && powerups[kind].duration <= 20, `${kind} duration is not a useful finite interval`);
     }
-    assert.ok(powerups.moduleUpgrade.weight < powerups.arcBurst.weight && powerups.moduleUpgrade.weight < powerups.novaLance.weight, "permanent upgrades are not rare");
+    assert.equal(powerups.moduleUpgrade.weight, 7);
+    assert.equal(powerups.enigma.weight, 12);
+    assert.equal(powerups.enigma.choiceCount, 3);
+    assert.equal(powerups.enigma.slowdownSeconds, 0.72);
+    assert.equal(powerups.enigma.resumeInvulnerability, 1);
+    assert.ok(powerups.enigma.slowdownSeconds >= CONFIG.world.fixedStep && powerups.enigma.slowdownSeconds <= 1.5);
     assert.equal("salvage" in powerups, false, "collectible salvage progression must remain removed");
   });
 
@@ -179,10 +195,11 @@ module.exports = function register(test) {
     }
   });
 
-  test("seven permanent weapon modules include two bounded autonomous passives", () => {
+  test("seven permanent weapon modules stack through Mk V with bounded autonomous passives", () => {
     const modules = CONFIG.weapons.modules;
     assert.equal(Object.keys(modules).length, 7);
     assert.equal(CONFIG.weapons.maxInstalledModules, 7);
+    assert.equal(CONFIG.weapons.maxModuleTier, 5);
     assert.equal(CONFIG.weapons.startingModules.pulse, 1);
     for (const [name, module] of Object.entries(modules)) {
       assert.equal(module.tiers.length, CONFIG.weapons.maxModuleTier, `${name} tier count`);
@@ -196,9 +213,15 @@ module.exports = function register(test) {
     for (const id of ["homingSalvo", "radialArray"]) {
       for (const tier of modules[id].tiers) {
         assert.ok(tier.range > 0 && tier.range <= 1000);
-        assert.ok(Number.isSafeInteger(tier.projectiles) && tier.projectiles > 0 && tier.projectiles <= 12);
+        assert.ok(Number.isSafeInteger(tier.projectiles) && tier.projectiles > 0 && tier.projectiles <= 20);
       }
     }
+    assert.equal(modules.homingSalvo.tiers[4].projectiles, 4);
+    assert.equal(modules.radialArray.tiers[4].projectiles, 20);
+    assert.equal(modules.drone.tiers[4].drones, 5);
+    assert.ok(modules.homingSalvo.tiers[4].cooldown < modules.homingSalvo.tiers[0].cooldown);
+    assert.ok(modules.radialArray.tiers[4].cooldown < modules.radialArray.tiers[0].cooldown);
+    assert.ok(modules.drone.tiers[4].cooldown < modules.drone.tiers[0].cooldown);
   });
 
   test("Void Pulse is a finite local defense with bounded damage", () => {

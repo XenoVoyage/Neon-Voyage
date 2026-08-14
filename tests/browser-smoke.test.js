@@ -156,11 +156,14 @@ function buildBrowser(options) {
       "game", "canvas-instructions", "orientation-overlay", "hud", "boss-hud",
       "objective-hud", "meters", "announcement", "menu-overlay", "pause-overlay",
       "gameover-overlay", "controls-modal", "settings-modal", "stage-select-modal",
-      "new-game-modal", "touch-controls"
+      "new-game-modal", "enigma-upgrade-modal", "touch-controls"
     ];
     shell.children = topLevelIds.map((id) => elements.get(id)).filter(Boolean);
     for (const child of shell.children) child.parentElement = shell;
   }
+  const enigmaModal = elements.get("enigma-upgrade-modal");
+  const enigmaStatus = elements.get("enigma-upgrade-status");
+  if (enigmaModal && enigmaStatus) enigmaStatus.parentElement = enigmaModal;
   for (const [zoneId, knobId] of [["move-zone", "move-knob"], ["aim-zone", "aim-knob"]]) {
     const zone = elements.get(zoneId);
     const knob = elements.get(knobId);

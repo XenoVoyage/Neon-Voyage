@@ -2,6 +2,25 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.15] — 2026-08-15
+
+### Added
+
+- Added rare **Enigma** pickups. Collecting one eases combat into a 0.72-second time fracture, fully suspends the simulation, and presents three distinct permanent, timed, or support enhancements before play resumes.
+- Added authored permanent-module milestones: clearing Stages 2, 4, 6, and 8 targets Homing Salvo, Radial Array, Guardian Drone, and another Radial Array tier respectively.
+- Added two more tiers to every permanent module, raising the bounded ceiling from Mk III to Mk V and increasing late-run projectile density without changing the shared entity caps.
+
+### Changed
+
+- Temporary weapon pickups now add their full duration up to four configured stacks instead of only refreshing one base duration; their bounded remaining time continues to travel with campaign checkpoints.
+- Increased field-upgrade pacing from a 19% to 26% drop chance, shortened the pity interval from five kills to four, and raised permanent-module availability while keeping every collection finite.
+- Continue cards now summarize their saved modules, autonomous systems, and timed enhancements. The live module strip marks autonomous modules with an `AUTO` badge, and homing rockets plus radial shots use more distinct silhouettes and restrained launch cues.
+
+### Fixed
+
+- Kept every gameplay input neutral during Enigma slowdown and selection, prevented pause or dialog dismissal from bypassing the choice, and granted bounded protection through the transition back to combat.
+- Made the three-card chooser responsive across desktop, portrait, and compact landscape layouts, with dialog focus, full accessible labels, central announcements, number-key shortcuts, gamepad navigation, and safe orientation handoff.
+
 ## [v2026.8.14] — 2026-08-14
 
 ### Added
