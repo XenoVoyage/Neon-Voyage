@@ -7,6 +7,7 @@ node tests/run.js
 ```
 
 The browser game does not require Node.js. Node is used only for local and continuous verification.
+Node.js 22 is the minimum verification baseline because both GitHub workflows run on Node 22. `AUDIT.md` records the exact environment used for its frozen evidence.
 
 ## Suite map
 
@@ -22,6 +23,30 @@ The browser game does not require Node.js. Node is used only for local and conti
 | `stress.test.js` | Long deterministic simulation, reproducibility, finite state, and enforced caps |
 
 The harness exercises the stable `ND.game`, `ND.StagePreview`, and `ND.RenderDebug` test contracts exposed by the classic-script runtime. It installs no package and performs no network request.
+
+## Final candidate checks
+
+1. Run focused suites or syntax checks while iterating.
+2. Freeze the candidate and regenerate `SHA256SUMS` so it covers the exact repository file set enforced by `offline.test.js`.
+3. Run `node tests/run.js` and `sha256sum --check SHA256SUMS` on the final candidate.
+4. Run `git diff --check`, inspect `git status --short`, and review the complete diff against the current base branch.
+
+Do not edit `SHA256SUMS` by hand. A checksum pass proves file integrity only; it does not prove that behavior is correct or accepted.
+
+## Browser and manual QA
+
+Use only the rows affected by the change, plus the release row for a public runtime release. Record browser/device, viewport, input, source commit or preview URL, and what was actually observed.
+
+| Area | Manual observation |
+| --- | --- |
+| Direct-file baseline | Open `index.html` through `file://`; start a run and confirm local scripts, assets, HUD, movement, aim, fire, Dash, Pulse, pause, and dialogs work without a server |
+| Repository-subpath hosting | Open an allowed candidate preview at a `/Neon-Voyage/` path and confirm local resources, start, Continue cards, and play load without root-relative failures |
+| Desktop input and accessibility | Exercise keyboard and mouse, focus order, dialogs, pause/resume, sound, reduced effects, and fullscreen where supported |
+| Responsive layout | Inspect representative desktop plus 667×375 and 568×320 landscape viewports without clipped primary controls or unreadable objectives |
+| Gamepad | When gamepad paths change, move, aim/fire, Dash, Pulse, pause, disconnect, and resume with the named controller/browser |
+| Physical touch | When touch or compact UI changes, use a real phone/tablet in landscape with two simultaneous sticks, action buttons, pause, rotation, background/foreground, and release/capture-loss cleanup |
+| Persistence | When progress changes, exercise a fresh profile, a compatible older record, malformed/denied storage, Continue, checkpoint refresh, and confirmed New Game reset |
+| Published runtime | After deployment, open the exact Pages URL on desktop, select **Play**, complete a short combat interaction, and record the deployed commit and result |
 
 ## Evidence boundary
 

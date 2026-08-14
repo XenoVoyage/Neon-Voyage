@@ -14,7 +14,19 @@ Apply these priorities in order:
 
 Inspect `git status`, the connected code path, its tests, and the relevant documentation before editing. Preserve unrelated work. Never infer current behavior from filenames, screenshots, or old release notes alone.
 
-## 2. Non-negotiable boundaries
+## 2. Cold start
+
+For a new task, read in this order:
+
+1. This file in full.
+2. `docs/STATUS.md` for current maturity, evidence, and active decision boundaries.
+3. `docs/GAME_DESIGN.md` for player intent and `docs/ARCHITECTURE.md` for runtime ownership.
+4. `tests/README.md` for the verification and manual-acceptance map.
+5. The connected source, tests, issue or decision, and any additional document that owns the requested behavior.
+
+Use `CONTRIBUTING.md` as the short public entrypoint, not as a substitute for these rules. If no active goal or acceptance criteria are documented, ask the user before selecting product direction.
+
+## 3. Non-negotiable boundaries
 
 - Neon Voyage must work by opening `index.html` directly and from its GitHub Pages repository subpath.
 - Runtime code is plain HTML, CSS, Canvas, and deferred classic JavaScript.
@@ -23,19 +35,19 @@ Inspect `git status`, the connected code path, its tests, and the relevant docum
 - Use a fixed time step with bounded catch-up. Every collection and repeating effect needs a real enforced cap and deterministic cleanup.
 - Preserve keyboard, mouse, touch, and gamepad access; dialog focus, live status, reduced effects, and pause behavior are product requirements.
 
-## 3. Code quality
+## 4. Code quality
 
 - Prefer simple, direct code over frameworks, managers, service layers, event buses, loaders, or speculative extension points.
 - Give each function and file one understandable responsibility. Split a file only when the new boundary has a small explicit interface and improves ownership; size alone is not a reason.
 - Use descriptive nouns for state and verb phrases for actions. Avoid vague names such as `data`, `manager`, `helper`, or unexplained abbreviations when a domain name is clearer.
-- Keep one source of truth. Do not duplicate balance values, design rules, version labels, or release evidence across files.
+- Keep one source of truth for decisions. Do not create extra copies of balance values, design rules, version mirrors, or release evidence beyond the documented required owners.
 - Comments explain intent, units, invariants, or browser quirks. Do not narrate obvious syntax, preserve stale explanations, or compensate for unclear names with comments.
 - Follow the existing plain-object state and classic-script namespace unless a task proves that boundary insufficient.
 - Keep fixed-step and render paths allocation-conscious. Reuse state, expire transient objects, and never add unbounded generation or collections.
 - Remove code, fields, selectors, assets, tests, and documentation only after proving they are unused. Do not retain compatibility wrappers or placeholders for hypothetical future work.
 - Preserve the legacy progress validator and storage keys unless a tested migration is included; they protect existing player saves.
 
-## 4. Ownership map
+## 5. Ownership map
 
 | Area | Source of truth |
 | --- | --- |
@@ -49,7 +61,7 @@ Inspect `git status`, the connected code path, its tests, and the relevant docum
 
 Put new logic in the file that already owns its responsibility. Generalize only after current behavior demonstrates reuse.
 
-## 5. Gameplay invariants
+## 6. Gameplay invariants
 
 - The nine-stage journey is finite and config-driven. Do not hardcode stage-specific behavior that the stage and wave data can express.
 - A stage clears only after its authored spawns, pending/requeued threats, required objectives, descendants, optional hazards, carrier children, and boss escorts are gone.
@@ -62,37 +74,50 @@ Put new logic in the file that already owns its responsibility. Generalize only 
 
 See `docs/GAME_DESIGN.md` for product intent and `tests/README.md` for the stable verification map. Exact tuning belongs only in `js/config.js`.
 
-## 6. Verification and cleanup
+## 7. Verification and cleanup
 
 - Add a deterministic regression for every bug fix. Fixed seed plus fixed input must reproduce equivalent state.
 - Run focused tests while iterating, then run the complete `node tests/run.js` suite on the frozen candidate.
 - Release coverage must include the rendered browser smoke, a weapon-driven Stage 1–9 boss journey, the long deterministic stress run, entity caps, storage failure, responsive layouts, and input cleanup.
 - Before deleting or moving repository content, inventory tracked files and search all code, test, HTML, CSS, and Markdown references.
-- Verify every runtime script and test suite is registered once, every local link resolves, every asset is referenced, and the checksum manifest covers the complete release tree.
+- Verify every runtime script and test suite is registered once, every local link resolves, every asset is referenced, and the checksum manifest covers the complete frozen source tree.
 - Review `git diff --check`, JavaScript syntax, the full diff, and any generated evidence before publication.
 - Automated browser and viewport checks are not physical-device acceptance. Record only what was actually observed.
 - A public release requires an actual playable browser smoke. Use an allowed candidate preview when available; otherwise play the deployed Pages build immediately after merge.
 
+Use the browser matrix in `tests/README.md`. Report automated, rendered, preview/deployed, desktop-manual, and physical-touch evidence separately; an empty evidence category is not a failure, but it must not be presented as completed.
+
 Never weaken or remove a test to hide a defect.
 
-## 7. Documentation ownership
+## 8. Documentation ownership
 
 | File | Purpose |
 | --- | --- |
 | `README.md` | Short public introduction, visuals, controls, and local-play instructions |
+| `CONTRIBUTING.md` | Concise contributor entrypoint and workflow routing |
+| `docs/STATUS.md` | Current maturity, active boundary, known blockers, and evidence handoff |
+| `docs/ARCHITECTURE.md` | Runtime flow, source ownership, persistence, and large-file routing |
 | `docs/GAME_DESIGN.md` | Current vision, loop, mechanics, journey, and presentation direction |
 | `docs/ASSETS.md` | Asset inventory, provenance, visual rules, and optimization limits |
 | `AGENTS.md` | Enduring technical and workflow rules |
 | `SECURITY.md` | Supported scope and responsible reporting |
-| `CHANGELOG.md` | User-visible release history |
-| `AUDIT.md` | Observed evidence for the current source release |
+| `CHANGELOG.md` | User-visible product/runtime history |
+| `AUDIT.md` | Observed evidence for the current source checkpoint |
 | `tests/README.md` | Stable test-suite map and evidence boundaries |
 
 Update this file only when an enduring invariant, architecture boundary, verification gate, or release workflow changes. Do not use it as a changelog or task log.
 
-## 8. Git and releases
+## 9. Git and releases
 
 Treat `main` as protected. Never push directly to it, force-push it, delete it, or bypass branch protection. Use a short-lived branch and merge through a pull request only after the required `Offline audit / audit` check passes. If approval protection is enabled, wait for a genuine independent approval; never self-approve or fabricate review.
+
+Use these terms precisely:
+
+- The **runtime version** is the player-visible build label. `js/config.js` is canonical; the visible UI, `VERSION.txt`, README badge, changelog, audit, and permanent assertions are required mirrors.
+- A **deployment** is a GitHub Pages publication of a `main` commit. It may contain documentation-only changes and does not by itself create a release.
+- A **release** is an intentionally published runtime snapshot with a matching immutable Git tag. A GitHub Release may attach notes and artifacts to that tag; neither a changelog heading nor a version badge proves that it exists.
+
+Documentation-only maintenance does not change the runtime version or add a release changelog entry unless it changes player-facing behavior. It still goes through a pull request, runs the complete audit because Pages publishes the repository root, and regenerates `SHA256SUMS` after the final file set is frozen. Correct inaccurate audit wording, but never rewrite historical observed evidence to imply a check was rerun when it was not.
 
 Release labels use the actual publication date:
 
@@ -102,7 +127,7 @@ Release labels use the actual publication date:
 
 For every coherent public release:
 
-1. Synchronize the version in runtime configuration, visible UI, `VERSION.txt`, README, changelog, audit, and permanent assertions.
+1. Change the canonical version in `js/config.js`, then synchronize the visible UI, `VERSION.txt`, README, changelog, audit, and permanent assertions.
 2. Add a concise user-facing changelog entry.
 3. Review all documentation owners and update only those affected.
 4. Freeze the candidate, run the complete verification gate, and record observed evidence in `AUDIT.md`.
@@ -112,3 +137,15 @@ For every coherent public release:
 8. Verify post-merge CI, Pages deployment, the live version, and one final Play action.
 
 Do not claim a test, check, deployment, or live verification before observing it. If access blocks publication, leave the branch and pull request in a tested, recoverable state and report the exact blocker.
+
+## GitHub collaboration
+
+- Before editing, inspect the current default-branch head, working tree, open issues, open and draft pull requests, and recent merged work relevant to the task. Do not duplicate active work.
+- Work on a short-lived `agent/<description>` branch created from the current default branch unless the user explicitly requests another branch strategy.
+- Agents may create and switch branches, edit files, commit, push, and open or update draft pull requests when those actions are required to complete an authorized task.
+- Do not push directly to a protected default branch. Do not force-push, rewrite shared history, move or delete tags or releases, or discard another contributor's work unless the user explicitly authorizes the exact action.
+- Stage only task-related files. Keep commits coherent and describe the reason, user impact, and validation evidence in the pull request.
+- Before requesting review or merge, compare the complete branch against the current base branch, inspect the full diff, incorporate relevant issue and review context, and run every required check on the final candidate.
+- Agents may delete a stale local or remote branch without additional confirmation only when all of these are proven: it is not the default, protected, or a release branch; it has no open pull request; either its tip is reachable from the default branch or its associated pull request is merged and the branch tip still matches the pull request's recorded head; it has no commits added after that merge; and no active worktree or collaborator uses it. Report every deleted branch.
+- Keep tags and published releases immutable. If authentication, permissions, branch state, or ownership is uncertain, stop and ask instead of guessing.
+- Open pull requests as drafts by default. Do not merge a pull request unless the user explicitly requests the merge or a repository-specific rule grants that authority.

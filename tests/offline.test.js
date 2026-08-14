@@ -151,6 +151,9 @@ module.exports = function register(test) {
     assert.match(readme, /## How to play/);
     assert.match(readme, /## Run locally/);
     assert.match(readme, /docs\/GAME_DESIGN\.md/);
+    assert.match(readme, /docs\/ARCHITECTURE\.md/);
+    assert.match(readme, /docs\/STATUS\.md/);
+    assert.match(readme, /CONTRIBUTING\.md/);
     assert.doesNotMatch(readme, /\b\d+\/\d+ tests passed\b|\bNode v\d+|Content Security Policy|fixed[- ]step|Pointer Events/i,
       "README contains implementation or audit detail that belongs in technical documentation");
   });
@@ -262,7 +265,7 @@ module.exports = function register(test) {
     for (const script of scripts) childProcess.execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
   });
 
-  test("release metadata and public documentation agree on version v2026.8.14", () => {
+  test("runtime metadata and public documentation agree on version v2026.8.14", () => {
     const version = readProject("VERSION.txt").trim();
     assert.equal(version, "Neon Voyage v2026.8.14");
     assert.match(readProject("js/config.js"), /version:\s*["']v2026\.8\.14["']/);
@@ -312,6 +315,8 @@ module.exports = function register(test) {
     const ci = readProject(".github/workflows/ci.yml");
     const pages = readProject(".github/workflows/pages.yml");
     const agents = readProject("AGENTS.md");
+    const contributing = readProject("CONTRIBUTING.md");
+    const pullRequestTemplate = readProject(".github/pull_request_template.md");
     assert.match(ci, /^name:\s*Offline audit\s*$/m);
     assert.match(ci, /^\s*pull_request:\s*$/m, "the audit must run for pull requests");
     assert.match(ci, /^\s*push:\s*\n\s*branches:\s*\[main\]\s*$/m, "the audit must run after main merges");
@@ -330,9 +335,19 @@ module.exports = function register(test) {
     assert.match(agents, /required `Offline audit \/ audit` check passes/);
     assert.match(agents, /merge through a pull request/);
     assert.match(agents, /never self-approve or fabricate review/);
+    assert.match(agents, /^## GitHub collaboration$/m);
+    assert.match(agents, /Open pull requests as drafts by default/);
+    assert.match(agents, /Keep tags and published releases immutable/);
     assert.match(agents, /Prefer simple, direct code/);
     assert.match(agents, /Remove code, fields, selectors, assets, tests, and documentation only after proving they are unused/);
     assert.match(agents, /docs\/GAME_DESIGN\.md/);
+    assert.match(agents, /docs\/ARCHITECTURE\.md/);
+    assert.match(agents, /docs\/STATUS\.md/);
     assert.match(agents, /SECURITY\.md/);
+    assert.match(contributing, /Read \[`AGENTS\.md`\]/);
+    assert.match(contributing, /node tests\/run\.js/);
+    for (const heading of ["Summary", "Context", "Changes", "Validation", "Risk and rollback", "Checklist"]) {
+      assert.match(pullRequestTemplate, new RegExp(`^## ${heading}$`, "m"), `pull request template is missing ${heading}`);
+    }
   });
 };

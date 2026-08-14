@@ -44,6 +44,13 @@ Clear each battlefield, collect temporary weapons, install permanent modules, an
 
 Download or clone the repository, then open `index.html` in a modern browser. No installation or build step is needed.
 
-Project details live in the [game design](docs/GAME_DESIGN.md), [changelog](CHANGELOG.md), [contributor guide](AGENTS.md), and [release audit](AUDIT.md).
+## Project documentation
+
+- [Game design](docs/GAME_DESIGN.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Current status](docs/STATUS.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
+- [Changelog](CHANGELOG.md) and [source audit](AUDIT.md)
 
 Designed and implemented with **OpenAI Codex**, with gameplay direction and review from **XenoVoyage**. Released under the [MIT License](LICENSE).
