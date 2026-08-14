@@ -329,7 +329,8 @@ module.exports = function register(test) {
     assert.match(pages, /^\s*push:\s*\n\s*branches:\s*\[main\]\s*$/m);
 
     assert.match(agents, /Read this file at the start of every task/);
-    assert.match(agents, /Update this file only when an enduring invariant/);
+    assert.match(agents, /Update every affected canonical document in the same coherent change/);
+    assert.match(agents, /Update `AGENTS\.md` only for enduring contributor contracts/);
     assert.match(agents, /Treat `main` as protected/);
     assert.match(agents, /Never push directly to it, force-push it, delete it, or bypass branch protection/);
     assert.match(agents, /required `Offline audit \/ audit` check passes/);

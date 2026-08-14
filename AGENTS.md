@@ -105,7 +105,7 @@ Never weaken or remove a test to hide a defect.
 | `AUDIT.md` | Observed evidence for the current source checkpoint |
 | `tests/README.md` | Stable test-suite map and evidence boundaries |
 
-Update this file only when an enduring invariant, architecture boundary, verification gate, or release workflow changes. Do not use it as a changelog or task log.
+Update every affected canonical document in the same coherent change when implemented behavior, project status, owner decisions, interfaces, commands, verification gates, or workflows change. Update `AGENTS.md` only for enduring contributor contracts, `README.md` only for public-facing truth, and `docs/STATUS.md` only for current state; do not alter unaffected owners or use them as task logs.
 
 ## 9. Git and releases
 
