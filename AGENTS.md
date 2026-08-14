@@ -1,77 +1,114 @@
 # Neon Voyage contributor instructions
 
-Read this file at the start of every task, in full, before inspecting or changing the project, even when the contributor or coding agent has no access to earlier conversations. Re-read it if it changes or after switching branches. This is the canonical project handoff: update it only when an enduring project invariant, architecture boundary, verification gate, or release workflow changes, and do not use it as a changelog or task log. Read the related runtime, tests, and documentation before editing a connected system; do not infer behavior from filenames or old release notes.
+Read this file at the start of every task, in full, before inspecting or changing the project. Re-read it after changing branches or updating this file. These rules are the canonical handoff for human and AI contributors without access to earlier conversations.
 
-## Project facts
+## 1. Priorities
 
-- Neon Voyage is a local-first 2D Canvas arcade shooter built from plain HTML, CSS, and classic JavaScript.
-- The browser runtime must work by opening `index.html` directly and from the GitHub Pages repository subpath.
-- Runtime dependencies, package managers, build steps, accounts, telemetry, analytics, and network requests are forbidden.
-- `js/config.js` is the balance and stage source of truth. Stage order, finite wave definitions, spawn mixes, goals, transition timing, difficulty, and caps must stay data-driven.
-- `js/core.js` owns deterministic math, collision, storage, and collection helpers. `js/game.js` owns simulation and orchestration. `js/render.js` owns Canvas presentation. `js/audio.js` owns capped synthesized audio.
-- Simulation uses a fixed time step with bounded frame catch-up. Every entity/effect family has a hard cap and deterministic cleanup.
-- GitHub Pages already deploys through Actions from the public `main` branch.
+Apply these priorities in order:
 
-## Engineering behavior
+1. Preserve user intent, saved progress, accessibility, and working behavior.
+2. Choose the smallest complete solution with a clear owner.
+3. Keep the runtime deterministic, bounded, local, and secure.
+4. Remove proven clutter and duplication.
+5. Verify honestly before publishing.
 
-- Prefer the smallest complete solution. Keep code simple, direct, modular, and readable.
-- Do not add speculative frameworks, managers, service layers, event buses, loaders, build tooling, abstractions, or unused extension points.
-- Read the connected code path before implementation. Follow existing naming, plain-object state, classic-script namespace, and config-driven patterns.
-- Preserve user changes and unrelated work. Never discard or rewrite them to simplify a task.
-- Put logic in the file that already owns the responsibility. Generalize only when current behavior has proven reuse.
-- Keep hot fixed-step and render paths allocation-conscious. Reuse state, enforce caps, expire transient objects, and clean inactive world state.
-- Preserve restrictive CSP, relative local resource paths, safe optional storage, and zero runtime network surface.
-- Treat `main` as protected. Never push directly to it, force-push it, delete it, or bypass branch protection. Work on a short-lived branch and merge through a pull request only after the required `Offline audit / audit` check passes. If approval protection is enabled, wait for one genuine independent approval; never self-approve or fabricate review.
-- Keep input, dialogs, live status, progress indicators, focus behavior, and reduced-effects support accessible across keyboard, pointer, touch, and gamepad paths.
-- Detect touch capability from device signals and observed touch input, not only the primary pointer; hybrid tablets with a trackpad must retain their touch controls.
-- Treat document visibility as the touch lifecycle boundary: browser-chrome focus changes must not pause a touch run, while a hidden document must pause and clear transient input. Preserve desktop blur-to-pause behavior.
+Inspect `git status`, the connected code path, its tests, and the relevant documentation before editing. Preserve unrelated work. Never infer current behavior from filenames, screenshots, or old release notes alone.
 
-## Gameplay and verification
+## 2. Non-negotiable boundaries
 
-- A non-boss stage is a finite sequence of configured waves followed by a controlled hyperspace transition. The boss stage uses its direct configured defeat goal. Do not reintroduce endless replenishment disguised as progression.
-- Do not hardcode stage-specific branches when the stage/wave configuration can express the rule clearly.
-- Keep the authored journey legible: the first five stages progress from Earth orbit through increasingly unfamiliar asteroid space and the Titan Gate; ordinary alien spacecraft do not appear before Stage 6, and the alien command arena remains Stage 9.
-- Stage and wave clear require the configured finite wave to be fully spawned, its pending and requeue lists to be empty, every required objective to be resolved, and no living same-generation asteroid or alien to remain. Optional hazards, descendants, carrier children, and boss escorts all belong to this clean-field gate even when they do not increase required-objective counters.
-- During hyperspace, gameplay input is locked, autopilot and cinematic state are finite, old combat entities are cleaned, and the ship keeps its pre-transition screen anchor and travel direction through the stage handoff. Never hide a discontinuity with a world-position teleport.
-- Asteroids remain ballistic physical hazards; normal ranged attacks belong to alien spacecraft. Asteroid pairs use mass-aware separation and bounce without damaging or destroying one another. A genuine approaching asteroid-to-alien impact remains lethal to the alien and may damage the asteroid, but it must never duplicate objective credit or grant score, combo, or pickup rewards.
-- Splitting hazards must use an explicit, bounded remaining-generation value. Preserve descendant objective ownership and hard-cull restoration, and never add an unbounded recursive split path.
-- Hard culling must requeue every living same-generation encounter threat, preserve its required flag and finite gameplay state, and never duplicate, drop, or silently resolve it.
-- Temporary weapon pickups use independent finite timers and must visibly change firing behavior while active. Rare module upgrades remain bounded. Genuine campaign checkpoints persist the bounded module tiers and remaining temporary-weapon timers associated with that authored stage.
-- Campaign progress is a strict, size-limited local record separate from score/preferences. Continue exposes only earned authored-stage checkpoints and restores only the selected stage's saved loadout; score, hull, position, simulation clocks, and live battlefield state start fresh in Sector 1. It is not a live-state save. Debug and automation stage jumps must never unlock or rewrite campaign progress.
-- Starting New Game while campaign progress exists requires an accessible confirmation that clearly distinguishes the campaign data being overwritten from retained high score and preferences. Cancel must be the safe default. Restart and Play Again are non-destructive and must not invoke this reset path.
-- Add deterministic regression coverage for every gameplay fix. Fixed seed plus fixed input must reproduce equivalent state.
-- Mobile play is landscape-only. Portrait uses a blocking orientation gate that owns covered UI, keyboard, pointer, and gamepad input; it freezes simulation and clears input without changing the run mode. Returning to landscape resumes the same state without replaying held buttons. Screen Orientation locking is best-effort and must never be required for play.
-- Track simultaneous touch sticks by independent pointer IDs. A terminal event matching an owned pointer ID must release that stick even when WebKit omits or corrupts `pointerType`. Reconcile tracked capture ownership every simulation frame, and provide boundary, native-touch, page-lifecycle, visibility, and orientation cleanup fallbacks. Never use an inactivity timeout: a deliberately stationary held thumb must remain valid. Cover malformed terminals, implicit capture loss, hybrid detection, focus/visibility behavior, and rejected orientation locks with browser-VM regressions.
-- Keep mobile stick response radial and config-driven, preserve the chosen heading after aim release, and make touch pause release captures and stop drift until fresh input. Suppress accidental double-tap zoom through gesture ownership without adding a blanket `user-scalable=no` viewport restriction.
-- Mobile joysticks are dynamic controls: a fresh touch on the playable left or right canvas half establishes that stick's logical origin, remains owned by one pointer until a terminal event, and returns to its idle visual position after cleanup. Gameplay overlays and action buttons must remain independently operable.
-- Automatic combat spawns must account for full entity radii, visible-field containment, nearby threats, and a tested minimum contact time. Adapt size only to the configured safe floor; otherwise preserve the pending objective and retry when space becomes available instead of forcing or dropping a spawn. Seed-sweep opening placements across compact and desktop viewports whenever spawn logic changes.
-- Keep the 20-minute stress audit finite and under every configured cap. Never weaken a release test merely to hide an application defect.
-- Before release, run a deterministic weapon-driven journey through all nine stages and defeat the Stage 9 boss under every configured entity cap. A debug stage jump is not a substitute for this end-to-end gameplay path.
-- Run targeted tests while iterating, then `node tests/run.js` for a coherent release candidate.
-- Automated checks establish contracts and regressions. Never claim that visuals, balance, difficulty, responsiveness, or overall game feel were manually accepted unless a human reviewer actually accepted them.
-- Before every public release, exercise the frozen candidate through the rendered browser smoke in addition to the full deterministic suite. When an allowed preview URL is available, also play that candidate in an actual browser before publication. When browser security prevents local preview, perform an actual live Play smoke immediately after Pages deploy and do not declare the release complete until it passes. Cover desktop plus automated phone-class and tablet-class landscape layouts; on real touch hardware, manually check partial/full deflection, two-thumb Dash/Pulse, pause/resume, release/cancel, and stage progress whenever that hardware is available. Record only what was actually observed, and never describe a simulated touch test as manual hardware acceptance.
+- Neon Voyage must work by opening `index.html` directly and from its GitHub Pages repository subpath.
+- Runtime code is plain HTML, CSS, Canvas, and deferred classic JavaScript.
+- Runtime dependencies, package managers, build steps, modules, accounts, analytics, telemetry, dynamic code, and network requests are forbidden.
+- Keep the restrictive Content Security Policy and repository-local relative resources.
+- Use a fixed time step with bounded catch-up. Every collection and repeating effect needs a real enforced cap and deterministic cleanup.
+- Preserve keyboard, mouse, touch, and gamepad access; dialog focus, live status, reduced effects, and pause behavior are product requirements.
 
-## Coherent release updates
+## 3. Code quality
 
-Release labels use the actual public-release date, not the date development started:
+- Prefer simple, direct code over frameworks, managers, service layers, event buses, loaders, or speculative extension points.
+- Give each function and file one understandable responsibility. Split a file only when the new boundary has a small explicit interface and improves ownership; size alone is not a reason.
+- Use descriptive nouns for state and verb phrases for actions. Avoid vague names such as `data`, `manager`, `helper`, or unexplained abbreviations when a domain name is clearer.
+- Keep one source of truth. Do not duplicate balance values, design rules, version labels, or release evidence across files.
+- Comments explain intent, units, invariants, or browser quirks. Do not narrate obvious syntax, preserve stale explanations, or compensate for unclear names with comments.
+- Follow the existing plain-object state and classic-script namespace unless a task proves that boundary insufficient.
+- Keep fixed-step and render paths allocation-conscious. Reuse state, expire transient objects, and never add unbounded generation or collections.
+- Remove code, fields, selectors, assets, tests, and documentation only after proving they are unused. Do not retain compatibility wrappers or placeholders for hypothetical future work.
+- Preserve the legacy progress validator and storage keys unless a tested migration is included; they protect existing player saves.
 
-- The first coherent release published on a calendar date is `vYYYY.M.D`, with no leading zeroes in the month or day; for example, `v2026.8.13`.
-- Each additional coherent release published on that same date appends the next lowercase letter in order: `v2026.8.13a`, then `v2026.8.13b`, `v2026.8.13c`, and so on.
-- Inspect the changelog and repository history before choosing a label. Never reuse a label, skip an available unsuffixed first release, invent a suffix for work that was not published, or renumber historical releases.
-- Synchronize the exact leading-`v` label across runtime configuration, visible UI, `VERSION.txt`, README badge/evidence, changelog, audit, asset notes where applicable, and permanent version assertions.
-- If publication moves to a different calendar date after the candidate was labeled, update every version surface and affected verification evidence, then regenerate checksums before publication.
+## 4. Ownership map
 
-Every coherent public update must include all of the following in one clean publication:
+| Area | Source of truth |
+| --- | --- |
+| Balance, stages, waves, difficulty, caps | `js/config.js` |
+| Deterministic math, collision, storage, collection utilities | `js/core.js` |
+| Simulation, progression, input, orchestration | `js/game.js` |
+| Canvas scenes and presentation | `js/render.js` |
+| Capped synthesized audio | `js/audio.js` |
+| Layout and responsive presentation | `styles.css` |
+| Intended player experience | `docs/GAME_DESIGN.md` |
 
-1. Select the next unused calendar release label under the policy above and update runtime metadata plus `VERSION.txt`.
-2. Add a professional, user-facing entry to `CHANGELOG.md`.
-3. Review this file against the complete change. Update it only when an enduring invariant, boundary, gate, or workflow changed; otherwise leave it stable.
-4. Update `README.md` and `AUDIT.md` to match implemented behavior only.
-5. Add or update permanent deterministic tests and run the full suite.
-6. Complete and document the browser-smoke gate above; if local preview is blocked, record that boundary and require the immediate post-deploy live Play check.
-7. Regenerate `SHA256SUMS` only after all release files are frozen, then verify every entry.
-8. Review the complete diff and publish the coherent update as one release pull request from a short-lived branch into protected `main`.
-9. Wait for the required `Offline audit / audit` status and any configured human approval, then merge without bypassing protection.
-10. Verify CI, Pages deployment, and the live repository-subpath URL after merge, including one final live Play action.
+Put new logic in the file that already owns its responsibility. Generalize only after current behavior demonstrates reuse.
 
-Do not split one coherent update across partial public merges. A release branch may contain iterative commits, but its pull request must present one frozen, coherent candidate and should normally be squash-merged. Do not claim publication, CI, Pages, checksum, or live-site success before it is observed. If access or deployment blocks final verification, report the exact blocker and leave the repository in a tested, recoverable state.
+## 5. Gameplay invariants
+
+- The nine-stage journey is finite and config-driven. Do not hardcode stage-specific behavior that the stage and wave data can express.
+- A stage clears only after its authored spawns, pending/requeued threats, required objectives, descendants, optional hazards, carrier children, and boss escorts are gone.
+- Hyperspace is finite, locks gameplay input, cleans old combat state, and preserves the ship's screen anchor and travel direction.
+- Asteroids are ballistic hazards. Asteroid pairs bounce without damaging one another; genuine asteroid-to-alien impacts remain reward-free.
+- Split trees and hard-cull requeues preserve objective ownership and finite state. They must never duplicate, drop, or silently resolve a threat.
+- Campaign checkpoints store bounded weapon loadouts for earned stages, not live battlefield state. Continue starts a fresh Sector 1 field; New Game confirms before replacing campaign progress.
+- Touch sticks are independent, radial, dynamic, and pointer-ID owned. Every terminal, capture-loss, visibility, pause, orientation, or page-lifecycle path must return input to neutral without timing out a deliberate stationary hold.
+- Automatic spawns account for full radii, field containment, nearby threats, and safe contact time. Unsafe spawns remain pending instead of being forced or discarded.
+
+See `docs/GAME_DESIGN.md` for product intent and `tests/README.md` for the stable verification map. Exact tuning belongs only in `js/config.js`.
+
+## 6. Verification and cleanup
+
+- Add a deterministic regression for every bug fix. Fixed seed plus fixed input must reproduce equivalent state.
+- Run focused tests while iterating, then run the complete `node tests/run.js` suite on the frozen candidate.
+- Release coverage must include the rendered browser smoke, a weapon-driven Stage 1–9 boss journey, the long deterministic stress run, entity caps, storage failure, responsive layouts, and input cleanup.
+- Before deleting or moving repository content, inventory tracked files and search all code, test, HTML, CSS, and Markdown references.
+- Verify every runtime script and test suite is registered once, every local link resolves, every asset is referenced, and the checksum manifest covers the complete release tree.
+- Review `git diff --check`, JavaScript syntax, the full diff, and any generated evidence before publication.
+- Automated browser and viewport checks are not physical-device acceptance. Record only what was actually observed.
+- A public release requires an actual playable browser smoke. Use an allowed candidate preview when available; otherwise play the deployed Pages build immediately after merge.
+
+Never weaken or remove a test to hide a defect.
+
+## 7. Documentation ownership
+
+| File | Purpose |
+| --- | --- |
+| `README.md` | Short public introduction, visuals, controls, and local-play instructions |
+| `docs/GAME_DESIGN.md` | Current vision, loop, mechanics, journey, and presentation direction |
+| `docs/ASSETS.md` | Asset inventory, provenance, visual rules, and optimization limits |
+| `AGENTS.md` | Enduring technical and workflow rules |
+| `SECURITY.md` | Supported scope and responsible reporting |
+| `CHANGELOG.md` | User-visible release history |
+| `AUDIT.md` | Observed evidence for the current source release |
+| `tests/README.md` | Stable test-suite map and evidence boundaries |
+
+Update this file only when an enduring invariant, architecture boundary, verification gate, or release workflow changes. Do not use it as a changelog or task log.
+
+## 8. Git and releases
+
+Treat `main` as protected. Never push directly to it, force-push it, delete it, or bypass branch protection. Use a short-lived branch and merge through a pull request only after the required `Offline audit / audit` check passes. If approval protection is enabled, wait for a genuine independent approval; never self-approve or fabricate review.
+
+Release labels use the actual publication date:
+
+- First release that day: `vYYYY.M.D`, without leading zeroes.
+- Later releases that day: append `a`, `b`, `c`, and so on.
+- Inspect history before choosing a label; never reuse or skip a label.
+
+For every coherent public release:
+
+1. Synchronize the version in runtime configuration, visible UI, `VERSION.txt`, README, changelog, audit, and permanent assertions.
+2. Add a concise user-facing changelog entry.
+3. Review all documentation owners and update only those affected.
+4. Freeze the candidate, run the complete verification gate, and record observed evidence in `AUDIT.md`.
+5. Regenerate and verify `SHA256SUMS` after every release file is final.
+6. Publish one coherent pull request from a short-lived branch.
+7. Wait for required checks and any real approval, then normally squash-merge without bypass.
+8. Verify post-merge CI, Pages deployment, the live version, and one final Play action.
+
+Do not claim a test, check, deployment, or live verification before observing it. If access blocks publication, leave the branch and pull request in a tested, recoverable state and report the exact blocker.

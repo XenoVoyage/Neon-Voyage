@@ -1,4 +1,4 @@
-(function attachNeonDriftAudio(root) {
+(function attachNeonVoyageAudio(root) {
   "use strict";
 
   const ND = root.ND || (root.ND = {});
@@ -87,11 +87,6 @@
       } catch {
         this.master.gain.value = target;
       }
-    }
-
-    toggleMuted() {
-      this.setMuted(!this.muted);
-      return this.muted;
     }
 
     setEnabled(enabled) {
@@ -239,10 +234,6 @@
       this.tone(76, 0.28, "square", 0.06, 0.52);
     }
 
-    hurt() {
-      this.damage();
-    }
-
     alienShot() {
       this.tone(245, 0.13, "sawtooth", 0.028, 0.46);
     }
@@ -256,10 +247,6 @@
     arena() {
       this.tone(92, 0.48, "sine", 0.07, 2.4);
       this.tone(184, 0.28, "square", 0.026, 0.72, 0.08);
-    }
-
-    ui() {
-      this.tone(350, 0.075, "sine", 0.03, 1.34);
     }
 
     ambientPulse(time, intensity) {
@@ -285,19 +272,6 @@
       this.lastShotAt = -Infinity;
     }
 
-    close() {
-      if (!this.context) return;
-      try {
-        const result = this.context.close();
-        if (result && typeof result.catch === "function") result.catch(() => {});
-      } catch {
-        // Closing audio is best-effort.
-      }
-      this.context = null;
-      this.master = null;
-      this.noiseBuffer = null;
-      this.activeNodes = 0;
-    }
   }
 
   ND.AudioEngine = AudioEngine;

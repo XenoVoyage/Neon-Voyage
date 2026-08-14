@@ -9,8 +9,6 @@
   --gold: #ffd36b;
   --danger: #ff6176;
   --void: #02050c;
-  --glass: rgba(4, 10, 22, 0.84);
-  --glass-soft: rgba(6, 13, 28, 0.62);
   --line: rgba(150, 228, 244, 0.2);
   --line-bright: rgba(146, 245, 255, 0.52);
   --safe-top: max(14px, env(safe-area-inset-top));

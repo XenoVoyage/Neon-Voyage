@@ -1,4 +1,4 @@
-(function attachNeonDriftCore(root) {
+(function attachNeonVoyageCore(root) {
   "use strict";
 
   const ND = root.ND || (root.ND = {});
@@ -10,10 +10,6 @@
 
   function lerp(a, b, amount) {
     return a + (b - a) * amount;
-  }
-
-  function angle(ax, ay, bx, by) {
-    return Math.atan2(by - ay, bx - ax);
   }
 
   function normalizeAngle(value) {
@@ -28,10 +24,6 @@
     const dx = bx - ax;
     const dy = by - ay;
     return dx * dx + dy * dy;
-  }
-
-  function distance(ax, ay, bx, by) {
-    return Math.sqrt(distanceSquared(ax, ay, bx, by));
   }
 
   function segmentCircleHit(x1, y1, x2, y2, cx, cy, radius) {
@@ -119,42 +111,6 @@
     }
   }
 
-  function readStorageJSON(key, fallback, validate, maxLength, storage) {
-    return safeReadJSON(storage || null, key, fallback, validate, maxLength);
-  }
-
-  function writeStorageJSON(key, value, validate, maxLength, storage) {
-    return safeWriteJSON(storage || null, key, value, validate, maxLength);
-  }
-
-  function createObjectPool(factory, reset, maxFree) {
-    if (typeof factory !== "function") throw new TypeError("Object pool factory must be a function");
-    const free = [];
-    const limit = Number.isFinite(maxFree) ? Math.max(0, Math.floor(maxFree)) : 256;
-    return Object.freeze({
-      acquire() {
-        const args = Array.from(arguments);
-        const item = free.length ? free.pop() : factory.apply(null, args);
-        if (typeof reset === "function") reset.apply(null, [item].concat(args));
-        return item;
-      },
-      release(item) {
-        if (!item || free.length >= limit) return false;
-        free.push(item);
-        return true;
-      },
-      clear() {
-        free.length = 0;
-      },
-      get freeCount() {
-        return free.length;
-      },
-      get maxFree() {
-        return limit;
-      }
-    });
-  }
-
   function cleanupCapped(array, isAlive, maxLength, onRemove) {
     if (!Array.isArray(array)) return 0;
     const keep = typeof isAlive === "function" ? isAlive : (item) => item && !item.dead;
@@ -183,20 +139,6 @@
     return removed;
   }
 
-  function pushCapped(array, item, maxLength, onDrop) {
-    const limit = Math.max(0, Math.floor(maxLength));
-    if (limit === 0) {
-      if (typeof onDrop === "function") onDrop(item);
-      return false;
-    }
-    while (array.length >= limit) {
-      const dropped = array.shift();
-      if (typeof onDrop === "function") onDrop(dropped);
-    }
-    array.push(item);
-    return true;
-  }
-
   function cameraZoom(camera) {
     const zoom = camera && Number(camera.zoom);
     return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
@@ -210,29 +152,9 @@
     return target;
   }
 
-  function screenToWorld(x, y, camera, viewWidth, viewHeight, out) {
-    const target = out || {};
-    const zoom = cameraZoom(camera);
-    target.x = (x - viewWidth * 0.5) / zoom + (camera ? camera.x : 0);
-    target.y = (y - viewHeight * 0.5) / zoom + (camera ? camera.y : 0);
-    return target;
-  }
-
   function circlesOverlap(ax, ay, ar, bx, by, br) {
     const radius = Math.max(0, ar) + Math.max(0, br);
     return distanceSquared(ax, ay, bx, by) <= radius * radius;
-  }
-
-  function circleCollision(a, b) {
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const combinedRadius = Math.max(0, a.radius || 0) + Math.max(0, b.radius || 0);
-    const squared = dx * dx + dy * dy;
-    if (squared > combinedRadius * combinedRadius) return null;
-    const length = Math.sqrt(squared);
-    const nx = length > 0.000001 ? dx / length : 1;
-    const ny = length > 0.000001 ? dy / length : 0;
-    return { nx, ny, distance: length, overlap: combinedRadius - length };
   }
 
   function constrainToCircle(entity, centerX, centerY, boundaryRadius, restitution) {
@@ -258,16 +180,6 @@
     return true;
   }
 
-  function originShiftFor(x, y, threshold, quantum) {
-    const edge = Number.isFinite(threshold) ? Math.max(1, Math.abs(threshold)) : 100000;
-    if (Math.abs(x) < edge && Math.abs(y) < edge) return { x: 0, y: 0 };
-    const step = Number.isFinite(quantum) ? Math.max(1, Math.abs(quantum)) : Math.max(1, edge * 0.5);
-    return {
-      x: Math.trunc(x / step) * step,
-      y: Math.trunc(y / step) * step
-    };
-  }
-
   function translateOriginPoint(point, shiftX, shiftY) {
     if (!point || typeof point !== "object") return;
     const pairs = [
@@ -285,13 +197,17 @@
   }
 
   function rebaseOrigin(anchor, collections, points, threshold, quantum) {
-    const shift = originShiftFor(anchor.x, anchor.y, threshold, quantum);
-    if (shift.x === 0 && shift.y === 0) return { rebased: false, dx: 0, dy: 0 };
+    const edge = Number.isFinite(threshold) ? Math.max(1, Math.abs(threshold)) : 100000;
+    if (Math.abs(anchor.x) < edge && Math.abs(anchor.y) < edge) return;
+    const step = Number.isFinite(quantum) ? Math.max(1, Math.abs(quantum)) : Math.max(1, edge * 0.5);
+    const shiftX = Math.trunc(anchor.x / step) * step;
+    const shiftY = Math.trunc(anchor.y / step) * step;
+    if (shiftX === 0 && shiftY === 0) return;
     const seen = new Set();
     const move = (point) => {
       if (!point || seen.has(point)) return;
       seen.add(point);
-      translateOriginPoint(point, shift.x, shift.y);
+      translateOriginPoint(point, shiftX, shiftY);
     };
     move(anchor);
     for (const collection of collections || []) {
@@ -302,39 +218,6 @@
       }
     }
     for (const point of points || []) move(point);
-    return { rebased: true, dx: shift.x, dy: shift.y };
-  }
-
-  function createStateMachine(initialState, transitions, onChange) {
-    let state = initialState;
-    const graph = transitions || {};
-    const machine = {
-      get state() {
-        return state;
-      },
-      can(nextState) {
-        const allowed = graph[state];
-        return allowed === "*" || Array.isArray(allowed) && allowed.includes(nextState) || allowed instanceof Set && allowed.has(nextState);
-      },
-      transition(nextState, payload) {
-        if (nextState === state) return true;
-        if (!machine.can(nextState)) return false;
-        const previous = state;
-        state = nextState;
-        if (typeof onChange === "function") onChange(nextState, previous, payload);
-        return true;
-      },
-      force(nextState, payload) {
-        const previous = state;
-        state = nextState;
-        if (typeof onChange === "function") onChange(nextState, previous, payload);
-      }
-    };
-    return Object.freeze(machine);
-  }
-
-  function validState(value, allowed, fallback) {
-    return Array.isArray(allowed) && allowed.includes(value) ? value : fallback;
   }
 
   function isFiniteEntity(entity, fields) {
@@ -354,49 +237,22 @@
     return distanceSquared(entity.x, entity.y, centerX, centerY) > radius * radius;
   }
 
-  function cullOutsideRadius(array, centerX, centerY, radius, shouldCull, onCull) {
-    return cleanupCapped(array, (entity) => {
-      const outside = beyondRadius(entity, centerX, centerY, radius);
-      const remove = outside && (typeof shouldCull !== "function" || shouldCull(entity));
-      if (remove && typeof onCull === "function") onCull(entity);
-      return !remove;
-    });
-  }
-
   ND.Core = Object.freeze({
-    TAU,
     clamp,
     lerp,
-    angle,
-    angleTo: angle,
     normalizeAngle,
     angleDelta,
-    distance,
     distanceSquared,
     segmentCircleHit,
-    hash: hashSeed,
-    hashSeed,
     createRng,
     safeReadJSON,
     safeWriteJSON,
-    readStorageJSON,
-    writeStorageJSON,
-    createObjectPool,
     cleanupCapped,
-    pushCapped,
-    worldToScreen,
-    screenToWorld,
     circlesOverlap,
-    circleCollision,
     constrainToCircle,
-    originShiftFor,
-    translateOriginPoint,
     rebaseOrigin,
-    createStateMachine,
-    validState,
     isFiniteEntity,
     circleVisible,
-    beyondRadius,
-    cullOutsideRadius
+    beyondRadius
   });
 })(typeof window === "object" ? window : globalThis);

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#02050c">
   <meta name="color-scheme" content="dark">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; media-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; media-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'">
   <title>Neon Voyage — Offline Space Arcade</title>
   <link rel="stylesheet" href="styles.css">
   <script src="js/config.js" defer></script>
@@ -70,7 +70,7 @@
           <span class="hud-label">High score</span>
           <strong id="high-score" class="high-score">000000</strong>
         </div>
-        <nav id="quick-controls" class="quick-controls" aria-label="Quick controls">
+        <nav class="quick-controls" aria-label="Quick controls">
           <button id="sound-button" class="hud-button" type="button" aria-label="Mute sound" aria-pressed="false" title="Sound (M)">Sound</button>
           <button id="motion-button" class="hud-button" type="button" aria-label="Use reduced visual effects" aria-pressed="false" title="Visual effects">FX</button>
           <button id="fullscreen-button" class="hud-button" type="button" aria-label="Enter fullscreen" title="Fullscreen">Screen</button>
@@ -106,7 +106,7 @@
     </section>
 
     <section id="meters" class="systems-hud is-hidden" aria-label="Ship systems and modules">
-      <div class="meter-block hull-block">
+      <div class="meter-block">
         <div class="meter-label">
           <span>Hull</span>
           <span id="hull-value">100%</span>
@@ -152,14 +152,14 @@
 
         <div class="menu-meta">
           <span>Local record <strong id="menu-high-score">000000</strong></span>
-          <span>Version v2026.8.13</span>
+          <span>Version v2026.8.14</span>
         </div>
       </div>
     </section>
 
     <section id="pause-overlay" class="overlay pause-overlay" aria-labelledby="pause-title">
       <div class="menu-stack compact-menu">
-        <header class="wordmark compact-wordmark">
+        <header class="wordmark">
           <h2 id="pause-title">Paused</h2>
         </header>
         <nav class="menu-actions" aria-label="Pause menu">
@@ -174,7 +174,7 @@
 
     <section id="gameover-overlay" class="overlay gameover-overlay" aria-labelledby="gameover-title">
       <div class="menu-stack compact-menu">
-        <header class="wordmark compact-wordmark">
+        <header class="wordmark">
           <h2 id="gameover-title">Run over</h2>
         </header>
 

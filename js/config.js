@@ -15,7 +15,7 @@
   }
 
   function safeSector(sector) {
-    var value = Number(sector);
+    const value = Number(sector);
     return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1;
   }
 
@@ -23,7 +23,7 @@
     return Math.sqrt(safeSector(sector) - 1);
   }
 
-  var difficultyCaps = {
+  const difficultyCaps = {
     healthMultiplier: 3,
     bossHealthMultiplier: 3.6,
     damageMultiplier: 2,
@@ -57,7 +57,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.13",
+    version: "v2026.8.14",
 
     world: {
       fixedStep: 1 / 60,
@@ -88,8 +88,7 @@
       bossFollowSharpness: 11,
       velocityLookAhead: 0.14,
       maxLookAhead: 145,
-      maxShake: 24,
-      parallaxLayers: [0.08, 0.2, 0.42]
+      maxShake: 24
     },
 
     presentation: {
@@ -133,7 +132,6 @@
       softCullViewports: 2.35,
       hardCullViewports: 3.1,
       projectileMargin: 180,
-      landmarkChunkRadius: 2,
       requeueEncounterThreats: true
     },
 
@@ -143,13 +141,10 @@
       mines: 36,
       asteroids: 76,
       aliens: 30,
-      bosses: 1,
-      titans: 1,
       pickups: 16,
       drones: 9,
       particles: 640,
       reducedParticles: 220,
-      shockwaves: 48,
       floaters: 64,
       activeAudioNodes: 24
     },
@@ -385,9 +380,7 @@
       maxRadius: 520,
       viewportMargin: 12,
       boundaryPadding: 18,
-      boundaryPush: 980,
       entryInvulnerability: 1.2,
-      clearLooseProjectiles: true,
       victoryHeal: 20
     },
 
@@ -409,8 +402,7 @@
         speed: [58, 90],
         contactDamage: 27,
         score: 125,
-        threatCost: 2,
-        mineralCore: true
+        threatCost: 2
       },
       volatile: {
         label: "Volatile",
@@ -454,7 +446,7 @@
         score: 1350,
         threatCost: 16,
         healthGates: [0.75, 0.5, 0.25],
-        gateFragments: { count: 3, into: "rock", maxDeferred: 6 }
+        gateFragments: { count: 3, into: "rock" }
       }
     },
 
@@ -501,7 +493,7 @@
         score: 520,
         threatCost: 6,
         contactDamage: 38,
-        pattern: { type: "droneLaunch", spawnType: "scout", count: 2, maxChildren: 4 }
+        pattern: { type: "droneLaunch", spawnType: "scout", count: 2, maxChildren: 4, childScore: 35 }
       }
     },
 
@@ -548,7 +540,6 @@
     weapons: {
       maxModuleTier: 3,
       maxInstalledModules: 7,
-      stacking: "allOwnedModulesFire",
       startingModules: { pulse: 1 },
       modules: {
         pulse: {
@@ -705,11 +696,7 @@
       },
       moduleUpgrade: {
         label: "MODULE UPGRADE",
-        weight: 4,
-        selection: "newThenLowestTier",
-        maxTier: 3,
-        persistsForRun: true,
-        unlocksBlueprint: true
+        weight: 4
       }
     },
 
@@ -720,12 +707,9 @@
       damageScale: damageScale,
       speedScale: speedScale,
       fireRateScale: fireRateScale,
-      cooldownScale: function (sector) {
-        return 1 / fireRateScale(sector);
-      },
       scoreScale: scoreScale,
       scaledCooldown: function (baseCooldown, sector) {
-        var cooldown = Number(baseCooldown);
+        const cooldown = Number(baseCooldown);
         return Math.max(0.05, (Number.isFinite(cooldown) ? cooldown : 1) / fireRateScale(sector));
       }
     }

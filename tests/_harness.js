@@ -50,13 +50,16 @@ function approximately(actual, expected, epsilon, label) {
   );
 }
 
-function listFiles(directory) {
+function listFiles(directory, ignoredDirectoryNames) {
   const entries = fs.readdirSync(directory, { withFileTypes: true });
   const output = [];
   for (const entry of entries) {
     const absolute = path.join(directory, entry.name);
-    if (entry.isDirectory()) output.push(...listFiles(absolute));
-    else output.push(absolute);
+    if (entry.isDirectory()) {
+      if (!(ignoredDirectoryNames && ignoredDirectoryNames.has(entry.name))) {
+        output.push(...listFiles(absolute, ignoredDirectoryNames));
+      }
+    } else output.push(absolute);
   }
   return output;
 }

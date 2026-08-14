@@ -8,6 +8,8 @@ Thumbs.db
 .vscode/
 
 # Local audit output and packaged releases
+.test-output/
+.pw-tmp/
 *.log
 coverage/
 dist/

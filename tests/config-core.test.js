@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.13 configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.13");
+  test("Neon Voyage v2026.8.14 configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.14");
     assert.ok(CONFIG.presentation.gameoverEffectDuration > 0 && CONFIG.presentation.gameoverEffectDuration <= 1);
     collectFrozen(CONFIG, new Set());
   });
@@ -29,17 +29,18 @@ module.exports = function register(test) {
     assert.ok(year >= 2026, "calendar version year cannot predate the adopted scheme");
     assert.ok(month >= 1 && month <= 12, "calendar version month is invalid");
     assert.equal(new Date(Date.UTC(year, month - 1, day)).getUTCDate(), day, "calendar version day is invalid");
+    assert.equal(match[2], String(month), "calendar version month must not have a leading zero");
+    assert.equal(match[3], String(day), "calendar version day must not have a leading zero");
   });
 
-  test("fixed-step simulation and every entity family have conservative finite caps", () => {
+  test("fixed-step simulation and every runtime collection have conservative finite caps", () => {
     assert.ok(CONFIG.world.fixedStep >= 1 / 240 && CONFIG.world.fixedStep <= 1 / 30);
     assert.ok(CONFIG.world.maxFrameDelta >= CONFIG.world.fixedStep && CONFIG.world.maxFrameDelta <= 0.1);
     for (const [name, value] of Object.entries(CONFIG.caps)) {
       assert.ok(Number.isSafeInteger(value) && value > 0, `${name} cap must be a positive integer`);
       assert.ok(value <= 1000, `${name} cap is unexpectedly large`);
     }
-    assert.equal(CONFIG.caps.bosses, 1);
-    assert.equal(CONFIG.caps.titans, 1);
+    assert.ok(CONFIG.caps.drones >= 3 && CONFIG.caps.drones <= 9);
     assert.ok(CONFIG.caps.activeAudioNodes <= 24);
   });
 
@@ -131,6 +132,10 @@ module.exports = function register(test) {
     assert.ok(CONFIG.asteroids.titan.healthGates.length >= 3);
     assert.ok(Object.keys(CONFIG.aliens).length >= 4);
     assert.ok(Object.values(CONFIG.aliens).every((alien) => alien.pattern && alien.pattern.type));
+    assert.equal(CONFIG.aliens.carrier.pattern.spawnType, "scout");
+    assert.equal(CONFIG.aliens.carrier.pattern.count, 2);
+    assert.equal(CONFIG.aliens.carrier.pattern.maxChildren, 4);
+    assert.equal(CONFIG.aliens.carrier.pattern.childScore, 35);
     assert.ok(Object.keys(CONFIG.bosses).length >= 1);
     assert.ok(Object.values(CONFIG.bosses).every((boss) => boss.faction === "alien"));
   });
@@ -147,7 +152,6 @@ module.exports = function register(test) {
     for (const kind of ["arcBurst", "novaLance"]) {
       assert.ok(powerups[kind].duration >= 6 && powerups[kind].duration <= 20, `${kind} duration is not a useful finite interval`);
     }
-    assert.equal(powerups.moduleUpgrade.persistsForRun, true);
     assert.ok(powerups.moduleUpgrade.weight < powerups.arcBurst.weight && powerups.moduleUpgrade.weight < powerups.novaLance.weight, "permanent upgrades are not rare");
     assert.equal("salvage" in powerups, false, "collectible salvage progression must remain removed");
   });
@@ -180,7 +184,6 @@ module.exports = function register(test) {
     assert.equal(Object.keys(modules).length, 7);
     assert.equal(CONFIG.weapons.maxInstalledModules, 7);
     assert.equal(CONFIG.weapons.startingModules.pulse, 1);
-    assert.equal(CONFIG.weapons.stacking, "allOwnedModulesFire");
     for (const [name, module] of Object.entries(modules)) {
       assert.equal(module.tiers.length, CONFIG.weapons.maxModuleTier, `${name} tier count`);
       for (const tier of module.tiers) {
@@ -221,7 +224,7 @@ module.exports = function register(test) {
     for (let index = 0; index < 100; index += 1) assert.equal(first(), second());
   });
 
-  test("storage, pooling, and capped-array helpers fail safely", () => {
+  test("storage and capped-array helpers fail safely", () => {
     const data = new Map();
     const storage = { getItem: (key) => data.get(key) || null, setItem: (key, value) => data.set(key, value) };
     const valid = (value) => value && Number.isFinite(value.score) && value.score >= 0;
@@ -234,12 +237,20 @@ module.exports = function register(test) {
     assert.equal(values.length, 1);
   });
 
-  test("rectangle and circle constraints contain extreme outward velocity", () => {
+  test("world constraints and origin rebasing preserve finite positions", () => {
     const circle = { x: 300, y: 400, radius: 10, vx: 300, vy: 400 };
     assert.equal(Core.constrainToCircle(circle, 0, 0, 100, 0.25), true);
-    approximately(Core.distance(0, 0, circle.x, circle.y), 90, 1e-9);
+    approximately(Math.hypot(circle.x, circle.y), 90, 1e-9);
     assert.ok(circle.vx * circle.x + circle.vy * circle.y <= 0);
     const poisoned = { x: NaN, y: 2, vx: 3, vy: 4 };
     assert.equal(Core.isFiniteEntity(poisoned), false);
+
+    const anchor = { x: 150, y: 20 };
+    const threat = { x: 175, y: 30 };
+    const landmark = { centerX: 200, centerY: 40 };
+    Core.rebaseOrigin(anchor, [[threat]], [landmark], 100, 50);
+    assert.deepEqual([anchor.x, anchor.y], [0, 20]);
+    assert.deepEqual([threat.x, threat.y], [25, 30]);
+    assert.deepEqual([landmark.centerX, landmark.centerY], [50, 40]);
   });
 };
