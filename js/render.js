@@ -515,6 +515,8 @@
       }
       ctx.restore();
 
+      this.drawTimeFracture(state);
+
       if (state.flash > 0) {
         ctx.save();
         ctx.globalAlpha = Math.min(0.2, state.flash * 0.22);
@@ -522,6 +524,47 @@
         ctx.fillRect(0, 0, this.width, this.height);
         ctx.restore();
       }
+    }
+
+    drawTimeFracture(state) {
+      const draft = state && state.upgradeDraft;
+      if (!draft || draft.phase !== "slowing") return;
+      const duration = Math.max(0.001, Number(draft.duration) || 0.72);
+      const progress = clamp((Number(draft.elapsed) || 0) / duration, 0, 1);
+      const source = this.worldToScreen(
+        Number.isFinite(Number(draft.x)) ? Number(draft.x) : state.ship.x,
+        Number.isFinite(Number(draft.y)) ? Number(draft.y) : state.ship.y,
+        state.camera
+      );
+      const ctx = this.ctx;
+      ctx.save();
+      const veil = ctx.createRadialGradient(source.x, source.y, 12, source.x, source.y, Math.max(this.width, this.height) * 0.78);
+      veil.addColorStop(0, `rgba(197,132,255,${0.05 + progress * 0.12})`);
+      veil.addColorStop(0.48, `rgba(91,37,146,${0.04 + progress * 0.12})`);
+      veil.addColorStop(1, `rgba(3,2,12,${progress * 0.34})`);
+      ctx.fillStyle = veil;
+      ctx.fillRect(0, 0, this.width, this.height);
+      ctx.translate(source.x, source.y);
+      if (!this.reduced) {
+        ctx.globalCompositeOperation = "lighter";
+        ctx.strokeStyle = "rgba(213,168,255,0.7)";
+        ctx.lineWidth = 1.5;
+        for (let index = 0; index < 3; index += 1) {
+          const radius = 28 + (1 - ((progress * 1.8 + index / 3) % 1)) * 116;
+          ctx.globalAlpha = 0.18 + progress * 0.28;
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, -Math.PI * 0.82, Math.PI * 0.82);
+          ctx.stroke();
+        }
+      }
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 0.48 + progress * 0.42;
+      ctx.fillStyle = "#eedfff";
+      ctx.font = `900 ${Math.round(20 + progress * 18)}px ui-sans-serif, system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("?", 0, 0);
+      ctx.restore();
     }
 
     drawBackground(state, time, cinematic) {
@@ -1146,10 +1189,12 @@
         const angle = Math.atan2(bullet.vy || 0, bullet.vx || 1);
         const isLance = bullet.kind === "lance";
         const isArc = bullet.kind === "arc";
-        const length = isLance ? 38 : bullet.kind === "rail" ? 30 : bullet.kind === "missile" ? 13 : isArc ? 15 : 10;
+        const isRocket = !hostile && bullet.kind === "missile" && bullet.sourceModule === "homingSalvo";
+        const isRadial = !hostile && bullet.kind === "radial";
+        const length = isLance ? 38 : bullet.kind === "rail" ? 30 : isRocket ? 17 : bullet.kind === "missile" ? 13 : isArc ? 15 : isRadial ? 12 : 10;
         ctx.strokeStyle = color;
-        ctx.lineWidth = isLance ? 5 : bullet.kind === "rail" ? 4 : isArc ? 3 : 2.5;
-        ctx.globalAlpha = 0.82;
+        ctx.lineWidth = isLance ? 5 : bullet.kind === "rail" ? 4 : isArc ? 3 : isRadial ? 1.6 : isRocket ? 2 : 2.5;
+        ctx.globalAlpha = isRadial ? 0.66 : isRocket ? 0.75 : 0.82;
         ctx.beginPath();
         ctx.moveTo(point.x - Math.cos(angle) * length, point.y - Math.sin(angle) * length);
         ctx.lineTo(point.x, point.y);
@@ -1167,12 +1212,53 @@
           ctx.moveTo(point.x - Math.cos(angle) * length * 0.72, point.y - Math.sin(angle) * length * 0.72);
           ctx.lineTo(point.x, point.y);
           ctx.stroke();
+        } else if (isRocket) {
+          ctx.save();
+          ctx.translate(point.x, point.y);
+          ctx.rotate(angle);
+          ctx.globalAlpha = 0.94;
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(7, 0);
+          ctx.lineTo(-4, -4.5);
+          ctx.lineTo(-1.5, 0);
+          ctx.lineTo(-4, 4.5);
+          ctx.closePath();
+          ctx.fill();
+          if (!this.reduced) {
+            ctx.globalAlpha = 0.42;
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(-4, -2.6);
+            ctx.lineTo(-10, -5.8);
+            ctx.moveTo(-4, 2.6);
+            ctx.lineTo(-10, 5.8);
+            ctx.stroke();
+          }
+          ctx.restore();
+        } else if (isRadial) {
+          ctx.save();
+          ctx.translate(point.x, point.y);
+          ctx.rotate(angle);
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(5.5, 0);
+          ctx.lineTo(0, -3.5);
+          ctx.lineTo(-5.5, 0);
+          ctx.lineTo(0, 3.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
         }
-        ctx.fillStyle = "#ffffff";
-        ctx.globalAlpha = 0.95;
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, bullet.radius || 2.5, 0, TAU);
-        ctx.fill();
+        if (!isRocket && !isRadial) {
+          ctx.fillStyle = "#ffffff";
+          ctx.globalAlpha = 0.95;
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, bullet.radius || 2.5, 0, TAU);
+          ctx.fill();
+        }
       }
       ctx.restore();
     }
@@ -1211,7 +1297,8 @@
         piercing: "#ff6b7d",
         pulseCharge: "#bca4ff",
         arcBurst: "#65ffbd",
-        novaLance: "#ff75ef"
+        novaLance: "#ff75ef",
+        enigma: "#c584ff"
       };
       const labels = {
         shield: "S",
@@ -1222,7 +1309,8 @@
         piercing: "P",
         pulseCharge: "E",
         arcBurst: "A",
-        novaLance: "N"
+        novaLance: "N",
+        enigma: "?"
       };
       const color = colors[pickup.kind] || "#ffffff";
       const ctx = this.ctx;

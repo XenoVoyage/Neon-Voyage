@@ -75,7 +75,7 @@ function gamepad(buttonIndexes, axes) {
   const pressed = new Set(buttonIndexes || []);
   return {
     axes: axes || [0, 0, 0, 0],
-    buttons: Array.from({ length: 12 }, (_, index) => ({ pressed: pressed.has(index) }))
+    buttons: Array.from({ length: 16 }, (_, index) => ({ pressed: pressed.has(index) }))
   };
 }
 
@@ -84,6 +84,14 @@ function rotate(browser, game, width, height) {
   browser.window.innerHeight = height;
   browser.window.dispatchEvent({ type: "resize" });
   game.mobile.updateOrientationState();
+}
+
+function advanceEnigmaToChoice(game, CONFIG) {
+  const limit = Math.ceil(CONFIG.powerups.enigma.slowdownSeconds / CONFIG.world.fixedStep) + 2;
+  for (let frame = 0; frame < limit && game.snapshot().enigma.phase !== "choosing"; frame += 1) {
+    game.step(CONFIG.world.fixedStep);
+  }
+  assert.equal(game.snapshot().enigma.phase, "choosing");
 }
 
 module.exports = function register(test) {
@@ -1027,6 +1035,172 @@ module.exports = function register(test) {
     assert.equal(game.state.ship.vy, -45, "desktop blur discarded intentional inertial state");
   });
 
+  test("Enigma neutralizes touch input and preserves one frozen choice through portrait rotation", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    game.start();
+    rawPointer(browser, canvas, "pointerdown", 11, 150, 220);
+    rawPointer(browser, canvas, "pointermove", 11, 150 + CONFIG.mobileControls.stickRadius, 220);
+    rawPointer(browser, canvas, "pointerdown", 22, 700, 220);
+    rawPointer(browser, canvas, "pointermove", 22, 700, 220 - CONFIG.mobileControls.stickRadius);
+    assert.equal(canvas.hasPointerCapture(11), true);
+    assert.equal(canvas.hasPointerCapture(22), true);
+    assert.notEqual(game.input.touchMoveX, 0);
+    assert.equal(game.input.touchFire, true);
+
+    game.setSeed(8801);
+    assert.equal(game.applyPickup(game.spawnPickup(0, 0, "enigma")), true);
+    assert.equal(game.snapshot().enigma.phase, "slowing");
+    assert.equal(game.mobile.movePointerId, null);
+    assert.equal(game.mobile.aimPointerId, null);
+    assert.equal(canvas.hasPointerCapture(11), false);
+    assert.equal(canvas.hasPointerCapture(22), false);
+    assert.equal(game.input.touchMoveX, 0);
+    assert.equal(game.input.touchAimY, 0);
+    assert.equal(game.input.touchFire, false);
+
+    browser.elements.get("pause-button").click();
+    key(browser, "keydown", "p", "KeyP");
+    key(browser, "keyup", "p", "KeyP");
+    assert.equal(game.state.mode, "playing", "ordinary pause interrupted Enigma slowdown");
+    assert.equal(browser.elements.get("pause-overlay").classList.contains("is-visible"), false);
+    advanceEnigmaToChoice(game, CONFIG);
+    const beforeChoices = JSON.stringify(game.snapshot().enigma.choices);
+    const modal = browser.elements.get("enigma-upgrade-modal");
+    const cards = browser.createdElements.filter((element) => /^upgrade-card\s/.test(element.className));
+    assert.equal(modal.open, true);
+    assert.equal(cards.length, 3);
+    assert.equal(browser.document.activeElement, cards[0]);
+    assert.equal(browser.elements.get("pause-button").classList.contains("is-hidden"), true);
+    assert.equal(browser.elements.get("touch-controls").classList.contains("is-active"), false);
+    assert.equal(canvas.getAttribute("tabindex"), "-1");
+
+    browser.window.dispatchEvent({ type: "blur" });
+    assert.equal(game.state.mode, "playing", "touch browser-chrome blur paused an Enigma choice");
+    assert.equal(modal.open, true);
+    browser.window.dispatchEvent({ type: "pagehide" });
+    assert.equal(game.snapshot().enigma.phase, "choosing");
+    assert.equal(JSON.stringify(game.snapshot().enigma.choices), beforeChoices);
+    assert.equal(game.state.mode, "paused", "pagehide did not lifecycle-pause the pending choice");
+    assert.equal(modal.open, false, "lifecycle pause left the modal open");
+    browser.elements.get("resume-button").click();
+    assert.equal(game.state.mode, "playing");
+    assert.equal(modal.open, true, "Resume did not reopen the same pending choice");
+    assert.equal(JSON.stringify(game.snapshot().enigma.choices), beforeChoices);
+
+    const frozenRunTime = game.state.runTime;
+    rotate(browser, game, 390, 844);
+    assert.equal(game.mobile.orientationBlocked, true);
+    assert.equal(modal.open, false, "portrait gate left the native choice dialog open");
+    assert.equal(modal.hasAttribute("inert"), true);
+    assert.equal(game.chooseEnhancement(0), false, "portrait debug path selected a hidden choice");
+    cards[0].click();
+    assert.equal(game.snapshot().enigma.phase, "choosing", "portrait card click selected behind the gate");
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(game.state.runTime, frozenRunTime, "portrait pending choice advanced simulation");
+    assert.equal(JSON.stringify(game.snapshot().enigma.choices), beforeChoices, "portrait rerolled the pending offer");
+
+    rotate(browser, game, 844, 390);
+    assert.equal(game.mobile.orientationBlocked, false);
+    assert.equal(modal.open, true, "landscape did not restore the mandatory choice");
+    assert.equal(JSON.stringify(game.snapshot().enigma.choices), beforeChoices);
+    assert.equal(browser.document.activeElement, cards[0]);
+    assert.equal(game.chooseEnhancement(0), true);
+    assert.equal(game.snapshot().enigma.phase, "idle");
+    assert.equal(game.input.touchFire, false);
+
+    rawPointer(browser, browser.window, "pointermove", 11, 230, 220);
+    rawPointer(browser, browser.window, "pointermove", 22, 700, 130);
+    assert.equal(game.input.touchMoveX, 0, "stale movement pointer revived after choice");
+    assert.equal(game.input.touchFire, false, "stale aim pointer revived after choice");
+    rawPointer(browser, canvas, "pointerdown", 33, 150, 220);
+    rawPointer(browser, canvas, "pointermove", 33, 150 + CONFIG.mobileControls.stickRadius, 220);
+    assert.notEqual(game.input.touchMoveX, 0, "fresh touch could not resume after Enigma");
+    rawPointer(browser, browser.window, "pointerup", 33, 200, 220);
+  });
+
+  test("desktop lifecycle pause closes and keyboard resume reopens the same Enigma choice", () => {
+    const { browser, game, CONFIG } = bootMobile({ maxTouchPoints: 0 });
+    game.start();
+    game.setSeed(8811);
+    game.applyPickup(game.spawnPickup(0, 0, "enigma"));
+    advanceEnigmaToChoice(game, CONFIG);
+    const choices = JSON.stringify(game.snapshot().enigma.choices);
+    const modal = browser.elements.get("enigma-upgrade-modal");
+    assert.equal(modal.open, true);
+    browser.window.dispatchEvent({ type: "blur" });
+    assert.equal(game.state.mode, "paused");
+    assert.equal(modal.open, false);
+    assert.equal(JSON.stringify(game.snapshot().enigma.choices), choices);
+    key(browser, "keydown", "p", "KeyP");
+    key(browser, "keyup", "p", "KeyP");
+    assert.equal(game.state.mode, "playing");
+    assert.equal(modal.open, true);
+    assert.equal(JSON.stringify(game.snapshot().enigma.choices), choices);
+    browser.window.dispatchEvent({ type: "pagehide" });
+    assert.equal(game.state.mode, "paused");
+    assert.equal(modal.open, false);
+    key(browser, "keydown", "Escape", "Escape");
+    key(browser, "keyup", "Escape", "Escape");
+    assert.equal(game.state.mode, "playing");
+    assert.equal(modal.open, true);
+    assert.equal(JSON.stringify(game.snapshot().enigma.choices), choices);
+    assert.equal(game.chooseEnhancement(0), true);
+  });
+
+  test("Enigma cards support number keys and edge-triggered gamepad selection", () => {
+    const keyboard = bootMobile({ maxTouchPoints: 0 });
+    keyboard.game.start();
+    keyboard.game.setSeed(8821);
+    keyboard.game.applyPickup(keyboard.game.spawnPickup(0, 0, "enigma"));
+    advanceEnigmaToChoice(keyboard.game, keyboard.CONFIG);
+    const keyboardChoices = keyboard.game.snapshot().enigma.choices;
+    assert.equal(keyboardChoices.length, 3);
+    key(keyboard.browser, "keydown", "2", "Digit2");
+    key(keyboard.browser, "keyup", "2", "Digit2");
+    assert.equal(keyboard.game.snapshot().enigma.phase, "idle", "number key did not select its card");
+
+    const controller = bootMobile({ maxTouchPoints: 0 });
+    let pad = gamepad([]);
+    controller.browser.window.navigator.getGamepads = () => [pad];
+    controller.game.start();
+    controller.browser.pumpFrames(1);
+    controller.game.setSeed(8831);
+    controller.game.applyPickup(controller.game.spawnPickup(0, 0, "enigma"));
+    advanceEnigmaToChoice(controller.game, controller.CONFIG);
+    const cards = controller.browser.createdElements.filter((element) => /^upgrade-card\s/.test(element.className));
+    assert.equal(controller.browser.document.activeElement, cards[0]);
+
+    pad = gamepad([15]);
+    controller.browser.pumpFrames(1);
+    assert.equal(controller.browser.document.activeElement, cards[1], "D-pad did not move card focus");
+    pad = gamepad([]);
+    controller.browser.pumpFrames(1);
+    pad = gamepad([0], [1, -1, 1, -1]);
+    controller.browser.pumpFrames(1);
+    assert.equal(controller.game.snapshot().enigma.phase, "idle", "gamepad A did not select the focused card");
+    const after = controller.game.snapshot();
+    controller.browser.pumpFrames(8);
+    assert.equal(controller.game.input.gamepadMoveX, 0);
+    assert.equal(controller.game.input.gamepadMoveY, 0);
+    assert.equal(controller.game.input.gamepadAimX, 0);
+    assert.equal(controller.game.input.gamepadAimY, 0);
+    assert.equal(controller.game.input.gamepadFire, false);
+    assert.deepEqual(JSON.parse(JSON.stringify(controller.game.state.ship.modules)), JSON.parse(JSON.stringify(after.ship.modules)),
+      "held A selected the enhancement more than once");
+    for (const timer of ["rapidTimer", "triShotTimer", "piercingTimer", "arcBurstTimer", "novaLanceTimer"]) {
+      assert.ok(controller.game.state.ship[timer] <= after.ship[timer] + 1e-9,
+        `held A restacked ${timer}`);
+    }
+    assert.equal(controller.game.state.score, after.score, "held A repeated an instant support reward");
+
+    pad = gamepad([]);
+    controller.browser.pumpFrames(1);
+    pad = gamepad([], [1, 0, 0, 0]);
+    controller.browser.pumpFrames(1);
+    assert.ok(controller.game.input.gamepadMoveX > 0, "fresh gamepad input stayed blocked after neutral release");
+  });
+
   test("portrait gate freezes simulation and clears input until landscape resumes", () => {
     const { browser, game, CONFIG } = bootMobile();
     game.start();
@@ -1046,7 +1220,7 @@ module.exports = function register(test) {
       }
     }
     assert.equal(overlay.hasAttribute("inert"), false, "rotate gate made itself inert");
-    for (const id of ["game", "menu-overlay", "controls-modal", "settings-modal", "touch-controls"]) {
+    for (const id of ["game", "menu-overlay", "controls-modal", "settings-modal", "enigma-upgrade-modal", "touch-controls"]) {
       assert.equal(browser.elements.get(id).hasAttribute("inert"), true, `${id} was interactive behind the rotate gate`);
       assert.equal(browser.elements.get(id).inert, true, `${id} inert property did not reflect the gate`);
     }
@@ -1069,7 +1243,7 @@ module.exports = function register(test) {
     assert.equal(game.mobile.orientationBlocked, false);
     assert.equal(overlay.classList.contains("is-visible"), false);
     assert.equal(overlay.getAttribute("aria-hidden"), "true");
-    for (const id of ["game", "controls-modal", "settings-modal", "stage-select-modal", "touch-controls"]) {
+    for (const id of ["game", "controls-modal", "settings-modal", "stage-select-modal", "enigma-upgrade-modal", "touch-controls"]) {
       assert.equal(browser.elements.get(id).hasAttribute("inert"), false, `${id} remained inert in landscape`);
       assert.equal(browser.elements.get(id).inert, false, `${id} inert property remained set in landscape`);
     }

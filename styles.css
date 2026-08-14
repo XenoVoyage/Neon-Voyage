@@ -612,8 +612,29 @@ dd {
 
 .module-rank {
   grid-area: rank;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
   color: var(--ink-faint);
   font-size: 0.48rem;
+}
+
+.module-auto-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 13px;
+  padding: 1px 4px;
+  border: 1px solid rgba(255, 87, 216, 0.3);
+  border-radius: 999px;
+  color: #ff9ee6;
+  background: rgba(77, 23, 68, 0.3);
+  font-size: 0.4rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .announcement {
@@ -1001,6 +1022,215 @@ kbd {
   background: rgba(255, 97, 118, 0.08);
 }
 
+.enigma-upgrade-dialog {
+  width: min(calc(100vw - var(--safe-left) - var(--safe-right) - 16px), 980px);
+  max-height: min(calc(100dvh - var(--safe-top) - var(--safe-bottom) - 16px), 720px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-color: rgba(196, 130, 255, 0.42);
+  background:
+    radial-gradient(circle at 14% 0, rgba(102, 247, 255, 0.1), transparent 34%),
+    radial-gradient(circle at 86% 0, rgba(255, 87, 216, 0.11), transparent 36%),
+    rgba(4, 8, 21, 0.98);
+  box-shadow:
+    0 24px 90px rgba(0, 0, 0, 0.76),
+    0 0 52px rgba(157, 95, 255, 0.14);
+}
+
+.enigma-upgrade-dialog::backdrop {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(85, 43, 122, 0.2), transparent 46%),
+    rgba(0, 2, 10, 0.9);
+}
+
+.enigma-upgrade-heading {
+  padding: 22px 24px 18px;
+  background: rgba(4, 8, 21, 0.96);
+}
+
+.enigma-upgrade-kicker {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--magenta);
+  font-size: 0.56rem;
+  font-weight: 850;
+  letter-spacing: 0.2em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.enigma-upgrade-heading h2 {
+  color: var(--cyan-strong);
+  letter-spacing: 0.025em;
+  text-shadow: 0 0 22px rgba(102, 247, 255, 0.18);
+}
+
+.enigma-upgrade-heading p {
+  max-width: 640px;
+  margin: 7px 0 0;
+  color: var(--ink-dim);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.enigma-upgrade-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 18px 20px 22px;
+}
+
+.upgrade-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 245px;
+  padding: 17px;
+  overflow: hidden;
+  border: 1px solid rgba(156, 216, 239, 0.24);
+  border-radius: 7px;
+  color: var(--ink);
+  background:
+    linear-gradient(145deg, rgba(23, 47, 68, 0.48), rgba(7, 12, 29, 0.84) 55%),
+    rgba(4, 10, 22, 0.94);
+  box-shadow: inset 0 0 32px rgba(102, 247, 255, 0.025);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.upgrade-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 12px;
+  left: 12px;
+  height: 1px;
+  opacity: 0.62;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  box-shadow: 0 0 12px rgba(102, 247, 255, 0.34);
+}
+
+.upgrade-card:hover,
+.upgrade-card:focus-visible,
+.upgrade-card[aria-pressed="true"],
+.upgrade-card.is-selected {
+  border-color: rgba(102, 247, 255, 0.68);
+  color: #fff;
+  background:
+    linear-gradient(145deg, rgba(24, 67, 82, 0.58), rgba(12, 18, 39, 0.94) 55%),
+    rgba(4, 10, 22, 0.98);
+  box-shadow:
+    inset 0 0 36px rgba(102, 247, 255, 0.05),
+    0 0 22px rgba(102, 247, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.upgrade-card:disabled {
+  cursor: not-allowed;
+  filter: none;
+  opacity: 0.48;
+  transform: none;
+}
+
+.upgrade-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.upgrade-card-kind,
+.upgrade-card-tier {
+  color: var(--cyan);
+  font-size: 0.52rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.upgrade-card-tier {
+  flex: 0 0 auto;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.upgrade-card-title {
+  margin: 0;
+  color: currentColor;
+  font-size: 1rem;
+  font-weight: 820;
+  letter-spacing: 0.035em;
+  line-height: 1.18;
+  text-transform: uppercase;
+}
+
+.upgrade-card-description {
+  margin: 12px 0 18px;
+  color: var(--ink-dim);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.upgrade-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: auto;
+}
+
+.upgrade-card-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 19px;
+  padding: 2px 6px;
+  border: 1px solid rgba(157, 205, 221, 0.22);
+  border-radius: 999px;
+  color: var(--ink-dim);
+  background: rgba(8, 17, 31, 0.72);
+  font-size: 0.46rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.upgrade-card-tag.is-passive,
+.upgrade-card.is-passive .upgrade-card-kind {
+  border-color: rgba(102, 247, 255, 0.38);
+  color: var(--cyan);
+}
+
+.upgrade-card-tag.is-active,
+.upgrade-card.is-active .upgrade-card-kind,
+.upgrade-card-tag.is-instant,
+.upgrade-card.is-instant .upgrade-card-kind {
+  border-color: rgba(188, 132, 255, 0.42);
+  color: #cba0ff;
+}
+
+.upgrade-card-tag.is-permanent,
+.upgrade-card.is-permanent .upgrade-card-tier {
+  border-color: rgba(255, 211, 107, 0.42);
+  color: var(--gold);
+}
+
+.upgrade-card-tag.is-temporary,
+.upgrade-card-tag.is-run-only {
+  border-color: rgba(255, 87, 216, 0.4);
+  color: #ff94e3;
+}
+
 .stage-select-dialog {
   width: min(calc(100vw - 32px), 880px);
   max-height: min(calc(100dvh - 32px), 720px);
@@ -1097,6 +1327,66 @@ kbd {
 
 .stage-card-status {
   color: var(--cyan);
+}
+
+.stage-loadout-summary {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin-top: 3px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(151, 217, 231, 0.1);
+  color: var(--ink-dim);
+  font-size: 0.46rem;
+  line-height: 1.35;
+}
+
+.stage-loadout-label {
+  color: var(--ink-faint);
+  font-size: 0.43rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.stage-loadout-modules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-width: 0;
+}
+
+.stage-loadout-module {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 17px;
+  padding: 2px 5px;
+  overflow: hidden;
+  border: 1px solid rgba(102, 247, 255, 0.2);
+  border-radius: 999px;
+  color: var(--cyan-strong);
+  background: rgba(17, 45, 56, 0.38);
+  font-size: 0.42rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.stage-loadout-module.is-temporary {
+  border-color: rgba(255, 87, 216, 0.25);
+  color: #ff9ee6;
+  background: rgba(79, 24, 70, 0.28);
+}
+
+.stage-card:disabled .stage-loadout-module {
+  border-color: rgba(151, 217, 231, 0.14);
+  color: var(--ink-faint);
+  background: transparent;
 }
 
 .stage-card:disabled .stage-card-status {
@@ -1445,6 +1735,88 @@ kbd {
 
   .touch-actions {
     right: calc(var(--safe-right) + 124px);
+  }
+}
+
+@media (orientation: portrait) and (max-width: 620px) {
+  .enigma-upgrade-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .upgrade-card {
+    min-height: 190px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .enigma-upgrade-heading {
+    padding: 9px 12px 8px;
+  }
+
+  .enigma-upgrade-kicker {
+    margin-bottom: 3px;
+    font-size: 0.44rem;
+  }
+
+  .enigma-upgrade-heading h2 {
+    font-size: 0.94rem;
+  }
+
+  .enigma-upgrade-heading p {
+    margin-top: 3px;
+    font-size: 0.56rem;
+    line-height: 1.35;
+  }
+
+  .enigma-upgrade-grid {
+    gap: 6px;
+    padding: 8px 10px 10px;
+  }
+
+  .upgrade-card {
+    min-height: 176px;
+    padding: 9px;
+    border-radius: 5px;
+  }
+
+  .upgrade-card:hover,
+  .upgrade-card:focus-visible,
+  .upgrade-card[aria-pressed="true"],
+  .upgrade-card.is-selected {
+    transform: translateY(-1px);
+  }
+
+  .upgrade-card-head {
+    gap: 5px;
+    margin-bottom: 7px;
+  }
+
+  .upgrade-card-kind,
+  .upgrade-card-tier {
+    font-size: 0.48rem;
+    letter-spacing: 0.09em;
+  }
+
+  .upgrade-card-title {
+    font-size: 0.76rem;
+    line-height: 1.15;
+  }
+
+  .upgrade-card-description {
+    margin: 6px 0 8px;
+    font-size: 0.6rem;
+    line-height: 1.38;
+  }
+
+  .upgrade-card-tags {
+    gap: 3px;
+  }
+
+  .upgrade-card-tag {
+    min-height: 17px;
+    padding: 1px 4px;
+    font-size: 0.42rem;
+    letter-spacing: 0.08em;
   }
 }
 

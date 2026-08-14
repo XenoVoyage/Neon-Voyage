@@ -16,12 +16,34 @@
   const TOUCH_INPUT_EPSILON = 0.0001;
   const MODULE_ORDER = Object.keys(CONFIG.weapons.modules).slice(0, CONFIG.weapons.maxInstalledModules);
   const TEMP_WEAPON_TIMERS = ["rapidTimer", "triShotTimer", "piercingTimer", "arcBurstTimer", "novaLanceTimer"];
+  const TEMPORARY_UPGRADE_ORDER = ["rapid", "triShot", "piercing", "arcBurst", "novaLance"];
+  const TEMPORARY_TIMER_BY_KIND = {
+    rapid: "rapidTimer",
+    triShot: "triShotTimer",
+    piercing: "piercingTimer",
+    arcBurst: "arcBurstTimer",
+    novaLance: "novaLanceTimer"
+  };
+  const TEMPORARY_KIND_BY_TIMER = Object.freeze(Object.fromEntries(
+    Object.entries(TEMPORARY_TIMER_BY_KIND).map(([kind, timer]) => [timer, kind])
+  ));
+  const MODULE_DESCRIPTIONS = {
+    pulse: "Stacks forward repeaters into the primary firing stream.",
+    homingSalvo: "Launches a repeating autonomous volley of guided rockets.",
+    radialArray: "Emits a rotating autonomous ring in every direction.",
+    prism: "Adds a wider prism fan whenever the primary weapon fires.",
+    seeker: "Adds guided missiles whenever the primary weapon fires.",
+    massDriver: "Adds a heavy piercing rail shot to the firing stream.",
+    drone: "Adds an orbiting guardian that finds and fires on threats."
+  };
+  const SUPPORT_UPGRADE_ORDER = ["repair", "shield", "pulseCharge"];
+  const temporaryStackLimit = Math.max(1, Math.floor(CONFIG.powerups.temporaryStackLimit || 1));
   const TEMP_WEAPON_LIMITS = {
-    rapidTimer: CONFIG.powerups.rapid.duration,
-    triShotTimer: CONFIG.powerups.triShot.duration,
-    piercingTimer: CONFIG.powerups.piercing.duration,
-    arcBurstTimer: CONFIG.powerups.arcBurst.duration,
-    novaLanceTimer: CONFIG.powerups.novaLance.duration
+    rapidTimer: CONFIG.powerups.rapid.duration * temporaryStackLimit,
+    triShotTimer: CONFIG.powerups.triShot.duration * temporaryStackLimit,
+    piercingTimer: CONFIG.powerups.piercing.duration * temporaryStackLimit,
+    arcBurstTimer: CONFIG.powerups.arcBurst.duration * temporaryStackLimit,
+    novaLanceTimer: CONFIG.powerups.novaLance.duration * temporaryStackLimit
   };
   const THREAT_ARRAYS = ["asteroids", "aliens"];
 
@@ -83,6 +105,9 @@
     newGameModal: byId("new-game-modal"),
     newGameCancelButton: byId("new-game-cancel-button"),
     newGameConfirmButton: byId("new-game-confirm-button"),
+    enigmaUpgradeModal: byId("enigma-upgrade-modal"),
+    enigmaUpgradeGrid: byId("enigma-upgrade-grid"),
+    enigmaUpgradeStatus: byId("enigma-upgrade-status"),
     stageGrid: byId("stage-grid"),
     orientationOverlay: byId("orientation-overlay"),
     touchControls: byId("touch-controls"),
@@ -232,11 +257,26 @@
   let touchCapable = false;
   let orientationBlocked = false;
   let campaignProgressEligible = false;
+  let gamepadRequiresNeutral = false;
   let gameoverEffectRemaining = 0;
   let gameoverInitialShake = 0;
   let gameoverInitialFlash = 0;
   let presentedMode = null;
   const stageButtons = [];
+  let upgradeChoiceButtons = [];
+
+  function idleUpgradeDraft() {
+    return {
+      phase: "idle",
+      elapsed: 0,
+      duration: Math.max(CONFIG.world.fixedStep, CONFIG.powerups.enigma.slowdownSeconds),
+      timeScale: 1,
+      choices: [],
+      focusIndex: 0,
+      x: 0,
+      y: 0
+    };
+  }
 
   function mediaMatches(query) {
     try {
@@ -277,6 +317,7 @@
         closeDialog(dom.settingsModal);
         closeDialog(dom.stageSelectModal);
         closeDialog(dom.newGameModal);
+        closeDialog(dom.enigmaUpgradeModal);
       }
     }
     if (changed && dom.orientationOverlay) {
@@ -291,13 +332,16 @@
         }
       }
     }
-    for (const dialog of [dom.controlsModal, dom.settingsModal, dom.stageSelectModal, dom.newGameModal]) {
+    for (const dialog of [dom.controlsModal, dom.settingsModal, dom.stageSelectModal, dom.newGameModal, dom.enigmaUpgradeModal]) {
       if (!dialog) continue;
       if (orientationBlocked) dialog.setAttribute("inert", "");
       else dialog.removeAttribute("inert");
     }
     syncModePresentation();
-    if (changed && !orientationBlocked) focusPrimaryModeAction(state.mode);
+    if (changed && !orientationBlocked) {
+      if (state.mode === "playing" && state.upgradeDraft.phase === "choosing") presentUpgradeChoices();
+      else focusPrimaryModeAction(state.mode);
+    }
     return orientationBlocked;
   }
 
@@ -374,6 +418,7 @@
     flashColor: "#ff667a",
     announcementTimer: 0,
     uiTimer: 0,
+    upgradeDraft: idleUpgradeDraft(),
     stats: { culled: 0, spawned: 0, kills: 0 }
   };
 
@@ -405,7 +450,9 @@
     if (!campaignProgressEligible || state.sector !== 1 || !state.ship) return false;
     const target = clamp(Math.floor(Number(stage) || state.encounter || 1), 1, progress.maxUnlockedStage);
     progress.checkpoints[String(target)] = checkpointFromShip(state.ship);
-    return saveProgress();
+    const savedCheckpoint = saveProgress();
+    updateProgressUI();
+    return savedCheckpoint;
   }
 
   function hasSavedCampaign() {
@@ -444,7 +491,7 @@
   }
 
   function anyDialogOpen() {
-    return [dom.controlsModal, dom.settingsModal, dom.stageSelectModal, dom.newGameModal]
+    return [dom.controlsModal, dom.settingsModal, dom.stageSelectModal, dom.newGameModal, dom.enigmaUpgradeModal]
       .some((dialog) => Boolean(dialog && dialog.open));
   }
 
@@ -467,18 +514,19 @@
 
   function syncModePresentation() {
     const mode = state.mode;
+    const upgradeBlocksPlay = state.upgradeDraft.phase !== "idle";
     setOverlayState(dom.menuOverlay, mode === "menu");
     setOverlayState(dom.pauseOverlay, mode === "paused");
     setOverlayState(dom.gameoverOverlay, mode === "gameover");
     const inRun = mode === "playing" || mode === "transition" || mode === "paused";
     show(dom.hud, inRun);
     show(dom.meters, inRun);
-    show(dom.pauseButton, mode === "playing" || mode === "transition");
+    show(dom.pauseButton, !upgradeBlocksPlay && (mode === "playing" || mode === "transition"));
     show(dom.objectiveHud, inRun);
     if (!inRun) show(dom.bossHud, false);
-    if (dom.touchControls) dom.touchControls.classList.toggle("is-active", mode === "playing");
-    canvas.style.cursor = mode === "playing" ? "crosshair" : "default";
-    const canvasTabIndex = mode === "playing" ? 0 : -1;
+    if (dom.touchControls) dom.touchControls.classList.toggle("is-active", mode === "playing" && !upgradeBlocksPlay);
+    canvas.style.cursor = mode === "playing" && !upgradeBlocksPlay ? "crosshair" : "default";
+    const canvasTabIndex = mode === "playing" && !upgradeBlocksPlay ? 0 : -1;
     canvas.tabIndex = canvasTabIndex;
     canvas.setAttribute("tabindex", String(canvasTabIndex));
   }
@@ -497,6 +545,7 @@
   function resetRun(startStage, savedLoadout) {
     const initialStage = clamp(Math.floor(Number(startStage) || 1), 1, CONFIG.sector.encountersPerSector);
     const loadout = cloneCheckpoint(savedLoadout);
+    cancelUpgradeDraft();
     resetTransientInput();
     audio.resetTimeline();
     const ship = {
@@ -569,6 +618,7 @@
     closeDialog(dom.settingsModal);
     closeDialog(dom.stageSelectModal);
     closeDialog(dom.newGameModal);
+    closeDialog(dom.enigmaUpgradeModal);
     if (recordsCampaign) {
       progress.lastPlayedStage = requestedStage;
       saveProgress();
@@ -613,6 +663,7 @@
   }
 
   function returnToMenu() {
+    cancelUpgradeDraft();
     saveCurrentStageCheckpoint();
     state.shake = 0;
     state.flash = 0;
@@ -628,6 +679,26 @@
   }
 
   function togglePause(forcePause) {
+    if (state.upgradeDraft.phase !== "idle") {
+      if ((state.mode === "playing" || state.mode === "transition") && forcePause === true) {
+        const heldGamepadButtons = input.lastGamepadButtons.slice();
+        resetTransientInput();
+        input.lastGamepadButtons = heldGamepadButtons;
+        state.resumeMode = state.mode;
+        closeDialog(dom.enigmaUpgradeModal);
+        setMode("paused");
+        return true;
+      }
+      if (state.mode === "paused" && forcePause !== true) {
+        const heldGamepadButtons = input.lastGamepadButtons.slice();
+        resetTransientInput();
+        input.lastGamepadButtons = heldGamepadButtons;
+        setMode(state.resumeMode === "transition" && state.cinematic.active ? "transition" : "playing");
+        if (state.upgradeDraft.phase === "choosing") presentUpgradeChoices();
+        return true;
+      }
+      return false;
+    }
     if ((state.mode === "playing" || state.mode === "transition") && forcePause !== false) {
       resetTransientInput();
       if (touchCapable && state.ship) {
@@ -642,10 +713,12 @@
       setMode(state.resumeMode === "transition" && state.cinematic.active ? "transition" : "playing");
       if (!touchCapable) canvas.focus({ preventScroll: true });
     }
+    return true;
   }
 
   function endRun() {
     if (state.mode === "gameover") return;
+    cancelUpgradeDraft();
     saveCurrentStageCheckpoint();
     const oldHighScore = highScore;
     highScore = Math.max(highScore, Math.floor(state.score));
@@ -666,6 +739,7 @@
   function openDialog(dialog) {
     if (!dialog || orientationBlocked) return;
     dialog.removeAttribute("inert");
+    if (dialog.open) return;
     if (typeof dialog.showModal === "function") dialog.showModal();
     else dialog.setAttribute("open", "");
   }
@@ -704,6 +778,14 @@
       copy.appendChild(stageCardText("stage-card-title", spec.label));
       const status = stageCardText("stage-card-status", "Locked");
       copy.appendChild(status);
+      const loadout = global.document.createElement("span");
+      loadout.className = "stage-loadout-summary";
+      const loadoutLabel = stageCardText("stage-loadout-label", "Checkpoint loadout");
+      const loadoutModules = global.document.createElement("span");
+      loadoutModules.className = "stage-loadout-modules";
+      loadout.appendChild(loadoutLabel);
+      loadout.appendChild(loadoutModules);
+      copy.appendChild(loadout);
 
       button.appendChild(preview);
       button.appendChild(copy);
@@ -712,7 +794,7 @@
         startRunAt(stage);
       });
       dom.stageGrid.appendChild(button);
-      stageButtons.push({ stage, spec, button, status });
+      stageButtons.push({ stage, spec, button, status, loadoutModules });
       if (ND.StagePreview && typeof ND.StagePreview.render === "function") ND.StagePreview.render(preview, stage, 1);
     }
   }
@@ -727,11 +809,36 @@
     for (const entry of stageButtons) {
       const unlocked = entry.stage <= progress.maxUnlockedStage;
       const current = unlocked && entry.stage === progress.lastPlayedStage;
+      const checkpoint = unlocked ? cloneCheckpoint(progress.checkpoints[String(entry.stage)]) : null;
+      const equipped = checkpoint ? MODULE_ORDER.filter((id) => checkpoint.modules[id] > 0) : [];
+      const autonomous = checkpoint ? equipped.filter((id) => CONFIG.weapons.modules[id].activation === "autonomous") : [];
+      const temporaryEntries = checkpoint ? TEMP_WEAPON_TIMERS.filter((timer) => checkpoint.timers[timer] > 0).map((timer) => ({
+        kind: TEMPORARY_KIND_BY_TIMER[timer],
+        seconds: Math.ceil(checkpoint.timers[timer])
+      })) : [];
+      const temporaryCount = temporaryEntries.length;
+      const temporarySeconds = temporaryEntries.reduce((total, item) => total + item.seconds, 0);
+      const loadoutDescription = checkpoint ? equipped.map((id) =>
+        `${CONFIG.weapons.modules[id].label} Mk ${roman(checkpoint.modules[id])}${CONFIG.weapons.modules[id].activation === "autonomous" ? ", autonomous" : ""}`
+      ).concat(temporaryEntries.map((item) => `${CONFIG.powerups[item.kind].label}, ${item.seconds} seconds remaining`)).join("; ") : "No checkpoint";
       entry.button.disabled = !unlocked;
-      entry.button.setAttribute("aria-label", `Stage ${entry.stage}: ${entry.spec.label}. ${unlocked ? "Unlocked" : "Locked"}.`);
+      entry.button.setAttribute("aria-label", `Stage ${entry.stage}: ${entry.spec.label}. ${unlocked ? `Unlocked. Checkpoint loadout: ${loadoutDescription || "no weapons"}.` : "Locked."}`);
       if (current) entry.button.setAttribute("aria-current", "step");
       else entry.button.removeAttribute("aria-current");
       entry.status.textContent = unlocked ? (current ? "Last played" : "Unlocked") : "Locked";
+      if (entry.loadoutModules) {
+        entry.loadoutModules.textContent = "";
+        const moduleCount = stageCardText("stage-loadout-module", unlocked ? `${equipped.length}/${MODULE_ORDER.length} modules` : "Locked");
+        entry.loadoutModules.appendChild(moduleCount);
+        if (unlocked) {
+          const autoCount = stageCardText("stage-loadout-module", `${autonomous.length} auto`);
+          entry.loadoutModules.appendChild(autoCount);
+          if (temporaryCount) {
+            const temporary = stageCardText("stage-loadout-module is-temporary", `${temporaryCount} timed · ${temporarySeconds}s`);
+            entry.loadoutModules.appendChild(temporary);
+          }
+        }
+      }
     }
   }
 
@@ -743,7 +850,7 @@
     closeDialog(dom.newGameModal);
     openDialog(dom.stageSelectModal);
     const target = stageButtons.find((entry) => entry.stage === progress.lastPlayedStage);
-    target?.button.focus({ preventScroll: true });
+    target?.button.focus();
   }
 
   function unlockNextStage(completedStage) {
@@ -785,10 +892,10 @@
     }
   }
 
-  function bindButton(id, action) {
+  function bindButton(id, action, allowDuringUpgrade) {
     const button = byId(id);
     if (button) button.addEventListener("click", (event) => {
-      if (orientationBlocked) {
+      if (orientationBlocked || state.upgradeDraft.phase !== "idle" && !allowDuringUpgrade) {
         event.preventDefault();
         return;
       }
@@ -800,7 +907,7 @@
   bindButton("continue-button", openStageSelect);
   bindButton("restart-button", restartRun);
   bindButton("restart-pause-button", restartRun);
-  bindButton("resume-button", () => togglePause(false));
+  bindButton("resume-button", () => togglePause(false), true);
   bindButton("pause-button", () => togglePause());
   bindButton("pause-menu-button", returnToMenu);
   bindButton("menu-button", returnToMenu);
@@ -823,19 +930,22 @@
     event.preventDefault();
     cancelNewCampaign();
   });
+  if (dom.enigmaUpgradeModal) dom.enigmaUpgradeModal.addEventListener("cancel", (event) => {
+    event.preventDefault();
+  });
   function bindTouchAction(id, action) {
     const button = byId(id);
     if (!button) return;
     let touchActivation = false;
     button.addEventListener("pointerdown", (event) => {
       noteTouchInteraction(event);
-      if (orientationBlocked || event.pointerType !== "touch") return;
+      if (orientationBlocked || state.upgradeDraft.phase !== "idle" || event.pointerType !== "touch") return;
       touchActivation = true;
       action();
       event.preventDefault();
     }, { passive: false });
     button.addEventListener("click", (event) => {
-      if (orientationBlocked) {
+      if (orientationBlocked || state.upgradeDraft.phase !== "idle") {
         event.preventDefault();
         return;
       }
@@ -890,6 +1000,18 @@
       event.preventDefault();
       return;
     }
+    if (state.upgradeDraft.phase !== "idle") {
+      if (state.mode === "paused" && ["p", "escape"].includes(key) && !event.repeat) {
+        togglePause(false);
+        event.preventDefault();
+      } else if (state.upgradeDraft.phase === "choosing" && ["1", "2", "3"].includes(key) && !event.repeat) {
+        selectUpgradeChoice(Number(key) - 1);
+        event.preventDefault();
+      } else if (!["tab", "enter", "space"].includes(key)) {
+        event.preventDefault();
+      }
+      return;
+    }
     if (!input.keys[key]) input.pressed[key] = true;
     input.keys[key] = true;
     if (["space", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) event.preventDefault();
@@ -903,6 +1025,11 @@
 
   global.addEventListener("keyup", (event) => {
     const key = normalizeKey(event);
+    if (state.upgradeDraft.phase !== "idle") {
+      delete input.keys[key];
+      delete input.pressed[key];
+      return;
+    }
     if (orientationBlocked) {
       delete input.keys[key];
       delete input.pressed[key];
@@ -912,7 +1039,7 @@
   });
 
   canvas.addEventListener("pointermove", (event) => {
-    if (orientationBlocked) return;
+    if (orientationBlocked || state.upgradeDraft.phase !== "idle") return;
     if (event.pointerType === "touch") {
       handledTouchMoves.add(event);
       updateTouchStick(event);
@@ -925,7 +1052,7 @@
   });
   canvas.addEventListener("pointerdown", (event) => {
     noteTouchInteraction(event);
-    if (orientationBlocked) return;
+    if (orientationBlocked || state.upgradeDraft.phase !== "idle") return;
     if (event.pointerType === "touch") {
       beginTouchStick(event);
       return;
@@ -1192,6 +1319,29 @@
       input.lastGamepadButtons = nowButtons;
       return;
     }
+    const gamepadAxesActive = pad.axes.some((axis) => Math.abs(Number(axis) || 0) > 0.19);
+    if (state.upgradeDraft.phase !== "idle") {
+      input.gamepadMoveX = input.gamepadMoveY = input.gamepadAimX = input.gamepadAimY = 0;
+      input.gamepadFire = false;
+      for (const key of Object.keys(input.pressed)) delete input.pressed[key];
+      if (state.mode === "paused") {
+        if (nowButtons[9] && !input.lastGamepadButtons[9]) togglePause(false);
+      } else if (state.upgradeDraft.phase === "choosing") {
+        if (nowButtons[14] && !input.lastGamepadButtons[14]) focusUpgradeChoice(-1);
+        if (nowButtons[15] && !input.lastGamepadButtons[15]) focusUpgradeChoice(1);
+        if (nowButtons[0] && !input.lastGamepadButtons[0]) selectUpgradeChoice(state.upgradeDraft.focusIndex);
+      }
+      input.lastGamepadButtons = nowButtons;
+      return;
+    }
+    if (gamepadRequiresNeutral) {
+      input.gamepadMoveX = input.gamepadMoveY = input.gamepadAimX = input.gamepadAimY = 0;
+      input.gamepadFire = false;
+      for (const key of Object.keys(input.pressed)) delete input.pressed[key];
+      input.lastGamepadButtons = nowButtons;
+      if (!nowButtons.some(Boolean) && !gamepadAxesActive) gamepadRequiresNeutral = false;
+      return;
+    }
     input.gamepadMoveX = deadzone(pad.axes[0] || 0, 0.16);
     input.gamepadMoveY = deadzone(pad.axes[1] || 0, 0.16);
     input.gamepadAimX = deadzone(pad.axes[2] || 0, 0.19);
@@ -1264,6 +1414,7 @@
       environmentalKills: 0,
       lastDeathCause: null,
       bossDefeated: false,
+      bossRewardGranted: false,
       killsSincePowerup: 0
     };
     announce(isBoss ? "Alien capital ship — arena forming" : spec.label, isBoss ? 2.6 : 1.5);
@@ -1523,6 +1674,7 @@
       life: values.life,
       maxLife: values.life,
       kind,
+      sourceModule: moduleId,
       color: definition.color,
       pierce: (values.pierce || 0) + (state.ship.piercingTimer > 0 ? CONFIG.powerups.piercing.bonusPierce : 0),
       turnRate: values.turnRate || 0,
@@ -1573,21 +1725,24 @@
       const target = nearestTarget(ship.x, ship.y, values.range);
       if (!target) continue;
       ship.weaponTimers[id] = values.cooldown;
+      let spawned = 0;
       if (id === "homingSalvo") {
         const targetAngle = Math.atan2(target.y - ship.y, target.x - ship.x);
         for (let index = 0; index < values.projectiles; index += 1) {
           const offset = values.projectiles === 1 ? 0 : (index / (values.projectiles - 1) - 0.5) * 0.16;
           const angle = targetAngle + offset;
-          spawnPlayerBullet(id, ship.x + Math.cos(angle) * 23, ship.y + Math.sin(angle) * 23, angle, values);
+          if (spawnPlayerBullet(id, ship.x + Math.cos(angle) * 23, ship.y + Math.sin(angle) * 23, angle, values)) spawned += 1;
         }
-        audio.shoot("plasma");
+        if (spawned) audio.shoot("plasma");
       } else {
+        const baseAngle = ship.angle + state.time * 0.42;
         for (let index = 0; index < values.projectiles; index += 1) {
-          const angle = ship.angle + index / values.projectiles * TAU;
-          spawnPlayerBullet(id, ship.x + Math.cos(angle) * 19, ship.y + Math.sin(angle) * 19, angle, values);
+          const angle = baseAngle + index / values.projectiles * TAU;
+          if (spawnPlayerBullet(id, ship.x + Math.cos(angle) * 19, ship.y + Math.sin(angle) * 19, angle, values)) spawned += 1;
         }
-        audio.shoot("scatter");
+        if (spawned) audio.shoot("scatter");
       }
+      if (spawned && !settings.reducedEffects) addRing(ship.x, ship.y, definition.color, 5, 0.26, id === "homingSalvo" ? 34 : 46);
     }
   }
 
@@ -2066,15 +2221,26 @@
   function finishEncounter(message) {
     const data = state.encounterData;
     if (!data || data.complete) return;
+    if (state.upgradeDraft.phase !== "idle") return;
     data.complete = true;
     data.goalProgress = data.goalTarget;
-    if (data.spec.guaranteedReward === "moduleUpgrade" && !data.guaranteedGranted) {
+    let rewardResult = null;
+    const reward = data.spec.guaranteedReward;
+    if (reward && !data.guaranteedGranted &&
+        (reward === "moduleUpgrade" || reward.type === "moduleUpgrade")) {
       data.guaranteedGranted = true;
-      grantModuleUpgrade("ARMORY LINK");
+      rewardResult = grantModuleUpgrade(
+        "ARMORY LINK",
+        typeof reward === "object" ? reward.module : null,
+        typeof reward === "object" ? reward.tiers : 1,
+        false,
+        false
+      );
     }
     if (campaignProgressEligible && state.sector === 1) unlockNextStage(state.encounter);
     state.score += Math.round(300 * state.sector * CONFIG.difficulty.scoreScale(state.sector));
-    startCinematic(message || (data.spec.id === "titanGate" ? "Titan shattered" : "Stage clear"));
+    const baseMessage = message || (data.spec.id === "titanGate" ? "Titan shattered" : "Stage clear");
+    startCinematic(rewardResult ? `${baseMessage} · ${rewardResult.summary}` : baseMessage);
   }
 
   function advanceEncounter() {
@@ -2461,8 +2627,11 @@
       return;
     }
     if (state.encounterData.bossDefeated) {
+      const rewardResult = state.upgradeDraft.phase === "idle" ? grantBossCoreReward() : null;
       if (encounterThreatsRemaining() === 0 && !state.encounterData.complete) {
-        finishEncounter(`${CONFIG.bosses.harrower.label} defeated`);
+        finishEncounter(`${CONFIG.bosses.harrower.label} defeated${rewardResult ? ` · ${rewardResult.summary}` : ""}`);
+      } else if (rewardResult) {
+        announce(`Capital ship down · ${rewardResult.summary} · clear the escorts`, 2);
       }
       return;
     }
@@ -2699,6 +2868,13 @@
     if (boss.health <= 0) killBoss();
   }
 
+  function grantBossCoreReward() {
+    const data = state.encounterData;
+    if (!data || !data.bossDefeated || data.bossRewardGranted) return null;
+    data.bossRewardGranted = true;
+    return grantModuleUpgrade("BOSS CORE", null, 1, false, false);
+  }
+
   function killBoss() {
     const boss = state.boss;
     if (!boss || boss.dead) return;
@@ -2717,11 +2893,16 @@
     state.flash = 1;
     state.flashColor = "#ffffff";
     audio.explode(true);
-    grantModuleUpgrade("BOSS CORE");
+    const rewardResult = state.upgradeDraft.phase === "idle" ? grantBossCoreReward() : null;
     state.boss = null;
     show(dom.bossHud, false);
-    if (encounterThreatsRemaining() === 0) finishEncounter(`${CONFIG.bosses[boss.type].label} defeated`);
-    else announce("Capital ship down — clear the escorts", 1.6);
+    if (encounterThreatsRemaining() === 0) {
+      finishEncounter(`${CONFIG.bosses[boss.type].label} defeated${rewardResult ? ` · ${rewardResult.summary}` : ""}`);
+    } else if (rewardResult) {
+      announce(`Capital ship down · ${rewardResult.summary} · clear the escorts`, 2);
+    } else {
+      announce("Capital ship down — clear the escorts", 1.6);
+    }
   }
 
   function nearestTarget(x, y, range) {
@@ -3070,6 +3251,7 @@
         ["arcBurst", CONFIG.powerups.arcBurst.weight],
         ["novaLance", CONFIG.powerups.novaLance.weight],
         ["pulseCharge", CONFIG.powerups.pulseCharge.weight],
+        ["enigma", CONFIG.powerups.enigma.weight],
         ["module", CONFIG.powerups.moduleUpgrade.weight]
       ];
       const totalWeight = weighted.reduce((sum, item) => sum + item[1], 0);
@@ -3099,66 +3281,339 @@
     return pickup;
   }
 
+  function shuffledUpgradeIds(items) {
+    const shuffled = items.slice();
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swapIndex = rng.int(0, index);
+      const value = shuffled[index];
+      shuffled[index] = shuffled[swapIndex];
+      shuffled[swapIndex] = value;
+    }
+    return shuffled;
+  }
+
+  function moduleUpgradeChoice(moduleId) {
+    const definition = CONFIG.weapons.modules[moduleId];
+    const currentTier = state.ship.modules[moduleId] || 0;
+    const nextTier = Math.min(CONFIG.weapons.maxModuleTier, currentTier + 1);
+    return {
+      id: `module:${moduleId}`,
+      enhancementId: moduleId,
+      kind: "module",
+      permanence: "permanent",
+      activation: definition.activation === "autonomous" ? "passive" : "active",
+      moduleId,
+      title: definition.label,
+      tier: currentTier ? `Mk ${roman(currentTier)} → Mk ${roman(nextTier)}` : "Install Mk I",
+      description: MODULE_DESCRIPTIONS[moduleId]
+    };
+  }
+
+  function temporaryUpgradeChoice(kind) {
+    const timer = TEMPORARY_TIMER_BY_KIND[kind];
+    const values = CONFIG.powerups[kind];
+    return {
+      id: `temporary:${kind}`,
+      enhancementId: kind,
+      kind: "temporary",
+      permanence: "temporary",
+      activation: "active",
+      timer,
+      title: values.label,
+      tier: `+${values.duration}s`,
+      description: `Adds ${values.duration} seconds and stacks up to ${TEMP_WEAPON_LIMITS[timer]} seconds.`
+    };
+  }
+
+  function supportUpgradeChoice(kind) {
+    const values = CONFIG.powerups[kind];
+    const title = kind === "repair" ? "Hull Restoration" : kind === "shield" ? "Shield Reserve" : "Pulse Reserve";
+    return {
+      id: `support:${kind}`,
+      enhancementId: kind,
+      kind: "support",
+      permanence: "run-only",
+      activation: "instant",
+      title,
+      tier: `+${values.amount}`,
+      description: kind === "repair" ? "Repairs hull immediately; overflow converts into score." :
+        kind === "shield" ? "Restores shields immediately; overflow converts into score." :
+          "Recharges Void Pulse immediately; overflow converts into score."
+    };
+  }
+
+  function buildUpgradeChoices() {
+    const choiceCount = Math.max(1, Math.floor(CONFIG.powerups.enigma.choiceCount));
+    const permanentIds = shuffledUpgradeIds(MODULE_ORDER.filter((id) =>
+      (state.ship.modules[id] || 0) < CONFIG.weapons.maxModuleTier
+    ));
+    const temporaryIds = shuffledUpgradeIds(TEMPORARY_UPGRADE_ORDER.filter((kind) => {
+      const timer = TEMPORARY_TIMER_BY_KIND[kind];
+      return state.ship[timer] < TEMP_WEAPON_LIMITS[timer] - 0.0001;
+    }));
+    const supportIds = shuffledUpgradeIds(SUPPORT_UPGRADE_ORDER);
+    const selected = [];
+    const used = new Set();
+    const addChoice = (choice) => {
+      if (!choice || used.has(choice.id) || selected.length >= choiceCount) return;
+      selected.push(choice);
+      used.add(choice.id);
+    };
+
+    if (permanentIds.length) addChoice(moduleUpgradeChoice(permanentIds.shift()));
+    if (temporaryIds.length) addChoice(temporaryUpgradeChoice(temporaryIds.shift()));
+
+    const remainder = shuffledUpgradeIds(
+      permanentIds.map((id) => moduleUpgradeChoice(id))
+        .concat(temporaryIds.map((kind) => temporaryUpgradeChoice(kind)))
+        .concat(supportIds.map((kind) => supportUpgradeChoice(kind)))
+    );
+    for (const choice of remainder) addChoice(choice);
+    return shuffledUpgradeIds(selected).slice(0, choiceCount);
+  }
+
+  function upgradeChoiceElement(tagName, className, text) {
+    const element = global.document.createElement(tagName);
+    element.className = className;
+    element.textContent = text;
+    return element;
+  }
+
+  function buildUpgradeChoiceButton(choice, index) {
+    const button = global.document.createElement("button");
+    button.type = "button";
+    button.id = `enigma-choice-${index + 1}`;
+    button.className = `upgrade-card is-${choice.activation} is-${choice.permanence}`;
+    button.dataset.choiceIndex = String(index);
+    button.dataset.enhancementId = choice.enhancementId;
+    button.setAttribute("aria-keyshortcuts", String(index + 1));
+    const permanenceLabel = choice.permanence === "run-only" ? "run only" : choice.permanence;
+    const activationLabel = choice.activation === "passive" ? "automatic passive" : choice.activation;
+    button.setAttribute("aria-label", `${choice.title}. ${choice.tier}. ${permanenceLabel}. ${activationLabel}. ${choice.description}`);
+
+    const heading = upgradeChoiceElement("span", "upgrade-card-head", "");
+    heading.appendChild(upgradeChoiceElement("span", "upgrade-card-kind",
+      choice.kind === "module" ? "Weapon module" : choice.kind === "temporary" ? "Timed enhancement" : "Instant support"
+    ));
+    heading.appendChild(upgradeChoiceElement("span", "upgrade-card-tier", choice.tier));
+    button.appendChild(heading);
+    button.appendChild(upgradeChoiceElement("strong", "upgrade-card-title", choice.title));
+    button.appendChild(upgradeChoiceElement("span", "upgrade-card-description", choice.description));
+    const tags = upgradeChoiceElement("span", "upgrade-card-tags", "");
+    tags.appendChild(upgradeChoiceElement("span", `upgrade-card-tag is-${choice.permanence}`, choice.permanence === "run-only" ? "Run only" : choice.permanence));
+    tags.appendChild(upgradeChoiceElement("span", `upgrade-card-tag is-${choice.activation}`, choice.activation === "passive" ? "Auto passive" : choice.activation === "instant" ? "Instant" : "Active"));
+    button.appendChild(tags);
+    button.addEventListener("click", () => selectUpgradeChoice(index));
+    return button;
+  }
+
+  function presentUpgradeChoices() {
+    if (orientationBlocked || state.mode !== "playing" || state.upgradeDraft.phase !== "choosing" || !dom.enigmaUpgradeModal || !dom.enigmaUpgradeGrid) return false;
+    if (upgradeChoiceButtons.length !== state.upgradeDraft.choices.length) {
+      dom.enigmaUpgradeGrid.textContent = "";
+      upgradeChoiceButtons = state.upgradeDraft.choices.map((choice, index) => {
+        const button = buildUpgradeChoiceButton(choice, index);
+        dom.enigmaUpgradeGrid.appendChild(button);
+        return button;
+      });
+    }
+    if (!dom.enigmaUpgradeModal.open) openDialog(dom.enigmaUpgradeModal);
+    state.upgradeDraft.focusIndex = clamp(state.upgradeDraft.focusIndex, 0, Math.max(0, upgradeChoiceButtons.length - 1));
+    upgradeChoiceButtons[state.upgradeDraft.focusIndex]?.focus({ preventScroll: true });
+    if (dom.enigmaUpgradeStatus) dom.enigmaUpgradeStatus.textContent = "Combat paused. Choose one of three enhancements.";
+    syncModePresentation();
+    return true;
+  }
+
+  function focusUpgradeChoice(direction) {
+    if (orientationBlocked || state.mode !== "playing" || state.upgradeDraft.phase !== "choosing" || !upgradeChoiceButtons.length) return false;
+    const count = upgradeChoiceButtons.length;
+    state.upgradeDraft.focusIndex = (state.upgradeDraft.focusIndex + direction + count) % count;
+    upgradeChoiceButtons[state.upgradeDraft.focusIndex].focus({ preventScroll: true });
+    return true;
+  }
+
+  function beginUpgradeDraft(x, y) {
+    if (!state.ship || state.upgradeDraft.phase !== "idle") return false;
+    const choices = buildUpgradeChoices();
+    if (choices.length !== CONFIG.powerups.enigma.choiceCount) return false;
+    state.upgradeDraft = {
+      phase: "slowing",
+      elapsed: 0,
+      duration: Math.max(CONFIG.world.fixedStep, CONFIG.powerups.enigma.slowdownSeconds),
+      timeScale: 1,
+      choices,
+      focusIndex: 0,
+      x: Number.isFinite(Number(x)) ? Number(x) : state.ship.x,
+      y: Number.isFinite(Number(y)) ? Number(y) : state.ship.y
+    };
+    upgradeChoiceButtons = [];
+    if (dom.enigmaUpgradeGrid) dom.enigmaUpgradeGrid.textContent = "";
+    if (dom.enigmaUpgradeStatus) dom.enigmaUpgradeStatus.textContent = "Enigma signal acquired. Time dilation active.";
+    resetTransientInput();
+    state.ship.invulnerable = Math.max(
+      state.ship.invulnerable,
+      state.upgradeDraft.duration + CONFIG.powerups.enigma.resumeInvulnerability
+    );
+    global.document.body?.classList.add("is-upgrade-draft");
+    syncModePresentation();
+    announce("Enigma signal · choose your evolution", state.upgradeDraft.duration + 0.4);
+    state.flash = Math.max(state.flash, settings.reducedEffects ? 0.28 : 0.72);
+    state.flashColor = "#b77cff";
+    addRing(state.upgradeDraft.x, state.upgradeDraft.y, "#bd83ff", 8, 0.72, 190);
+    burst(state.upgradeDraft.x, state.upgradeDraft.y, "#ff79e4", settings.reducedEffects ? 8 : 24, 1.35);
+    return true;
+  }
+
+  function advanceUpgradeDraft(dt) {
+    const draft = state.upgradeDraft;
+    if (draft.phase === "idle") return 1;
+    if (draft.phase === "choosing") return 0;
+    draft.elapsed = Math.min(draft.duration, draft.elapsed + dt);
+    const remaining = clamp(1 - draft.elapsed / draft.duration, 0, 1);
+    draft.timeScale = remaining * remaining * (3 - 2 * remaining);
+    if (draft.elapsed >= draft.duration) {
+      draft.phase = "choosing";
+      draft.timeScale = 0;
+      presentUpgradeChoices();
+      syncModePresentation();
+      return 0;
+    }
+    return draft.timeScale;
+  }
+
+  function cancelUpgradeDraft() {
+    closeDialog(dom.enigmaUpgradeModal);
+    state.upgradeDraft = idleUpgradeDraft();
+    upgradeChoiceButtons = [];
+    if (dom.enigmaUpgradeGrid) dom.enigmaUpgradeGrid.textContent = "";
+    if (dom.enigmaUpgradeStatus) dom.enigmaUpgradeStatus.textContent = "";
+    global.document.body?.classList.remove("is-upgrade-draft");
+    syncModePresentation();
+  }
+
+  function addTemporaryUpgrade(kind) {
+    const timer = TEMPORARY_TIMER_BY_KIND[kind];
+    const values = CONFIG.powerups[kind];
+    if (!timer || !values) return null;
+    const before = state.ship[timer];
+    state.ship[timer] = clamp(before + values.duration, 0, TEMP_WEAPON_LIMITS[timer]);
+    return {
+      title: values.label,
+      summary: `${values.label} · ${Math.ceil(state.ship[timer])}s stacked`,
+      changed: state.ship[timer] > before
+    };
+  }
+
+  function addSupportUpgrade(kind) {
+    let changed = false;
+    if (kind === "repair") {
+      const before = state.ship.hull;
+      state.ship.hull = Math.min(state.ship.maxHull, state.ship.hull + CONFIG.powerups.repair.amount);
+      changed = state.ship.hull > before;
+    } else if (kind === "shield") {
+      const before = state.ship.shield;
+      state.ship.shield = Math.min(CONFIG.powerups.shield.cap, state.ship.shield + CONFIG.powerups.shield.amount);
+      changed = state.ship.shield > before;
+    } else if (kind === "pulseCharge") {
+      const before = state.ship.pulse;
+      state.ship.pulse = Math.min(100, state.ship.pulse + CONFIG.powerups.pulseCharge.amount);
+      changed = state.ship.pulse > before;
+    }
+    if (!changed) state.score += 500;
+    const label = kind === "repair" ? "Hull restored" : kind === "shield" ? "Shields restored" : "Void Pulse charged";
+    return { title: label, summary: changed ? label : "System overflow · +500 score", changed: true };
+  }
+
+  function selectUpgradeChoice(index) {
+    if (orientationBlocked || state.mode !== "playing" || state.upgradeDraft.phase !== "choosing") return false;
+    const choiceIndex = Math.floor(Number(index));
+    const choice = state.upgradeDraft.choices[choiceIndex];
+    if (!choice) return false;
+    const selectedButton = upgradeChoiceButtons[choiceIndex];
+    selectedButton?.classList.add("is-selected");
+    selectedButton?.setAttribute("aria-pressed", "true");
+    for (const button of upgradeChoiceButtons) button.disabled = true;
+
+    let result;
+    if (choice.kind === "module") result = grantModuleUpgrade("ENIGMA", choice.moduleId, 1, false, false);
+    else if (choice.kind === "temporary") result = addTemporaryUpgrade(choice.enhancementId);
+    else result = addSupportUpgrade(choice.enhancementId);
+
+    closeDialog(dom.enigmaUpgradeModal);
+    state.upgradeDraft = idleUpgradeDraft();
+    global.document.body?.classList.remove("is-upgrade-draft");
+    resetTransientInput();
+    gamepadRequiresNeutral = true;
+    if (state.ship) state.ship.invulnerable = Math.max(state.ship.invulnerable, CONFIG.powerups.enigma.resumeInvulnerability);
+    syncModePresentation();
+    announce(result.summary, 1.9);
+    if (dom.enigmaUpgradeStatus) dom.enigmaUpgradeStatus.textContent = `${result.summary}. Combat resumed.`;
+    saveCurrentStageCheckpoint();
+    updateUI(true);
+    if (!touchCapable) canvas.focus({ preventScroll: true });
+    return true;
+  }
+
   function applyPickup(pickup) {
-    if (pickup.dead) return;
+    if (!pickup || pickup.dead || !state.ship) return false;
+    // Freeze every later pickup behind the pending decision so generated cards
+    // cannot become stale while the Enigma slowdown is still simulating.
+    if (state.upgradeDraft.phase !== "idle") return false;
+    if (pickup.kind === "enigma" && !beginUpgradeDraft(pickup.x, pickup.y)) return false;
     pickup.dead = true;
     const ship = state.ship;
-    if (pickup.kind === "shield") {
+    if (pickup.kind === "enigma") {
+      // The selected card owns the checkpoint write after time dilation completes.
+    } else if (pickup.kind === "shield") {
       ship.shield = Math.min(CONFIG.powerups.shield.cap, ship.shield + CONFIG.powerups.shield.amount);
       showPowerup("SHIELD ONLINE");
-    } else if (pickup.kind === "rapid") {
-      ship.rapidTimer = Math.max(ship.rapidTimer, CONFIG.powerups.rapid.duration);
-      showPowerup("OVERDRIVE ACTIVE");
-    } else if (pickup.kind === "triShot") {
-      ship.triShotTimer = Math.max(ship.triShotTimer, CONFIG.powerups.triShot.duration);
-      showPowerup("TRI-SHOT ACTIVE");
-    } else if (pickup.kind === "piercing") {
-      ship.piercingTimer = Math.max(ship.piercingTimer, CONFIG.powerups.piercing.duration);
-      showPowerup("PHASE ROUNDS ACTIVE");
-    } else if (pickup.kind === "arcBurst") {
-      ship.arcBurstTimer = Math.max(ship.arcBurstTimer, CONFIG.powerups.arcBurst.duration);
-      showPowerup("ARC BURST ACTIVE");
-    } else if (pickup.kind === "novaLance") {
-      ship.novaLanceTimer = Math.max(ship.novaLanceTimer, CONFIG.powerups.novaLance.duration);
-      showPowerup("NOVA LANCE ACTIVE");
+    } else if (TEMPORARY_TIMER_BY_KIND[pickup.kind]) {
+      const result = addTemporaryUpgrade(pickup.kind);
+      showPowerup(result.summary);
     } else if (pickup.kind === "repair") {
       ship.hull = Math.min(ship.maxHull, ship.hull + CONFIG.powerups.repair.amount);
       showPowerup("HULL REPAIRED");
     } else if (pickup.kind === "pulseCharge") {
       ship.pulse = Math.min(100, ship.pulse + CONFIG.powerups.pulseCharge.amount);
       showPowerup("VOID PULSE CHARGED");
-    } else {
-      grantModuleUpgrade("MODULE CACHE");
+    } else if (pickup.kind === "module" || pickup.kind === "moduleUpgrade") {
+      grantModuleUpgrade("MODULE CACHE", null, 1, false);
     }
-    saveCurrentStageCheckpoint();
-    burst(pickup.x, pickup.y, "#ffffff", settings.reducedEffects ? 6 : 14, 0.9);
+    if (pickup.kind !== "enigma") saveCurrentStageCheckpoint();
+    burst(pickup.x, pickup.y, pickup.kind === "enigma" ? "#c584ff" : "#ffffff", settings.reducedEffects ? 6 : 14, 0.9);
     audio.pickup();
+    return true;
   }
 
-  function grantModuleUpgrade(source) {
+  function grantModuleUpgrade(source, preferredModule, tierCount, shouldAnnounce, shouldShowStatus) {
     const modules = state.ship.modules;
+    const preferred = MODULE_ORDER.includes(preferredModule) && modules[preferredModule] < CONFIG.weapons.maxModuleTier ? preferredModule : null;
     const unopened = MODULE_ORDER.filter((id) => !modules[id]);
-    let selected;
-    if (unopened.length) selected = unopened[0];
+    let selected = preferred;
+    if (!selected && unopened.length) selected = unopened[0];
     else {
       const lowest = Math.min(...MODULE_ORDER.map((id) => modules[id] || 0));
       const eligible = MODULE_ORDER.filter((id) => (modules[id] || 0) === lowest && modules[id] < CONFIG.weapons.maxModuleTier);
-      selected = eligible[0];
+      if (!selected) selected = eligible[0];
     }
     if (!selected) {
       state.ship.hull = Math.min(state.ship.maxHull, state.ship.hull + 25);
       state.score += 500;
-      showPowerup(`${source} // SYSTEM OVERFLOW`);
+      if (shouldShowStatus !== false) showPowerup(`${source} // SYSTEM OVERFLOW`);
       saveCurrentStageCheckpoint();
-      return;
+      return { moduleId: null, tier: 0, title: "System overflow", summary: "System overflow · +500 score", overflow: true };
     }
-    modules[selected] = Math.min(CONFIG.weapons.maxModuleTier, (modules[selected] || 0) + 1);
+    const levels = Math.max(1, Math.floor(Number(tierCount) || 1));
+    modules[selected] = Math.min(CONFIG.weapons.maxModuleTier, (modules[selected] || 0) + levels);
     const label = CONFIG.weapons.modules[selected].label;
-    showPowerup(`${source} // ${label} MK ${roman(modules[selected])}`);
-    announce(`${label} Mk ${roman(modules[selected])}`, 1.7);
+    const summary = `${label} Mk ${roman(modules[selected])} · permanent`;
+    if (shouldShowStatus !== false) showPowerup(`${source} // PERMANENT · ${label} MK ${roman(modules[selected])}`);
+    if (shouldAnnounce !== false) announce(summary, 1.7);
     audio.weaponSwitch();
     state.moduleSignature = "";
     saveCurrentStageCheckpoint();
+    return { moduleId: selected, tier: modules[selected], title: label, summary, overflow: false };
   }
 
   function showPowerup(text) {
@@ -3167,7 +3622,7 @@
   }
 
   function roman(value) {
-    return ["—", "I", "II", "III"][clamp(Math.floor(value), 0, 3)];
+    return ["—", "I", "II", "III", "IV", "V"][clamp(Math.floor(value), 0, CONFIG.weapons.maxModuleTier)];
   }
 
   function addRing(x, y, color, startRadius, life, targetRadius) {
@@ -3352,6 +3807,7 @@
       state.boss
     ];
     const points = [state.camera, state.aimWorld, state.arena, state.combatField];
+    if (state.upgradeDraft.phase !== "idle") points.push(state.upgradeDraft);
     if (state.boss && state.boss.telegraph) points.push(state.boss.telegraph);
     Core.rebaseOrigin(state.ship, collections, points, CONFIG.world.floatingOriginThreshold, CONFIG.world.chunkSize * 16);
   }
@@ -3369,28 +3825,34 @@
       clearPressed();
       return;
     }
-    state.time += dt;
-    state.runTime += dt;
+    const simulationDt = state.mode === "playing" ? dt * advanceUpgradeDraft(dt) : dt;
+    if (simulationDt <= 0) {
+      updateUI(false);
+      clearPressed();
+      return;
+    }
+    state.time += simulationDt;
+    state.runTime += simulationDt;
     if (state.mode === "transition") {
-      updateCinematic(dt);
-      if (state.mode === "transition") updateCamera(dt);
-      state.shake = Math.max(0, state.shake - dt * 24);
-      state.flash = Math.max(0, state.flash - dt * 2.8);
+      updateCinematic(simulationDt);
+      if (state.mode === "transition") updateCamera(simulationDt);
+      state.shake = Math.max(0, state.shake - simulationDt * 24);
+      state.flash = Math.max(0, state.flash - simulationDt * 2.8);
       if (state.announcementTimer > 0) {
-        state.announcementTimer -= dt;
+        state.announcementTimer -= simulationDt;
         if (state.announcementTimer <= 0) hideAnnouncement();
       }
       updateUI(false);
       clearPressed();
       return;
     }
-    updateShip(dt);
-    updateEncounter(dt);
-    updateAsteroids(dt);
-    updateAliens(dt);
+    updateShip(simulationDt);
+    updateEncounter(simulationDt);
+    updateAsteroids(simulationDt);
+    updateAliens(simulationDt);
     collideAsteroidsAndAliens();
-    updateProjectiles(dt);
-    updateMines(dt);
+    updateProjectiles(simulationDt);
+    updateMines(simulationDt);
     collidePlayerBullets();
     if (state.mode === "playing" && state.encounterData.spec.id !== "boss") updateEncounter(0);
     if (state.mode === "playing") collidePlayer();
@@ -3398,23 +3860,23 @@
       clearPressed();
       return;
     }
-    updateEffects(dt);
+    updateEffects(simulationDt);
     cullWorld();
-    updateCamera(dt);
+    updateCamera(simulationDt);
     rebaseIfNeeded();
 
-    state.comboTimer = Math.max(0, state.comboTimer - dt);
+    state.comboTimer = Math.max(0, state.comboTimer - simulationDt);
     if (state.comboTimer <= 0) state.combo = 1;
-    state.shake = Math.max(0, state.shake - dt * 24);
-    state.flash = Math.max(0, state.flash - dt * 2.8);
-    state.powerupTextTimer = Math.max(0, (state.powerupTextTimer || 0) - dt);
+    state.shake = Math.max(0, state.shake - simulationDt * 24);
+    state.flash = Math.max(0, state.flash - simulationDt * 2.8);
+    state.powerupTextTimer = Math.max(0, (state.powerupTextTimer || 0) - simulationDt);
     if (state.powerupTextTimer <= 0 && dom.powerupStatus) dom.powerupStatus.textContent = "";
     if (state.announcementTimer > 0) {
-      state.announcementTimer -= dt;
+      state.announcementTimer -= simulationDt;
       if (state.announcementTimer <= 0) hideAnnouncement();
     }
     audio.musicTick(state.time, state.boss ? 1 : clamp((state.asteroids.length + state.aliens.length) / 12, 0.15, 0.9));
-    state.uiTimer -= dt;
+    state.uiTimer -= simulationDt;
     if (state.uiTimer <= 0) {
       state.uiTimer = 0.08;
       updateUI(false);
@@ -3428,21 +3890,35 @@
     if (signature === state.moduleSignature) return;
     state.moduleSignature = signature;
     dom.moduleStrip.textContent = "";
+    dom.moduleStrip.setAttribute("role", "list");
+    dom.moduleStrip.removeAttribute("aria-live");
     for (let index = 0; index < MODULE_ORDER.length; index += 1) {
       const id = MODULE_ORDER[index];
       const tier = state.ship.modules[id] || 0;
       const slot = global.document.createElement("div");
       slot.className = `module-slot${tier ? " is-equipped" : ""}`;
+      slot.setAttribute("role", "listitem");
       const number = global.document.createElement("span");
       number.className = "module-index";
       number.textContent = String(index + 1).padStart(2, "0");
       const name = global.document.createElement("span");
       name.className = "module-name";
       const definition = CONFIG.weapons.modules[id];
-      name.textContent = tier ? `${definition.activation === "autonomous" ? "Auto · " : ""}${definition.label}` : "Empty";
+      const autonomous = definition.activation === "autonomous";
+      name.textContent = tier ? definition.label : "Empty";
       const rank = global.document.createElement("span");
       rank.className = "module-rank";
       rank.textContent = tier ? `Mk ${roman(tier)}` : "—";
+      if (tier && autonomous) {
+        const badge = global.document.createElement("span");
+        badge.className = "module-auto-badge";
+        badge.textContent = "AUTO";
+        rank.appendChild(badge);
+      }
+      slot.setAttribute(
+        "aria-label",
+        tier ? `${definition.label}, ${autonomous ? "autonomous, " : ""}Mark ${roman(tier)}` : `Module slot ${index + 1}, empty`
+      );
       slot.appendChild(number);
       slot.appendChild(name);
       slot.appendChild(rank);
@@ -3590,6 +4066,22 @@
         lastDeathCause: state.encounterData.lastDeathCause
       } : null,
       cinematic: { ...state.cinematic },
+      enigma: {
+        phase: state.upgradeDraft.phase,
+        elapsed: state.upgradeDraft.elapsed,
+        duration: state.upgradeDraft.duration,
+        timeScale: state.upgradeDraft.timeScale,
+        choices: state.upgradeDraft.choices.map((choice) => ({
+          id: choice.id,
+          enhancementId: choice.enhancementId,
+          kind: choice.kind,
+          permanence: choice.permanence,
+          activation: choice.activation,
+          title: choice.title,
+          tier: choice.tier,
+          moduleId: choice.moduleId || null
+        }))
+      },
       combatField: { ...state.combatField },
       progress: {
         maxUnlockedStage: progress.maxUnlockedStage,
@@ -3653,6 +4145,7 @@
     spawnAlien: (type, options) => spawnAlien(type, options),
     spawnPickup: (x, y, kind) => spawnPickup(x, y, kind),
     applyPickup: (pickup) => applyPickup(pickup),
+    chooseEnhancement: (index) => selectUpgradeChoice(index),
     damageThreat: (entity, amount, cause) => damageThreat(entity, amount, null, cause || "player"),
     killThreat: (entity, cause) => killThreat(entity, cause || "player"),
     collideThreats: collideAsteroidsAndAliens,

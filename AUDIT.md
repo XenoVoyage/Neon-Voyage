@@ -1,8 +1,8 @@
-# Neon Voyage v2026.8.14 — source audit
+# Neon Voyage v2026.8.15 — source audit
 
-- Audited: 2026-08-14
+- Audited: 2026-08-15
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 124/124 automated source checks**
+- Result: **PASS — 139/139 automated source checks**
 
 Observed with Node v24.19.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated browser viewports and Pointer Events and is not a claim of acceptance on physical touch hardware.
 
@@ -20,7 +20,7 @@ Observed with Node v24.19.0 on Linux x64. The harness uses Node built-ins only; 
 
 Passed:
 
-- The immutable v2026.8.14 configuration defines nine ordered stages: Earth Orbit, Inner Belt, Deep Drift, Shattered Frontier, Titan Gate, First Contact, Strike Wing, Raid Fleet, and Command Arena.
+- The immutable v2026.8.15 configuration defines nine ordered stages: Earth Orbit, Inner Belt, Deep Drift, Shattered Frontier, Titan Gate, First Contact, Strike Wing, Raid Fleet, and Command Arena.
 - Stages 1–4 contain asteroid and non-sentient anomaly hazards only. The Titan is Stage 5, ordinary alien spacecraft first appear at Stage 6, and the alien Harrower boss remains Stage 9.
 - The first Earth Orbit wave contains exactly three required rocks, all visible at entry, and cannot over-spawn its configured total.
 - Across 1,024 fixed seeds at each of six phone, tablet, and desktop viewports, every Earth Orbit opening rock preserves at least 72 px of ship-surface clearance, 18 px of threat separation, and 2.2 seconds of predicted contact time.
@@ -30,7 +30,8 @@ Passed:
 - Every configured alien wave in Stages 6–8 contains a small, finite asteroid hazard mix. Those hazards remain ballistic and must be cleared alongside the spacecraft.
 - The colossal split is exact and bounded: one parent creates three required rock children; each child creates two final fragments; those six final fragments cannot split again. The resulting required tree contains ten total objectives (1+3+6).
 - Fresh fragments spawn separated with collision grace and survive their initial frame. A hard-culled required fragment is requeued with its exact health, radius, required state, remaining split generations, hit-flash state, and collision grace.
-- A deterministic weapon-driven run visits Stages 1–9 in order, clears every optional hazard and spawned add, defeats the Harrower boss through normal player projectiles, wraps to Sector 2 Stage 1, and remains beneath every configured entity cap.
+- A deterministic weapon-driven run visits Stages 1–9 in order, resolves mandatory Enigma choices, clears every optional hazard and spawned add, defeats the Harrower boss through normal player projectiles, wraps to Sector 2 Stage 1, and remains beneath every configured entity cap.
+- Stage completion is deferred while an Enigma slowdown or choice is active, so the selected enhancement is applied and checkpointed before hyperspace. Overlapping pickups remain collectible after the draft instead of mutating an advertised card during slowdown, and a Harrower core earned by an in-flight shot is granted exactly once after the advertised choice resolves.
 
 ## Physical collision verification
 
@@ -72,6 +73,8 @@ Passed in automated browser-VM regressions:
 - Dash and Void Pulse remain independently operable with both sticks held and cannot leak into pause behavior.
 - Ordinary mobile browser-chrome focus changes do not pause a visible run. Hiding the document pauses safely; touch pause releases captures, clears actions, stops residual velocity, and requires fresh input.
 - Portrait play presents a blocking landscape gate that owns covered UI, keyboard, pointer, and gamepad input without changing the run mode. Landscape restoration resumes the same state without replaying held buttons.
+- Collecting Enigma immediately releases both touch sticks, pointer capture, keyboard, mouse, and gamepad intent. Its 0.72-second slowdown preserves only scaled inertial simulation, the choice phase freezes world and weapon timers, and selection resumes with neutral input plus one second of protection.
+- An active Enigma draft survives portrait rotation, visibility loss, page exit, blur, and lifecycle pause without rerolling or applying a hidden choice. Landscape restoration or explicit resume reopens the same three cards, and stale pointer or held gamepad actions cannot select them.
 - Double-tap zoom and overscroll are suppressed within the owned fullscreen game shell without adding `user-scalable=no`; landscape orientation lock remains best-effort and is never required on iOS.
 
 ## Progress, UI, and storage verification
@@ -80,23 +83,25 @@ Passed:
 
 - Progress keeps the existing `neon-voyage-progress-v1` storage key but uses a strict, size-limited schema-2 record with Stage 1–9 integer bounds and whitelisted per-stage loadouts. Missing, malformed, oversized, unknown-schema, and denied storage fall back safely.
 - Valid schema-1 records migrate without losing the highest earned or last-played stage. Because earlier records contained no weapons, migration synthesizes a conservative base loadout for their unlocked checkpoints.
-- Every checkpoint stores only bounded permanent module tiers and remaining temporary-weapon timers. Continue restores that selected loadout while score, hull, shield, pulse charge, position, velocity, clocks, cooldown phase, entities, effects, and battlefield state start fresh in Sector 1.
-- Genuine campaign play can refresh the current checkpoint as the loadout changes and persists the next stage after its guaranteed reward. Debug stages and later sectors cannot unlock or rewrite campaign data.
+- Every checkpoint stores only permanent module tiers bounded through Mk V and temporary-weapon timers bounded to four base durations. Continue restores that selected loadout while score, hull, shield, pulse charge, position, velocity, clocks, cooldown phase, entities, effects, pending Enigma state, and battlefield state start fresh in Sector 1.
+- Genuine campaign play can refresh the current checkpoint as the loadout changes and persists the next stage after its config-authored reward. Stages 2, 4, 6, and 8 target Homing Salvo, Radial Array, Guardian Drone, and a second Radial Array tier; a capped target falls back to another eligible module without exceeding Mk V. Debug stages and later sectors cannot unlock or rewrite campaign data.
 - New Game with existing campaign progress opens an accessible overwrite confirmation. Cancel is the safe default; confirmation resets campaign checkpoints and begins Stage 1 while retaining local record and sound/effects preferences. Restart and Play Again remain non-destructive.
-- Continue remains disabled until Stage 2 is genuinely unlocked. Its responsive grid contains all nine ordered stages, disables locked cards, marks the last-played stage, and repeats the lock check in runtime logic.
+- Continue remains disabled until Stage 2 is genuinely unlocked. Its responsive grid contains all nine ordered stages, disables locked cards, marks the last-played stage, summarizes module/autonomous/timed loadouts including remaining seconds, and repeats the lock check in runtime logic.
 - Menu, pause, game-over, confirmation, Continue, and portrait mode retain correct `inert` and `aria-hidden` ownership. Canvas focus exists only during active play; primary actions receive focus once per real mode transition without stealing dialog or restored control focus.
 - Game-over camera shake/flash decays for a finite presentation interval even though simulation is stopped, and returning to the menu clears any residual feedback. The Local Record value uses the cyan interface accent instead of the former gold.
-- Phone-class landscape CSS compacts secondary HUD labels, the objective panel, module text, and system meters while preserving their accessible names and touch targets.
+- Phone-class landscape CSS compacts secondary HUD labels, the objective panel, module text, system meters, and the three-card chooser while preserving readable consequence text, accessible names, scrolling fallback, and touch targets. Portrait uses a single-column chooser after the orientation gate is cleared.
 
 ## Weapons and pickups verification
 
 Passed:
 
-- Rapid Fire, Tri-Shot, Arc Burst, and Nova Lance use independent finite timers and visibly distinct firing behavior. Refreshing or expiring one cannot change another.
-- Pickup selection retains its global drop chance and pity boundary. Only the requested weights changed: Rapid Fire 24, Tri-Shot 22, and Hull Repair 20.
-- The deterministic weighted sample includes survival pickups and temporary weapons. Pickup collection remains capped.
-- Rare permanent module upgrades change one eligible module, remain within the three-tier limit, and persist through genuine per-stage campaign checkpoints until a confirmed New Game reset.
-- Homing Salvo and Radial Array are reachable through the normal bounded module-upgrade path, survive through the saved checkpoint loadout, wait for an eligible in-range target, obey their configured cooldowns, and stay under the player-projectile cap.
+- Rapid Fire, Tri-Shot, Piercing Rounds, Arc Burst, and Nova Lance use independent finite timers and visibly distinct firing behavior. Repeated pickups add one full base duration up to four bounded stacks; ticking or expiring one cannot change another.
+- Pickup selection uses a 26% global drop chance with a four-kill pity boundary. The weighted pool includes Enigma at 12 and permanent module caches at 7, while every pickup collection and field remains capped.
+- Rare permanent module upgrades stack one eligible module through Mk V and persist through genuine per-stage campaign checkpoints until a confirmed New Game reset.
+- Homing Salvo, Radial Array, and Guardian Drones are reachable through normal bounded upgrades and authored milestones, survive through saved checkpoint loadouts, operate without primary-fire input, obey their configured targeting and cooldowns, and stay under the shared projectile and drone caps. Tier IV/V projectile counts and cadence produce a denser late-run field without bypassing cleanup.
+- Enigma emits a distinct violet question-mark pickup, eases the fixed-step simulation to a full stop, and deterministically offers exactly three unique eligible cards. When available, every offer includes at least one permanent module and one timed active enhancement; capped builds receive bounded instant run-support fallbacks instead of deadlocking.
+- Enigma selection applies only the advertised effect once. Native cancel, Pause/Escape, hidden orientation, stale pointer input, and held gamepad input cannot bypass or double-apply the choice; central and in-dialog status paths announce acquisition, selection, and resume without making periodic passive fire live.
+- Homing rockets, rotating radial shots, and autonomous launch cues remain visually distinct from hostile projectiles. Reduced-effects mode suppresses decorative launch rings and excess glow while preserving the projectile silhouettes and core Enigma cue.
 - Void Pulse reads its reach and damage from immutable configuration. Its 280 px radius affects only nearby threats, enemy projectiles, and mines, and its reduced asteroid, alien, and boss damage cannot reproduce the old screen-wide clear.
 
 ## Offline, security, and repository verification
@@ -109,7 +114,7 @@ Passed:
 - The two README gameplay captures are small repository-local WebP files under `docs/assets/`, are referenced with meaningful alternative text, and are documentation-only rather than runtime resources.
 - Every runtime resource is local, relative, and valid beneath the `/Neon-Voyage/` GitHub Pages repository subpath. Direct `file://` launch requires no server.
 - Runtime JavaScript passes syntax checking. The frozen source tree contains no symlinks and stays below conservative offline payload limits.
-- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version v2026.8.14 with no leading zeroes.
+- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version v2026.8.15 with no leading zeroes.
 - Every runtime script and test suite is registered exactly once. Local Markdown links resolve, documentation images have meaningful descriptions, and release text is free of conflict markers, trailing whitespace, and missing final newlines.
 - `SHA256SUMS` recursively covers the complete frozen source tree outside explicit local-output directories and verifies every frozen file.
 - The dependency-free browser VM loads every local script, draws Canvas frames and local stage previews, launches a run, exposes the HUD, and maintains one animation loop.
@@ -119,7 +124,7 @@ Passed:
 
 Passed:
 
-- A deterministic 20-minute expedition completed 72,000 fixed simulation steps while cycling all nine stages, finite waves, hyperspace, asteroid and alien pressure, player fire, effects, environmental kills, and boss combat.
+- A deterministic 20-minute expedition completed 72,000 fixed simulation steps while cycling all nine stages, finite waves, hyperspace, asteroid and alien pressure, full Mk V autonomous fire, repeated Enigma drafts, effects, environmental kills, and boss combat.
 - Ship, camera, score, clocks, and active entities remained finite. Asteroids, aliens, player/enemy projectiles, mines, pickups, effects, and floaters stayed within configured caps.
 - Repeating the long simulation with the same seed and inputs reproduced its snapshot, collection peaks, and stage-transition count.
 
@@ -129,13 +134,13 @@ Passed:
 node tests/run.js
 ```
 
-Expected result for this source snapshot: `124/124 tests passed`.
+Expected result for this source snapshot: `139/139 tests passed`.
 
 That command reproduces the dependency-free source and browser-VM checks. It does not reproduce the historical `@napi-rs/canvas` inspection: no committed script, package, exact command, or output artifact exists for that separate rendered observation. Future rendered checks must record their tool, command, environment, target files, and observed result without adding a browser-game dependency.
 
 ## Browser smoke and acceptance
 
-- The automated rendered/browser-VM smoke loads every local script, draws Canvas and Continue previews, starts a run, drives Pointer Events through movement, aim, fire, Dash, Pulse, pause, malformed terminals, lifecycle cleanup, and simulation, then verifies neutral stick state.
+- The automated rendered/browser-VM smoke loads every local script, draws Canvas and Continue previews, creates and selects real Enigma card buttons, starts a run, drives Pointer Events through movement, aim, fire, Dash, Pulse, pause, malformed terminals, lifecycle cleanup, and simulation, then verifies neutral stick state.
 - Phone- and tablet-class landscape behavior is exercised through deterministic simulated viewports and pointer sequences. This is automated coverage, not physical-device acceptance.
 - The six added deep-space worlds and two documentation captures were rendered from the local Canvas game and inspected in their intended compositions. This is a rendered asset check, not a hands-on browser playthrough.
 - No prepublication hands-on browser play is claimed by this source audit.
@@ -151,4 +156,4 @@ Automated checks validate contracts, safety, determinism, and simulated browser 
 - Project governance requires pull requests into `main`, blocks direct/force pushes and branch deletion, and permits one required approval only when a genuine independent reviewer is available.
 - The previously verified server-side protection targets the default branch, requires pull requests and the strict `audit` status context, blocks deletion and non-fast-forward pushes, has no bypass actors, and currently requires zero approvals for solo maintenance.
 
-This audit records the frozen source candidate for runtime version `v2026.8.14`; the version label is not evidence that a Git tag or GitHub Release exists. Pull-request checks, merge state, Pages deployment, an immutable release tag, and live Play are external publication gates evidenced by GitHub history and the release handoff. They do not require a post-merge source edit that would immediately invalidate this checksum snapshot.
+This audit records the frozen source candidate for runtime version `v2026.8.15`; the version label is not evidence that a Git tag or GitHub Release exists. Pull-request checks, merge state, Pages deployment, an immutable release tag, and live Play are external publication gates evidenced by GitHub history and the release handoff. They do not require a post-merge source edit that would immediately invalidate this checksum snapshot.

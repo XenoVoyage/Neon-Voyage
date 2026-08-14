@@ -49,6 +49,17 @@ function runSteps(game, seconds, fixedStep, eachStep) {
   }
 }
 
+function advanceEnigmaToChoice(game, CONFIG) {
+  const limit = Math.ceil(CONFIG.powerups.enigma.slowdownSeconds / CONFIG.world.fixedStep) + 2;
+  for (let frame = 0; frame < limit && game.snapshot().enigma.phase !== "choosing"; frame += 1) {
+    game.step(CONFIG.world.fixedStep);
+  }
+  const draft = game.snapshot().enigma;
+  assert.equal(draft.phase, "choosing", "Enigma slowdown did not reach its mandatory choice");
+  assert.equal(draft.timeScale, 0);
+  return draft;
+}
+
 function living(state) {
   return state.asteroids.concat(state.aliens).filter((entity) => !entity.dead);
 }
@@ -877,7 +888,7 @@ module.exports = function register(test) {
     assert.equal(state.cinematic.toEncounter, 6);
   });
 
-  test("Rapid Fire and Tri-Shot coexist, refresh independently, and expire", () => {
+  test("Rapid Fire and Tri-Shot coexist, stack additively, and expire independently", () => {
     const { game, CONFIG } = boot(601);
     const state = game.state;
     clearEntities(state);
@@ -890,8 +901,9 @@ module.exports = function register(test) {
     assert.equal(state.ship.triShotTimer, CONFIG.powerups.triShot.duration);
     runSteps(game, 4, CONFIG.world.fixedStep);
     const triBeforeRefresh = state.ship.triShotTimer;
+    const rapidBeforeStack = state.ship.rapidTimer;
     game.applyPickup(game.spawnPickup(0, 0, "rapid"));
-    assert.equal(state.ship.rapidTimer, CONFIG.powerups.rapid.duration);
+    approximately(state.ship.rapidTimer, rapidBeforeStack + CONFIG.powerups.rapid.duration, CONFIG.world.fixedStep * 1.1);
     approximately(state.ship.triShotTimer, triBeforeRefresh, CONFIG.world.fixedStep * 1.1);
     runSteps(game, triBeforeRefresh + CONFIG.world.fixedStep * 2, CONFIG.world.fixedStep);
     assert.equal(state.ship.triShotTimer, 0);
@@ -900,7 +912,7 @@ module.exports = function register(test) {
     assert.equal(state.ship.rapidTimer, 0);
   });
 
-  test("temporary weapon pickups change firing behavior, refresh independently, and expire", () => {
+  test("temporary weapon pickups change firing behavior, stack independently, and expire", () => {
     const { game, CONFIG } = boot(651);
     const state = game.state;
     clearEntities(state);
@@ -921,8 +933,9 @@ module.exports = function register(test) {
     runSteps(game, 0.4, CONFIG.world.fixedStep);
     assert.ok(state.playerBullets.some((bullet) => bullet.kind === "arc"), "Arc Burst stopped when Nova Lance activated");
     assert.ok(state.playerBullets.some((bullet) => bullet.kind === "lance"), "Nova Lance did not fire lance projectiles");
+    const novaBeforeStack = state.ship.novaLanceTimer;
     game.applyPickup(game.spawnPickup(0, 0, "novaLance"));
-    assert.equal(state.ship.novaLanceTimer, CONFIG.powerups.novaLance.duration);
+    approximately(state.ship.novaLanceTimer, novaBeforeStack + CONFIG.powerups.novaLance.duration, CONFIG.world.fixedStep * 1.1);
     approximately(state.ship.arcBurstTimer, arcBeforeRefresh - 0.4, CONFIG.world.fixedStep * 1.2, "Nova refresh changed Arc timer");
     runSteps(game, state.ship.arcBurstTimer + CONFIG.world.fixedStep * 2, CONFIG.world.fixedStep);
     assert.equal(state.ship.arcBurstTimer, 0);
@@ -931,6 +944,38 @@ module.exports = function register(test) {
     runSteps(game, 0.5, CONFIG.world.fixedStep);
     assert.ok(!state.playerBullets.some((bullet) => bullet.kind === "arc"), "expired Arc Burst kept firing");
     assert.ok(state.playerBullets.some((bullet) => bullet.kind === "lance"), "active Nova Lance stopped firing");
+  });
+
+  test("temporary pickup duration adds to a strict four-stack cap", () => {
+    const { game, CONFIG } = boot(671);
+    const state = game.state;
+    clearEntities(state);
+    freezeDirector(state);
+    const timers = {
+      rapid: "rapidTimer",
+      triShot: "triShotTimer",
+      piercing: "piercingTimer",
+      arcBurst: "arcBurstTimer",
+      novaLance: "novaLanceTimer"
+    };
+    for (const [kind, timer] of Object.entries(timers)) {
+      for (let stack = 0; stack < CONFIG.powerups.temporaryStackLimit + 2; stack += 1) {
+        game.applyPickup(game.spawnPickup(0, 0, kind));
+        state.pickups.length = 0;
+      }
+      assert.equal(
+        state.ship[timer],
+        CONFIG.powerups[kind].duration * CONFIG.powerups.temporaryStackLimit,
+        `${kind} exceeded its additive duration cap`
+      );
+    }
+    runSteps(game, 1, CONFIG.world.fixedStep);
+    const rapidBefore = state.ship.rapidTimer;
+    assert.ok(rapidBefore < CONFIG.powerups.rapid.duration * CONFIG.powerups.temporaryStackLimit);
+    game.applyPickup(game.spawnPickup(0, 0, "rapid"));
+    assert.equal(state.ship.rapidTimer, CONFIG.powerups.rapid.duration * CONFIG.powerups.temporaryStackLimit);
+    assert.ok(state.ship.triShotTimer < CONFIG.powerups.triShot.duration * CONFIG.powerups.temporaryStackLimit,
+      "stacking Rapid changed another temporary timer");
   });
 
   test("module upgrade is permanent for the run and remains bounded", () => {
@@ -956,6 +1001,7 @@ module.exports = function register(test) {
     for (const id of Object.keys(CONFIG.weapons.modules)) {
       assert.equal(state.ship.modules[id], CONFIG.weapons.maxModuleTier, `${id} did not reach its bounded tier cap`);
     }
+    assert.equal(CONFIG.weapons.maxModuleTier, 5);
     assert.ok(state.ship.modules.homingSalvo && state.ship.modules.radialArray, "passive modules were unreachable through normal upgrades");
     const capped = JSON.stringify(state.ship.modules);
     state.pickups.length = 0;
@@ -998,6 +1044,325 @@ module.exports = function register(test) {
     });
     assert.equal(state.ship.modules.homingSalvo, 1);
     assert.equal(state.ship.modules.radialArray, 1);
+  });
+
+  test("Mk V autonomous modules create the authored bullet-hell volley within shared caps", () => {
+    const { game, CONFIG } = boot(693);
+    const state = game.state;
+    clearEntities(state);
+    freezeDirector(state);
+    state.ship.modules.homingSalvo = 5;
+    state.ship.modules.radialArray = 5;
+    state.ship.modules.drone = 5;
+    state.ship.weaponTimers.homingSalvo = 0;
+    state.ship.weaponTimers.radialArray = 0;
+
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.playerBullets.length, 0, "targetless autonomous modules fired into an empty field");
+    assert.equal(state.ship.weaponTimers.homingSalvo, 0);
+    assert.equal(state.ship.weaponTimers.radialArray, 0);
+
+    const target = game.spawnAsteroid("armored", {
+      x: state.ship.x + 240,
+      y: state.ship.y,
+      speed: 0,
+      health: 1e9,
+      required: false,
+      noDrops: true
+    });
+    assert.ok(target);
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.playerBullets.filter((bullet) => bullet.kind === "missile").length,
+      CONFIG.weapons.modules.homingSalvo.tiers[4].projectiles);
+    assert.equal(state.playerBullets.filter((bullet) => bullet.kind === "radial").length,
+      CONFIG.weapons.modules.radialArray.tiers[4].projectiles);
+    assert.equal(state.ship.drones.length, CONFIG.weapons.modules.drone.tiers[4].drones);
+    runSteps(game, 45, CONFIG.world.fixedStep, () => {
+      assert.ok(state.playerBullets.length <= CONFIG.caps.playerProjectiles);
+      assert.ok(state.ship.drones.length <= CONFIG.caps.drones);
+    });
+  });
+
+  test("Enigma deterministically slows into a frozen three-card draft and applies one advertised choice", () => {
+    function prepare(seed, withEnigma) {
+      const runtime = boot(seed);
+      const { game, CONFIG } = runtime;
+      const state = game.state;
+      clearEntities(state);
+      freezeDirector(state);
+      state.ship.rapidTimer = CONFIG.powerups.rapid.duration * 2;
+      state.playerBullets.push({
+        id: 999001, x: 0, y: 0, px: 0, py: 0, vx: 120, vy: 0,
+        radius: 2, damage: 0, life: 10, maxLife: 10, kind: "bolt", color: "#fff",
+        pierce: 0, turnRate: 0, blastRadius: 0, hits: [], dead: false
+      });
+      game.input.keys.space = true;
+      game.input.pointerFire = true;
+      game.input.touchMoveX = 1;
+      game.input.touchFire = true;
+      if (withEnigma) {
+        const pickup = game.spawnPickup(0, 0, "enigma");
+        assert.equal(game.applyPickup(pickup), true);
+        assert.equal(pickup.dead, true);
+        assert.equal(game.snapshot().enigma.phase, "slowing");
+        assert.equal(game.input.pointerFire, false);
+        assert.equal(game.input.touchMoveX, 0);
+        assert.equal(game.input.touchFire, false);
+      }
+      return runtime;
+    }
+
+    const slowed = prepare(1701, true);
+    const control = prepare(1701, false);
+    const fixedStep = slowed.CONFIG.world.fixedStep;
+    const steps = Math.ceil(slowed.CONFIG.powerups.enigma.slowdownSeconds / fixedStep) + 1;
+    const scales = [];
+    for (let frame = 0; frame < steps && slowed.game.snapshot().enigma.phase !== "choosing"; frame += 1) {
+      slowed.game.step(fixedStep);
+      control.game.step(fixedStep);
+      scales.push(slowed.game.snapshot().enigma.timeScale);
+    }
+    const draft = slowed.game.snapshot().enigma;
+    assert.equal(draft.phase, "choosing");
+    assert.equal(draft.choices.length, slowed.CONFIG.powerups.enigma.choiceCount);
+    assert.equal(new Set(draft.choices.map((choice) => choice.id)).size, 3);
+    assert.ok(draft.choices.some((choice) => choice.permanence === "permanent"));
+    assert.ok(draft.choices.some((choice) => choice.permanence === "temporary"));
+    for (let index = 1; index < scales.length; index += 1) {
+      assert.ok(scales[index] <= scales[index - 1] + 1e-12, "Enigma time scale increased during slowdown");
+      assert.ok(scales[index] >= 0 && scales[index] <= 1);
+    }
+    assert.ok(slowed.game.state.playerBullets[0].x > 0, "slowdown stopped the world immediately");
+    assert.ok(slowed.game.state.playerBullets[0].x < control.game.state.playerBullets[0].x,
+      "slowdown advanced at full simulation speed");
+    assert.ok(slowed.game.state.ship.rapidTimer > control.game.state.ship.rapidTimer,
+      "temporary duration was consumed in real time instead of slowed simulation time");
+    assert.equal(slowed.browser.elements.get("enigma-upgrade-modal").open, true);
+    const cards = slowed.browser.createdElements.filter((element) => /^upgrade-card\s/.test(element.className));
+    assert.equal(cards.length, 3);
+    cards.forEach((card, index) => {
+      assert.equal(card.dataset.choiceIndex, String(index));
+      assert.equal(card.dataset.enhancementId, draft.choices[index].enhancementId);
+      assert.equal(card.disabled, false);
+    });
+    assert.equal(slowed.browser.document.activeElement, cards[0]);
+    let cancelPrevented = false;
+    slowed.browser.elements.get("enigma-upgrade-modal").dispatchEvent({
+      type: "cancel",
+      preventDefault() { cancelPrevented = true; }
+    });
+    assert.equal(cancelPrevented, true, "Escape did not preserve the mandatory draft");
+    assert.equal(slowed.browser.elements.get("enigma-upgrade-modal").open, true);
+    assert.equal(slowed.game.snapshot().enigma.phase, "choosing");
+
+    const frozen = {
+      time: slowed.game.state.time,
+      runTime: slowed.game.state.runTime,
+      bulletX: slowed.game.state.playerBullets[0].x,
+      rapidTimer: slowed.game.state.ship.rapidTimer,
+      waveProgress: slowed.game.state.encounterData.goalProgress
+    };
+    slowed.browser.pumpFrames(120);
+    assert.deepEqual({
+      time: slowed.game.state.time,
+      runTime: slowed.game.state.runTime,
+      bulletX: slowed.game.state.playerBullets[0].x,
+      rapidTimer: slowed.game.state.ship.rapidTimer,
+      waveProgress: slowed.game.state.encounterData.goalProgress
+    }, frozen, "full Enigma choice did not freeze simulation state");
+    assert.equal(slowed.game.chooseEnhancement(-1), false);
+    assert.equal(slowed.game.chooseEnhancement(99), false);
+
+    const permanentIndex = draft.choices.findIndex((choice) => choice.kind === "module");
+    const selected = draft.choices[permanentIndex];
+    const beforeModules = { ...slowed.game.state.ship.modules };
+    cards[permanentIndex].click();
+    assert.equal(slowed.game.snapshot().enigma.phase, "idle", "advertised card click did not resolve the draft");
+    assert.equal(slowed.game.chooseEnhancement(permanentIndex), false, "one draft granted twice");
+    assert.equal(slowed.game.state.ship.modules[selected.moduleId], beforeModules[selected.moduleId] + 1);
+    for (const id of Object.keys(beforeModules)) {
+      if (id !== selected.moduleId) assert.equal(slowed.game.state.ship.modules[id], beforeModules[id]);
+    }
+    assert.equal(slowed.browser.elements.get("enigma-upgrade-modal").open, false);
+    assert.ok(slowed.game.state.ship.invulnerable >= slowed.CONFIG.powerups.enigma.resumeInvulnerability);
+    assert.equal(slowed.game.input.pointerFire, false);
+    assert.equal(slowed.game.input.touchFire, false);
+  });
+
+  test("Enigma defers overlapping pickups so an advertised permanent tier stays exact", () => {
+    const { game, CONFIG } = boot(2391);
+    const state = game.state;
+    clearEntities(state);
+    freezeDirector(state);
+    for (const id of Object.keys(state.ship.modules)) state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
+    state.ship.modules.homingSalvo = 0;
+
+    const enigma = game.spawnPickup(state.ship.x, state.ship.y, "enigma");
+    const moduleCache = game.spawnPickup(state.ship.x, state.ship.y, "module");
+    enigma.vx = enigma.vy = moduleCache.vx = moduleCache.vy = 0;
+    game.step(CONFIG.world.fixedStep);
+
+    const draft = game.snapshot().enigma;
+    const permanentIndex = draft.choices.findIndex((choice) => choice.kind === "module");
+    assert.equal(draft.phase, "slowing");
+    assert.equal(draft.choices[permanentIndex].moduleId, "homingSalvo");
+    assert.equal(draft.choices[permanentIndex].tier, "Install Mk I");
+    assert.equal(state.ship.modules.homingSalvo, 0, "overlapping module cache changed an advertised tier");
+    assert.equal(moduleCache.dead, false, "overlapping module cache was consumed during Enigma slowdown");
+
+    advanceEnigmaToChoice(game, CONFIG);
+    assert.equal(moduleCache.dead, false, "deferred pickup disappeared before the mandatory choice");
+    assert.equal(game.chooseEnhancement(permanentIndex), true);
+    assert.equal(state.ship.modules.homingSalvo, 1, "Install Mk I card granted a different tier");
+
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(moduleCache.dead, true, "deferred pickup did not become collectible after selection");
+    assert.equal(state.ship.modules.homingSalvo, 2, "deferred module cache did not apply after selection");
+  });
+
+  test("Enigma defers an in-flight boss-core reward until its advertised tier is applied", () => {
+    const { game, CONFIG } = boot(2396);
+    const state = game.state;
+    game.setStage(9, 1);
+    runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
+    assert.ok(state.boss, "Harrower did not enter the arena");
+    clearEntities(state);
+    for (const id of Object.keys(state.ship.modules)) state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
+    state.ship.modules.homingSalvo = 0;
+    for (const node of state.boss.nodes) node.health = 0;
+    state.boss.health = 1;
+    state.playerBullets.push({
+      id: 999396,
+      x: state.boss.x,
+      y: state.boss.y,
+      px: state.boss.x,
+      py: state.boss.y,
+      vx: 0,
+      vy: 0,
+      radius: 3,
+      damage: 10,
+      life: 2,
+      maxLife: 2,
+      kind: "bolt",
+      color: "#ffffff",
+      pierce: 0,
+      turnRate: 0,
+      blastRadius: 0,
+      hits: [],
+      dead: false
+    });
+
+    game.applyPickup(game.spawnPickup(state.ship.x, state.ship.y, "enigma"));
+    const slowingDraft = game.snapshot().enigma;
+    const permanentIndex = slowingDraft.choices.findIndex((choice) => choice.kind === "module");
+    assert.equal(slowingDraft.choices[permanentIndex].moduleId, "homingSalvo");
+    assert.equal(slowingDraft.choices[permanentIndex].tier, "Install Mk I");
+
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.encounterData.bossDefeated, true, "in-flight shot did not defeat Harrower during slowdown");
+    assert.equal(state.encounterData.bossRewardGranted, false, "boss core changed the pending card before selection");
+    assert.equal(state.ship.modules.homingSalvo, 0, "boss core made Install Mk I stale during slowdown");
+
+    advanceEnigmaToChoice(game, CONFIG);
+    assert.equal(game.chooseEnhancement(permanentIndex), true);
+    assert.equal(state.ship.modules.homingSalvo, 1, "Install Mk I card did not apply its advertised tier");
+    assert.equal(state.encounterData.bossRewardGranted, false, "boss core applied inside the choice transaction");
+
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.encounterData.bossRewardGranted, true, "deferred boss core was not granted after selection");
+    assert.equal(state.ship.modules.homingSalvo, 2, "deferred boss core did not add exactly one tier");
+    assert.equal(state.encounterData.complete, true);
+    assert.equal(state.mode, "transition");
+    runSteps(game, CONFIG.cinematic.duration * 0.5, CONFIG.world.fixedStep);
+    assert.equal(state.ship.modules.homingSalvo, 2, "deferred boss core was granted more than once");
+  });
+
+  test("fixed seed and loadout reproduce Enigma choices while a capped build receives support fallbacks", () => {
+    function choices(seed, capBuild) {
+      const runtime = boot(seed);
+      const { game, CONFIG } = runtime;
+      clearEntities(game.state);
+      freezeDirector(game.state);
+      if (capBuild) {
+        for (const id of Object.keys(game.state.ship.modules)) game.state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
+        for (const kind of ["rapid", "triShot", "piercing", "arcBurst", "novaLance"]) {
+          const timer = `${kind}Timer`;
+          game.state.ship[timer] = CONFIG.powerups[kind].duration * CONFIG.powerups.temporaryStackLimit;
+        }
+      }
+      game.setSeed(seed);
+      game.applyPickup(game.spawnPickup(0, 0, "enigma"));
+      return { runtime, draft: advanceEnigmaToChoice(game, CONFIG) };
+    }
+    const first = choices(2401, false);
+    const second = choices(2401, false);
+    assert.deepEqual(JSON.parse(JSON.stringify(first.draft.choices)), JSON.parse(JSON.stringify(second.draft.choices)));
+    const capped = choices(2402, true);
+    assert.deepEqual(Array.from(capped.draft.choices, (choice) => choice.kind), ["support", "support", "support"]);
+    assert.ok(capped.draft.choices.every((choice) => choice.permanence === "run-only" && choice.activation === "instant"));
+    const supportCards = capped.runtime.browser.createdElements.filter((element) => /^upgrade-card\s/.test(element.className));
+    assert.ok(supportCards.every((card) => /run only\. instant\./i.test(card.getAttribute("aria-label"))));
+    assert.ok(supportCards.every((card) => !/temporary\. active\./i.test(card.getAttribute("aria-label"))));
+    assert.equal(new Set(capped.draft.choices.map((choice) => choice.id)).size, 3);
+    assert.equal(capped.runtime.game.chooseEnhancement(0), true);
+    for (const tier of Object.values(capped.runtime.game.state.ship.modules)) assert.equal(tier, 5);
+  });
+
+  test("a final-wave Enigma choice resolves before stage clear and keeps the selected upgrade", () => {
+    const { game, CONFIG } = boot(2411);
+    const state = game.state;
+    clearEntities(state);
+    const data = state.encounterData;
+    data.pendingSpawns.length = 0;
+    data.requeue.length = 0;
+    data.waveIndex = data.waveCount - 1;
+    data.waveNumber = data.waveCount;
+    data.waveSpawned = true;
+    data.waveRequiredTotal = 0;
+    data.waveRequiredCleared = 0;
+    data.goalProgress = data.goalTarget - 1;
+    game.setSeed(2411);
+    game.applyPickup(game.spawnPickup(0, 0, "enigma"));
+    const draft = advanceEnigmaToChoice(game, CONFIG);
+    assert.equal(data.complete, false, "stage clear stranded the draft during slowdown");
+    assert.equal(state.mode, "playing");
+    const permanentIndex = draft.choices.findIndex((choice) => choice.kind === "module");
+    const selected = draft.choices[permanentIndex];
+    const beforeTier = state.ship.modules[selected.moduleId];
+    assert.equal(game.chooseEnhancement(permanentIndex), true);
+    assert.equal(state.ship.modules[selected.moduleId], beforeTier + 1);
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(data.complete, true, "stage did not clear after the mandatory selection");
+    assert.equal(state.mode, "transition");
+    assert.equal(state.ship.modules[selected.moduleId], beforeTier + 1,
+      "hyperspace discarded the selected enhancement");
+  });
+
+  test("floating-origin rebasing keeps the Enigma fracture attached to its pickup point", () => {
+    const { game, CONFIG } = boot(2421);
+    const state = game.state;
+    clearEntities(state);
+    freezeDirector(state);
+    state.combatField.active = false;
+    state.arena.active = false;
+    state.ship.x = CONFIG.world.floatingOriginThreshold + CONFIG.world.chunkSize * 2;
+    state.ship.y = -CONFIG.world.floatingOriginThreshold - CONFIG.world.chunkSize;
+    state.ship.vx = 0;
+    state.ship.vy = 0;
+    state.camera.x = state.ship.x;
+    state.camera.y = state.ship.y;
+    const pickupX = state.ship.x + 123;
+    const pickupY = state.ship.y - 77;
+    game.applyPickup(game.spawnPickup(pickupX, pickupY, "enigma"));
+    const beforeOffset = {
+      x: state.upgradeDraft.x - state.ship.x,
+      y: state.upgradeDraft.y - state.ship.y
+    };
+    game.step(CONFIG.world.fixedStep);
+    assert.ok(Math.abs(state.ship.x) < CONFIG.world.floatingOriginThreshold);
+    assert.ok(Math.abs(state.ship.y) < CONFIG.world.floatingOriginThreshold);
+    approximately(state.upgradeDraft.x - state.ship.x, beforeOffset.x, 1e-7, "rebased Enigma x offset");
+    approximately(state.upgradeDraft.y - state.ship.y, beforeOffset.y, 1e-7, "rebased Enigma y offset");
   });
 
   test("active Void Pulse affects only its configured nearby radius at reduced damage", () => {
@@ -1065,7 +1430,7 @@ module.exports = function register(test) {
       if (pickup) kinds.add(pickup.kind);
       state.pickups.length = 0;
     }
-    for (const kind of ["shield", "rapid", "triShot", "arcBurst", "novaLance", "repair", "piercing", "pulseCharge"]) {
+    for (const kind of ["shield", "rapid", "triShot", "arcBurst", "novaLance", "repair", "piercing", "pulseCharge", "enigma"]) {
       assert.ok(kinds.has(kind), `weighted sample never produced ${kind}`);
     }
     assert.ok(CONFIG.powerups.moduleUpgrade.weight > 0, "rare module upgrade is absent from the configured pool");
@@ -1085,8 +1450,10 @@ module.exports = function register(test) {
     assert.equal(CONFIG.powerups.rapid.weight, 24);
     assert.equal(CONFIG.powerups.triShot.weight, 22);
     assert.equal(CONFIG.powerups.repair.weight, 20);
-    assert.equal(CONFIG.powerups.dropChance, 0.19);
-    assert.equal(CONFIG.powerups.pityKills, 5);
+    assert.equal(CONFIG.powerups.enigma.weight, 12);
+    assert.equal(CONFIG.powerups.moduleUpgrade.weight, 7);
+    assert.equal(CONFIG.powerups.dropChance, 0.26);
+    assert.equal(CONFIG.powerups.pityKills, 4);
   });
 
   test("all four player bounds and outward dashes stay inside normal stages", () => {
@@ -1335,6 +1702,9 @@ module.exports = function register(test) {
     };
     const limit = Math.ceil(360 / CONFIG.world.fixedStep);
     for (let frame = 0; frame < limit && !(state.sector === 2 && state.encounter === 1); frame += 1) {
+      if (state.upgradeDraft.phase === "choosing") {
+        assert.equal(game.chooseEnhancement(0), true, "full journey stalled at an Enigma choice");
+      }
       state.ship.invulnerable = 1e9;
       let target = state.boss && (state.boss.nodes.find((node) => node.health > 0) || state.boss);
       const data = state.encounterData;

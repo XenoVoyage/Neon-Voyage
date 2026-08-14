@@ -151,13 +151,13 @@ function register(test) {
     extraModule.checkpoints["2"].modules.unknown = 1;
     invalid.push(extraModule);
     const excessiveTier = progressRecord(2, 2);
-    excessiveTier.checkpoints["2"].modules.pulse = 4;
+    excessiveTier.checkpoints["2"].modules.pulse = 6;
     invalid.push(excessiveTier);
     const negativeTimer = progressRecord(2, 2);
     negativeTimer.checkpoints["2"].timers.rapidTimer = -1;
     invalid.push(negativeTimer);
     const excessiveTimer = progressRecord(2, 2);
-    excessiveTimer.checkpoints["2"].timers.arcBurstTimer = 10;
+    excessiveTimer.checkpoints["2"].timers.arcBurstTimer = 37;
     invalid.push(excessiveTimer);
     const missingStage = progressRecord(3, 2);
     delete missingStage.checkpoints["2"];
@@ -179,8 +179,8 @@ function register(test) {
 
     const complete = progressRecord(9, 9, {
       9: checkpoint({
-        modules: Object.fromEntries(MODULE_IDS.map((id) => [id, 3])),
-        timers: { rapidTimer: 10, triShotTimer: 10, piercingTimer: 10, arcBurstTimer: 9, novaLanceTimer: 12 }
+        modules: Object.fromEntries(MODULE_IDS.map((id) => [id, 5])),
+        timers: { rapidTimer: 40, triShotTimer: 40, piercingTimer: 40, arcBurstTimer: 36, novaLanceTimer: 48 }
       })
     });
     const raw = JSON.stringify(complete);
@@ -188,6 +188,16 @@ function register(test) {
     const accepted = boot({ storage: new Map([[PROGRESS_KEY, raw]]) });
     assert.equal(accepted.game.progress.maxUnlockedStage, 9);
     assert.equal(accepted.game.progress.lastPlayedStage, 9);
+
+    const compatibleTierThree = progressRecord(4, 4, {
+      4: checkpoint({
+        modules: Object.fromEntries(MODULE_IDS.map((id) => [id, 3])),
+        timers: { rapidTimer: 10, triShotTimer: 10, piercingTimer: 10, arcBurstTimer: 9, novaLanceTimer: 12 }
+      })
+    });
+    const compatible = boot({ storage: new Map([[PROGRESS_KEY, JSON.stringify(compatibleTierThree)]]) });
+    assert.equal(compatible.game.progress.maxUnlockedStage, 4, "pre-Mk V schema-2 checkpoint stopped loading");
+    assert.equal(compatible.game.progress.checkpoint(4).modules.drone, 3);
   });
 
   test("Continue rejects locked cards and restores only the selected Stage checkpoint loadout", () => {
@@ -202,6 +212,13 @@ function register(test) {
     assert.equal(browser.elements.get("continue-button").disabled, false);
     browser.elements.get("continue-button").click();
     assert.equal(browser.elements.get("stage-select-modal").open, true);
+    const stageFourLabel = cards[3].getAttribute("aria-label");
+    assert.match(stageFourLabel, /OVERDRIVE, 7 seconds remaining/);
+    assert.match(stageFourLabel, /TRI-SHOT, 4 seconds remaining/);
+    assert.match(stageFourLabel, /NOVA LANCE, 8 seconds remaining/);
+    assert.ok(browser.createdElements.some((element) =>
+      element.className === "stage-loadout-module is-temporary" && element.textContent === "5 timed · 27s"
+    ), "Continue omitted the visual total for stacked timed enhancements");
     cards[8].click();
     assert.equal(game.state.mode, "menu", "locked card bypassed its runtime guard");
 
@@ -385,6 +402,96 @@ function register(test) {
     assert.equal(reloaded.game.state.ship.modules.homingSalvo, 1);
     assert.equal(reloaded.game.state.ship.rapidTimer, written.checkpoints["3"].timers.rapidTimer);
     assert.equal(reloaded.game.state.ship.novaLanceTimer, written.checkpoints["3"].timers.novaLanceTimer);
+  });
+
+  test("authored Stage 2, 4, 6, and 8 module rewards stack into the next checkpoint", () => {
+    const milestones = [
+      { stage: 2, moduleId: "homingSalvo", before: 0 },
+      { stage: 4, moduleId: "radialArray", before: 1 },
+      { stage: 6, moduleId: "drone", before: 2 },
+      { stage: 8, moduleId: "radialArray", before: 4 }
+    ];
+    for (const item of milestones) {
+      const stageLoadout = checkpoint({ modules: { [item.moduleId]: item.before } });
+      const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(item.stage, item.stage, {
+        [item.stage]: stageLoadout
+      }))]]);
+      const first = boot({ storage });
+      first.browser.elements.get("continue-button").click();
+      stageCards(first.browser)[item.stage - 1].click();
+      const beforeModules = JSON.parse(JSON.stringify(first.game.state.ship.modules));
+      finishCurrentStage(first.game, first.CONFIG.world.fixedStep);
+
+      assert.equal(first.game.state.mode, "transition", `Stage ${item.stage} did not clear`);
+      assert.equal(first.game.state.ship.modules[item.moduleId], item.before + 1,
+        `Stage ${item.stage} missed ${item.moduleId}`);
+      for (const id of MODULE_IDS) {
+        if (id !== item.moduleId) assert.equal(first.game.state.ship.modules[id], beforeModules[id],
+          `Stage ${item.stage} changed non-target ${id}`);
+      }
+      const written = storedProgress(storage);
+      assert.equal(written.maxUnlockedStage, item.stage + 1);
+      assert.equal(written.checkpoints[String(item.stage + 1)].modules[item.moduleId], item.before + 1);
+
+      const reloaded = boot({ storage });
+      reloaded.browser.elements.get("continue-button").click();
+      stageCards(reloaded.browser)[item.stage].click();
+      assert.equal(reloaded.game.state.ship.modules[item.moduleId], item.before + 1,
+        `Stage ${item.stage + 1} did not restore the rewarded checkpoint`);
+    }
+  });
+
+  test("a capped targeted milestone falls back to one eligible permanent module", () => {
+    const stage8 = checkpoint({ modules: { radialArray: 5 } });
+    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(8, 8, { 8: stage8 }))]]);
+    const { browser, game, CONFIG } = boot({ storage });
+    browser.elements.get("continue-button").click();
+    stageCards(browser)[7].click();
+    const before = JSON.parse(JSON.stringify(game.state.ship.modules));
+    finishCurrentStage(game, CONFIG.world.fixedStep);
+    const changed = MODULE_IDS.filter((id) => game.state.ship.modules[id] !== before[id]);
+    assert.deepEqual(changed, ["homingSalvo"]);
+    assert.equal(game.state.ship.modules.radialArray, 5);
+    assert.equal(game.state.ship.modules.homingSalvo, 1);
+    assert.equal(storedProgress(storage).checkpoints["9"].modules.homingSalvo, 1);
+  });
+
+  test("stacked temporary caps and an Enigma choice persist without saving live draft state", () => {
+    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(2, 2))]]);
+    const first = boot({ storage });
+    first.browser.elements.get("continue-button").click();
+    stageCards(first.browser)[1].click();
+    for (let index = 0; index < first.CONFIG.powerups.temporaryStackLimit + 2; index += 1) {
+      first.game.applyPickup(first.game.spawnPickup(0, 0, "rapid"));
+    }
+    assert.equal(first.game.state.ship.rapidTimer,
+      first.CONFIG.powerups.rapid.duration * first.CONFIG.powerups.temporaryStackLimit);
+    first.game.setSeed(5511);
+    first.game.applyPickup(first.game.spawnPickup(0, 0, "enigma"));
+    const limit = Math.ceil(first.CONFIG.powerups.enigma.slowdownSeconds / first.CONFIG.world.fixedStep) + 2;
+    for (let frame = 0; frame < limit && first.game.snapshot().enigma.phase !== "choosing"; frame += 1) {
+      first.game.step(first.CONFIG.world.fixedStep);
+    }
+    const draft = first.game.snapshot().enigma;
+    assert.equal(draft.phase, "choosing");
+    const permanentIndex = draft.choices.findIndex((choice) => choice.kind === "module");
+    const selectedModule = draft.choices[permanentIndex].moduleId;
+    const stackedRemaining = first.game.state.ship.rapidTimer;
+    assert.ok(stackedRemaining > first.CONFIG.powerups.rapid.duration * (first.CONFIG.powerups.temporaryStackLimit - 1));
+    assert.ok(stackedRemaining <= first.CONFIG.powerups.rapid.duration * first.CONFIG.powerups.temporaryStackLimit);
+    assert.equal(first.game.chooseEnhancement(permanentIndex), true);
+    const written = storedProgress(storage);
+    assert.equal(written.checkpoints["2"].timers.rapidTimer, stackedRemaining);
+    assert.equal(written.checkpoints["2"].modules[selectedModule], first.game.state.ship.modules[selectedModule]);
+    assert.equal("upgradeDraft" in written, false);
+    assert.equal("enigma" in written, false);
+
+    const reloaded = boot({ storage });
+    reloaded.browser.elements.get("continue-button").click();
+    stageCards(reloaded.browser)[1].click();
+    assert.equal(reloaded.game.state.ship.rapidTimer, stackedRemaining);
+    assert.equal(reloaded.game.state.ship.modules[selectedModule], first.game.state.ship.modules[selectedModule]);
+    assert.equal(reloaded.game.snapshot().enigma.phase, "idle");
   });
 
   test("debug stage jumps never unlock campaign checkpoints and progress clamps at Stage 9", () => {

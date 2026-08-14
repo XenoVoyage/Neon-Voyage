@@ -254,6 +254,46 @@ module.exports = function register(test) {
     assert.match(tight, /\.is-touch-capable\s+\.combo\s*\{[^}]*display:\s*none/s, "very short screens retain nonessential combo text");
   });
 
+  test("Enigma choice cards declare the compact-landscape three-column layout contract", () => {
+    const html = readProject("index.html");
+    const css = readProject("styles.css");
+    const renderer = readProject("js/render.js");
+    const dialogStart = html.indexOf('id="enigma-upgrade-modal"');
+    const dialogEnd = html.indexOf("</dialog>", dialogStart);
+    assert.ok(dialogStart >= 0 && dialogEnd > dialogStart, "Enigma dialog markup is missing");
+    const dialogMarkup = html.slice(dialogStart, dialogEnd);
+    assert.match(dialogMarkup, /aria-labelledby="enigma-upgrade-title"/);
+    assert.match(dialogMarkup, /aria-describedby="enigma-upgrade-description"/);
+    assert.match(dialogMarkup, /id="enigma-upgrade-grid"[^>]*class="enigma-upgrade-grid"/s);
+    assert.doesNotMatch(dialogMarkup, /(?:close-button|>\s*Close\s*<)/i, "mandatory Enigma choice gained a dismiss control");
+
+    const baseGrid = css.match(/\.enigma-upgrade-grid\s*\{([^}]*)\}/s);
+    assert.ok(baseGrid);
+    assert.match(baseGrid[1], /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+    const dialogRule = css.match(/\.enigma-upgrade-dialog\s*\{([^}]*)\}/s);
+    assert.ok(dialogRule);
+    assert.match(dialogRule[1], /max-height:\s*min\(calc\(100dvh[^;]+/);
+    assert.match(dialogRule[1], /overflow-y:\s*auto/);
+    assert.match(dialogRule[1], /overscroll-behavior:\s*contain/);
+
+    const portraitStart = css.indexOf("@media (orientation: portrait) and (max-width: 620px)");
+    const compactStart = css.indexOf("@media (orientation: landscape) and (max-height: 500px)");
+    assert.ok(portraitStart >= 0 && compactStart > portraitStart);
+    const portrait = css.slice(portraitStart, compactStart);
+    assert.match(portrait, /\.enigma-upgrade-grid\s*\{[^}]*grid-template-columns:\s*1fr/s);
+    const compactEnd = css.indexOf("@media (orientation: landscape) and (max-height: 820px)", compactStart);
+    const compact = css.slice(compactStart, compactEnd);
+    assert.match(compact, /\.upgrade-card\s*\{[^}]*min-height:\s*176px/s);
+    assert.doesNotMatch(compact, /grid-template-columns:\s*1fr/, "short landscape collapsed the three choices vertically");
+    assert.match(compact, /\.upgrade-card-title\s*\{[^}]*font-size:\s*0\.76rem/s);
+    assert.match(compact, /\.upgrade-card-description\s*\{[^}]*font-size:\s*0\.6rem/s);
+    assert.match(renderer, /enigma:\s*"#c584ff"/);
+    assert.match(renderer, /enigma:\s*"\?"/);
+    assert.match(renderer, /drawTimeFracture\(state\)/);
+    assert.match(renderer, /sourceModule\s*===\s*"homingSalvo"/);
+    assert.match(renderer, /bullet\.kind\s*===\s*"radial"/);
+  });
+
   test("the menu local record uses the space-theme cyan accent", () => {
     const css = readProject("styles.css");
     const match = css.match(/\.menu-meta\s+strong\s*\{([^}]*)\}/s);

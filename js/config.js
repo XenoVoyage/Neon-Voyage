@@ -57,7 +57,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.14",
+    version: "v2026.8.15",
 
     world: {
       fixedStep: 1 / 60,
@@ -185,7 +185,7 @@
           label: "CROSS THE INNER BELT",
           completion: "waves",
           goal: { type: "waves" },
-          guaranteedReward: "moduleUpgrade",
+          guaranteedReward: { type: "moduleUpgrade", module: "homingSalvo", tiers: 1 },
           waves: [
             {
               label: "CRYSTAL VEIN",
@@ -243,6 +243,7 @@
           label: "CROSS THE SHATTERED FRONTIER",
           completion: "waves",
           goal: { type: "waves" },
+          guaranteedReward: { type: "moduleUpgrade", module: "radialArray", tiers: 1 },
           waves: [
             {
               label: "COLOSSAL WAKE",
@@ -284,6 +285,7 @@
           label: "SURVIVE FIRST CONTACT",
           completion: "waves",
           goal: { type: "waves" },
+          guaranteedReward: { type: "moduleUpgrade", module: "drone", tiers: 1 },
           waves: [
             {
               label: "UNKNOWN SIGNALS",
@@ -340,6 +342,7 @@
           label: "BREAK THE RAID FLEET",
           completion: "waves",
           goal: { type: "waves" },
+          guaranteedReward: { type: "moduleUpgrade", module: "radialArray", tiers: 1 },
           waves: [
             {
               label: "ESCORT WALL",
@@ -538,7 +541,7 @@
     },
 
     weapons: {
-      maxModuleTier: 3,
+      maxModuleTier: 5,
       maxInstalledModules: 7,
       startingModules: { pulse: 1 },
       modules: {
@@ -550,7 +553,9 @@
           tiers: [
             { cooldown: 0.18, damage: 1, projectiles: 1, speed: 840, life: 0.95, spread: 0 },
             { cooldown: 0.165, damage: 0.95, projectiles: 2, speed: 860, life: 0.98, spread: 0.07 },
-            { cooldown: 0.15, damage: 0.9, projectiles: 3, speed: 880, life: 1, spread: 0.11 }
+            { cooldown: 0.15, damage: 0.9, projectiles: 3, speed: 880, life: 1, spread: 0.11 },
+            { cooldown: 0.138, damage: 0.86, projectiles: 4, speed: 900, life: 1.02, spread: 0.15 },
+            { cooldown: 0.128, damage: 0.82, projectiles: 5, speed: 920, life: 1.04, spread: 0.19 }
           ]
         },
         homingSalvo: {
@@ -561,7 +566,9 @@
           tiers: [
             { cooldown: 4.6, damage: 2.3, projectiles: 1, speed: 400, life: 2.5, turnRate: 3.4, blastRadius: 34, range: 820 },
             { cooldown: 4, damage: 2.1, projectiles: 2, speed: 420, life: 2.6, turnRate: 3.7, blastRadius: 38, range: 860 },
-            { cooldown: 3.4, damage: 2.4, projectiles: 2, speed: 445, life: 2.7, turnRate: 4, blastRadius: 42, range: 900 }
+            { cooldown: 3.4, damage: 2.4, projectiles: 2, speed: 445, life: 2.7, turnRate: 4, blastRadius: 42, range: 900 },
+            { cooldown: 3, damage: 2.25, projectiles: 3, speed: 470, life: 2.8, turnRate: 4.3, blastRadius: 46, range: 940 },
+            { cooldown: 2.6, damage: 2.2, projectiles: 4, speed: 495, life: 2.9, turnRate: 4.6, blastRadius: 50, range: 980 }
           ]
         },
         radialArray: {
@@ -572,7 +579,9 @@
           tiers: [
             { cooldown: 5.8, damage: 0.9, projectiles: 8, speed: 470, life: 1.05, range: 560 },
             { cooldown: 5.1, damage: 0.95, projectiles: 10, speed: 500, life: 1.1, range: 600 },
-            { cooldown: 4.5, damage: 1, projectiles: 12, speed: 530, life: 1.15, range: 640 }
+            { cooldown: 4.5, damage: 1, projectiles: 12, speed: 530, life: 1.15, range: 640 },
+            { cooldown: 4, damage: 0.96, projectiles: 16, speed: 560, life: 1.2, range: 680 },
+            { cooldown: 3.5, damage: 0.92, projectiles: 20, speed: 590, life: 1.25, range: 720 }
           ]
         },
         prism: {
@@ -583,7 +592,9 @@
           tiers: [
             { cooldown: 0.56, damage: 0.52, projectiles: 3, speed: 650, life: 0.64, spread: 0.28 },
             { cooldown: 0.53, damage: 0.5, projectiles: 5, speed: 680, life: 0.68, spread: 0.42 },
-            { cooldown: 0.5, damage: 0.48, projectiles: 7, speed: 710, life: 0.72, spread: 0.56 }
+            { cooldown: 0.5, damage: 0.48, projectiles: 7, speed: 710, life: 0.72, spread: 0.56 },
+            { cooldown: 0.47, damage: 0.46, projectiles: 9, speed: 740, life: 0.76, spread: 0.7 },
+            { cooldown: 0.44, damage: 0.44, projectiles: 11, speed: 770, life: 0.8, spread: 0.84 }
           ]
         },
         seeker: {
@@ -594,7 +605,9 @@
           tiers: [
             { cooldown: 1.2, damage: 3, projectiles: 1, speed: 390, life: 2.4, turnRate: 3.1, blastRadius: 42 },
             { cooldown: 1, damage: 2.9, projectiles: 2, speed: 410, life: 2.5, turnRate: 3.4, blastRadius: 46 },
-            { cooldown: 0.85, damage: 2.8, projectiles: 3, speed: 430, life: 2.6, turnRate: 3.7, blastRadius: 50 }
+            { cooldown: 0.85, damage: 2.8, projectiles: 3, speed: 430, life: 2.6, turnRate: 3.7, blastRadius: 50 },
+            { cooldown: 0.72, damage: 2.7, projectiles: 4, speed: 450, life: 2.7, turnRate: 4, blastRadius: 54 },
+            { cooldown: 0.62, damage: 2.6, projectiles: 5, speed: 470, life: 2.8, turnRate: 4.3, blastRadius: 58 }
           ]
         },
         massDriver: {
@@ -605,7 +618,9 @@
           tiers: [
             { cooldown: 1, damage: 4.2, projectiles: 1, speed: 1080, life: 1.15, pierce: 2 },
             { cooldown: 0.82, damage: 4.5, projectiles: 1, speed: 1140, life: 1.2, pierce: 3 },
-            { cooldown: 0.68, damage: 4.8, projectiles: 1, speed: 1200, life: 1.25, pierce: 4 }
+            { cooldown: 0.68, damage: 4.8, projectiles: 1, speed: 1200, life: 1.25, pierce: 4 },
+            { cooldown: 0.58, damage: 5.1, projectiles: 1, speed: 1260, life: 1.3, pierce: 5 },
+            { cooldown: 0.5, damage: 5.4, projectiles: 1, speed: 1320, life: 1.35, pierce: 6 }
           ]
         },
         drone: {
@@ -616,7 +631,9 @@
           tiers: [
             { drones: 1, cooldown: 0.7, damage: 0.75, speed: 650, life: 0.85, orbitRadius: 46 },
             { drones: 2, cooldown: 0.62, damage: 0.78, speed: 680, life: 0.9, orbitRadius: 54 },
-            { drones: 3, cooldown: 0.54, damage: 0.82, speed: 710, life: 0.95, orbitRadius: 62 }
+            { drones: 3, cooldown: 0.54, damage: 0.82, speed: 710, life: 0.95, orbitRadius: 62 },
+            { drones: 4, cooldown: 0.49, damage: 0.86, speed: 740, life: 1, orbitRadius: 70 },
+            { drones: 5, cooldown: 0.44, damage: 0.9, speed: 770, life: 1.05, orbitRadius: 78 }
           ]
         }
       }
@@ -634,8 +651,9 @@
     },
 
     powerups: {
-      dropChance: 0.19,
-      pityKills: 5,
+      dropChance: 0.26,
+      pityKills: 4,
+      temporaryStackLimit: 4,
       shield: {
         label: "SHIELD +60",
         weight: 22,
@@ -694,9 +712,16 @@
         weight: 10,
         amount: 55
       },
+      enigma: {
+        label: "ENIGMA",
+        weight: 12,
+        choiceCount: 3,
+        slowdownSeconds: 0.72,
+        resumeInvulnerability: 1
+      },
       moduleUpgrade: {
         label: "MODULE UPGRADE",
-        weight: 4
+        weight: 7
       }
     },
 
