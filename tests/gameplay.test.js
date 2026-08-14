@@ -130,6 +130,32 @@ module.exports = function register(test) {
     assert.ok(state.enemyBullets.every((bullet) => Number.isFinite(bullet.vx) && Number.isFinite(bullet.vy)));
   });
 
+  test("carriers use their configured child type, count, reward, and lifetime cap", () => {
+    const { game, CONFIG } = boot(211);
+    const state = game.state;
+    game.setStage(8, 1);
+    clearEntities(state);
+    freezeDirector(state);
+    state.ship.x = 0;
+    state.ship.y = 0;
+    const pattern = CONFIG.aliens.carrier.pattern;
+    const carrier = game.spawnAlien("carrier", { x: 400, y: 0, required: false, noDrops: true });
+
+    carrier.cooldown = 0;
+    game.step(CONFIG.world.fixedStep);
+    let children = state.aliens.filter((alien) => alien.parent === carrier && !alien.dead);
+    assert.equal(children.length, pattern.count);
+    assert.ok(children.every((alien) => alien.type === pattern.spawnType));
+    assert.ok(children.every((alien) => alien.score === pattern.childScore && alien.noDrops && !alien.required));
+
+    for (let cycle = 0; cycle < pattern.maxChildren + 2; cycle += 1) {
+      carrier.cooldown = 0;
+      game.step(CONFIG.world.fixedStep);
+    }
+    children = state.aliens.filter((alien) => alien.parent === carrier && !alien.dead);
+    assert.equal(children.length, pattern.maxChildren, "carrier exceeded its configured living-child cap");
+  });
+
   test("asteroid impact destroys a required alien once, advances its wave once, and grants no reward", () => {
     const { game } = boot(301);
     const state = game.state;
@@ -310,7 +336,9 @@ module.exports = function register(test) {
     data.waveRequiredTotal = 1;
     data.stageRequiredTotal = 1;
     game.damageThreat(parent, 2, "player");
-    const children = state.asteroids.filter((item) => !item.dead && item.fragment && item.required);
+    const children = state.asteroids.filter((item) =>
+      !item.dead && item.required && item.kind === CONFIG.asteroids.volatile.deathBurst.fragmentKind
+    );
     assert.equal(children.length, CONFIG.asteroids.volatile.deathBurst.fragments, "required volatile did not create its full descendant objective");
     assert.ok(children.every((item) => item.kind === CONFIG.asteroids.volatile.deathBurst.fragmentKind));
     assert.ok(children.every((item) => item.generation === data.generation && item.waveIndex === data.waveIndex));
@@ -352,7 +380,7 @@ module.exports = function register(test) {
     game.damageThreat(parent, 2, "player");
     const firstGeneration = state.asteroids.filter((item) => !item.dead);
     assert.equal(firstGeneration.length, 3);
-    assert.ok(firstGeneration.every((item) => item.kind === "rock" && item.fragment && item.splitRemaining === 1));
+    assert.ok(firstGeneration.every((item) => item.kind === "rock" && item.splitRemaining === 1));
     assert.equal(data.waveRequiredTotal, 4);
 
     firstGeneration.forEach((item) => game.damageThreat(item, 2, "player"));
@@ -370,7 +398,7 @@ module.exports = function register(test) {
     assert.ok(state.asteroids.filter((item) => !item.dead).length === 0, "the final generation split again");
   });
 
-  test("hard-culling a required fragment requeues its exact objective state", () => {
+  test("hard-culling a required threat requeues its exact objective state", () => {
     const { browser, game, CONFIG } = boot(371, { width: 640, height: 360 });
     const state = game.state;
     game.setStage(5, 1);
@@ -392,8 +420,6 @@ module.exports = function register(test) {
       required: true,
       generation: data.generation,
       waveIndex: data.waveIndex,
-      fragment: true,
-      ballisticFragment: true,
       collisionGrace: 0.17,
       gateIndex: 2
     });
@@ -404,7 +430,7 @@ module.exports = function register(test) {
     assert.equal(data.waveSpawned, false, "hard-cull did not reopen the finite spawn queue");
     assert.equal(data.requeue.length, 1);
     const queued = data.requeue[0];
-    for (const key of ["health", "maxHealth", "radius", "score", "noDrops", "threatCost", "fragment", "ballisticFragment", "splitRemaining", "gateIndex"]) {
+    for (const key of ["health", "maxHealth", "radius", "score", "noDrops", "threatCost", "splitRemaining", "gateIndex"]) {
       assert.equal(queued[key], original[key], `requeue lost ${key}`);
     }
     approximately(queued.collisionGrace, Math.max(0, original.collisionGrace), 1e-12, "requeued collision grace");
@@ -412,7 +438,7 @@ module.exports = function register(test) {
     assert.equal(data.requeue.length, 0, "required fragment did not respawn");
     const restored = state.asteroids.find((item) => !item.dead && item.id !== original.id && item.required);
     assert.ok(restored, "required fragment objective vanished after culling");
-    for (const key of ["health", "maxHealth", "radius", "score", "noDrops", "threatCost", "fragment", "ballisticFragment", "splitRemaining", "gateIndex"]) {
+    for (const key of ["health", "maxHealth", "radius", "score", "noDrops", "threatCost", "splitRemaining", "gateIndex"]) {
       assert.equal(restored[key], original[key], `respawn changed ${key}`);
     }
     assert.equal(data.waveRequiredTotal, 1, "requeue duplicated the objective total");

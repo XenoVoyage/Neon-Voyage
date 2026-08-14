@@ -92,6 +92,7 @@
     aimKnob: byId("aim-knob")
   };
 
+  // Saved records are deliberately smaller and stricter than live simulation state.
   function validSave(value) {
     return Boolean(value) && typeof value === "object" &&
       Number.isFinite(value.highScore) && value.highScore >= 0 && value.highScore <= 999999999 &&
@@ -186,6 +187,7 @@
   let rng = Core.createRng(Date.now());
   let nextEntityId = 1;
 
+  // Input sources converge here so simulation never depends on a browser event being repeated.
   const input = {
     keys: Object.create(null),
     pressed: Object.create(null),
@@ -332,7 +334,6 @@
     time: 0,
     runTime: 0,
     settings,
-    worldOffset: { x: 0, y: 0 },
     camera: { x: 0, y: 0, zoom: 1 },
     ship: null,
     aimWorld: { x: 200, y: 0 },
@@ -373,7 +374,6 @@
     flashColor: "#ff667a",
     announcementTimer: 0,
     uiTimer: 0,
-    pausedByVisibility: false,
     stats: { culled: 0, spawned: 0, kills: 0 }
   };
 
@@ -493,6 +493,7 @@
     }
   }
 
+  // A checkpoint restores weapons only; every battlefield and survival value starts clean.
   function resetRun(startStage, savedLoadout) {
     const initialStage = clamp(Math.floor(Number(startStage) || 1), 1, CONFIG.sector.encountersPerSector);
     const loadout = cloneCheckpoint(savedLoadout);
@@ -524,8 +525,6 @@
     };
     state.time = 0;
     state.runTime = 0;
-    state.worldOffset.x = 0;
-    state.worldOffset.y = 0;
     state.camera.x = 0;
     state.camera.y = 0;
     state.ship = ship;
@@ -553,7 +552,6 @@
     gameoverEffectRemaining = 0;
     gameoverInitialShake = 0;
     gameoverInitialFlash = 0;
-    state.powerupText = "";
     state.powerupTextTimer = 0;
     if (dom.powerupStatus) dom.powerupStatus.textContent = "";
     state.stats = { culled: 0, spawned: 0, kills: 0 };
@@ -639,10 +637,8 @@
         state.ship.dashTime = 0;
       }
       state.resumeMode = state.mode;
-      state.mode = "paused";
       setMode("paused");
     } else if (state.mode === "paused" && forcePause !== true) {
-      state.pausedByVisibility = false;
       setMode(state.resumeMode === "transition" && state.cinematic.active ? "transition" : "playing");
       if (!touchCapable) canvas.focus({ preventScroll: true });
     }
@@ -856,6 +852,7 @@
   bindTouchAction("touch-dash", () => { input.pressed.dash = true; });
   bindTouchAction("touch-pulse", () => { input.pressed.pulse = true; });
 
+  // Browser input handlers only write intent; the fixed-step update consumes that intent.
   function normalizeKey(event) {
     if (event.code === "Space") return "space";
     if (event.code === "ShiftLeft" || event.code === "ShiftRight") return "shift";
@@ -1144,13 +1141,11 @@
   global.document.addEventListener("fullscreenchange", updateSettingsUI);
   global.document.addEventListener("visibilitychange", () => {
     if (global.document.hidden && (state.mode === "playing" || state.mode === "transition")) {
-      state.pausedByVisibility = true;
       togglePause(true);
     }
   });
   global.addEventListener("blur", () => {
     if (!touchCapable && (state.mode === "playing" || state.mode === "transition")) {
-      state.pausedByVisibility = true;
       togglePause(true);
     } else if (touchCapable) {
       clearTouchSticks();
@@ -1159,7 +1154,6 @@
   });
   global.addEventListener("pagehide", () => {
     if (state.mode === "playing" || state.mode === "transition") {
-      state.pausedByVisibility = true;
       togglePause(true);
     } else clearTouchSticks();
   });
@@ -1209,6 +1203,7 @@
     input.lastGamepadButtons = nowButtons;
   }
 
+  // Encounter geometry is viewport-derived, while stage composition remains config-driven.
   function arenaRadius() {
     const shortSide = Math.min(renderer.width, renderer.height);
     const desired = clamp(shortSide * CONFIG.bossArena.radiusViewportRatio, CONFIG.bossArena.minRadius, CONFIG.bossArena.maxRadius);
@@ -1360,6 +1355,7 @@
     }
   }
 
+  // Simulation systems below run only from the fixed-step update path.
   function updateShip(dt) {
     const ship = state.ship;
     const move = readMovement();
@@ -1506,7 +1502,6 @@
       pierce: values.pierce || 0,
       turnRate: 0,
       blastRadius: 0,
-      droneShot: false,
       hits: [],
       dead: false
     };
@@ -1514,7 +1509,7 @@
     return bullet;
   }
 
-  function spawnPlayerBullet(moduleId, x, y, angle, values, droneShot) {
+  function spawnPlayerBullet(moduleId, x, y, angle, values) {
     if (state.playerBullets.length >= CONFIG.caps.playerProjectiles) return null;
     const definition = CONFIG.weapons.modules[moduleId] || CONFIG.weapons.modules.drone;
     const kind = moduleId === "massDriver" ? "rail" : moduleId === "seeker" ? "missile" : definition.projectileType;
@@ -1532,7 +1527,6 @@
       pierce: (values.pierce || 0) + (state.ship.piercingTimer > 0 ? CONFIG.powerups.piercing.bonusPierce : 0),
       turnRate: values.turnRate || 0,
       blastRadius: values.blastRadius || 0,
-      droneShot: Boolean(droneShot),
       hits: [],
       dead: false
     };
@@ -1543,7 +1537,7 @@
   function updateDrones(dt) {
     const ship = state.ship;
     const tier = ship.modules.drone || 0;
-    const desired = tier ? CONFIG.weapons.modules.drone.tiers[tier - 1].drones : 0;
+    const desired = tier ? Math.min(CONFIG.caps.drones, CONFIG.weapons.modules.drone.tiers[tier - 1].drones) : 0;
     while (ship.drones.length < desired) ship.drones.push({ x: ship.x, y: ship.y, angle: 0, cooldown: rng.range(0, 0.5) });
     if (ship.drones.length > desired) ship.drones.length = desired;
     if (!tier) return;
@@ -1559,7 +1553,7 @@
         drone.angle = Math.atan2(target.y - drone.y, target.x - drone.x);
         if (drone.cooldown <= 0) {
           drone.cooldown = values.cooldown;
-          spawnPlayerBullet("drone", drone.x, drone.y, drone.angle, values, true);
+          spawnPlayerBullet("drone", drone.x, drone.y, drone.angle, values);
         }
       } else {
         drone.angle = orbit + Math.PI / 2;
@@ -1584,13 +1578,13 @@
         for (let index = 0; index < values.projectiles; index += 1) {
           const offset = values.projectiles === 1 ? 0 : (index / (values.projectiles - 1) - 0.5) * 0.16;
           const angle = targetAngle + offset;
-          spawnPlayerBullet(id, ship.x + Math.cos(angle) * 23, ship.y + Math.sin(angle) * 23, angle, values, false);
+          spawnPlayerBullet(id, ship.x + Math.cos(angle) * 23, ship.y + Math.sin(angle) * 23, angle, values);
         }
         audio.shoot("plasma");
       } else {
         for (let index = 0; index < values.projectiles; index += 1) {
           const angle = ship.angle + index / values.projectiles * TAU;
-          spawnPlayerBullet(id, ship.x + Math.cos(angle) * 19, ship.y + Math.sin(angle) * 19, angle, values, false);
+          spawnPlayerBullet(id, ship.x + Math.cos(angle) * 19, ship.y + Math.sin(angle) * 19, angle, values);
         }
         audio.shoot("scatter");
       }
@@ -1777,58 +1771,55 @@
   }
 
   function spawnAsteroid(kind, options) {
-    const settingsValue = options || {};
+    const spawnOptions = options || {};
     const definition = CONFIG.asteroids[kind] || CONFIG.asteroids.rock;
     if (state.asteroids.length >= CONFIG.caps.asteroids) return null;
     if (kind === "titan" && state.asteroids.some((item) => item.kind === "titan" && !item.dead)) return null;
-    const automaticPosition = !Number.isFinite(settingsValue.x);
+    const automaticPosition = !Number.isFinite(spawnOptions.x);
     const compactRadius = definition.compactRadius && Math.min(renderer.width, renderer.height) < 600 ? definition.compactRadius : definition.radius;
-    const requestedRadius = Number(settingsValue.radius) || compactRadius;
+    const requestedRadius = Number(spawnOptions.radius) || compactRadius;
     const radius = automaticPosition ? safeAutomaticRadius(requestedRadius) : requestedRadius;
-    const position = automaticPosition ? spawnPosition(undefined, undefined, radius) : settingsValue;
+    const position = automaticPosition ? spawnPosition(undefined, undefined, radius) : spawnOptions;
     if (!position) return null;
     if (automaticPosition && !state.combatField.active) applySpawnClearance(position, radius);
-    const targetAngle = Number.isFinite(settingsValue.velocityAngle) ? settingsValue.velocityAngle :
+    const targetAngle = Number.isFinite(spawnOptions.velocityAngle) ? spawnOptions.velocityAngle :
       Math.atan2(state.ship.y - position.y, state.ship.x - position.x) + rng.range(-0.52, 0.52);
-    const baseSpeed = Number.isFinite(Number(settingsValue.speed)) ? Number(settingsValue.speed) : rng.range(definition.speed[0], definition.speed[1]);
+    const baseSpeed = Number.isFinite(Number(spawnOptions.speed)) ? Number(spawnOptions.speed) : rng.range(definition.speed[0], definition.speed[1]);
     const scaledSpeed = baseSpeed * CONFIG.difficulty.speedScale(state.sector);
     const surfaceDistance = Math.max(0, Math.hypot(position.x - state.ship.x, position.y - state.ship.y) - state.ship.radius - radius);
     const safeSpeed = automaticPosition && state.combatField.active ? surfaceDistance / CONFIG.combatField.spawnMinimumContactSeconds : scaledSpeed;
     const speed = Math.min(scaledSpeed, safeSpeed);
     const healthScale = CONFIG.difficulty.healthScale(state.sector);
-    const health = Number.isFinite(settingsValue.health) ? Math.max(0.01, settingsValue.health) :
+    const health = Number.isFinite(spawnOptions.health) ? Math.max(0.01, spawnOptions.health) :
       Math.max(1, definition.baseHealth * healthScale * (radius / definition.radius));
-    const maxHealth = Number.isFinite(settingsValue.maxHealth) ? Math.max(health, settingsValue.maxHealth) : health;
+    const maxHealth = Number.isFinite(spawnOptions.maxHealth) ? Math.max(health, spawnOptions.maxHealth) : health;
     const asteroid = {
       id: nextEntityId++,
       x: position.x,
       y: position.y,
       vx: Math.cos(targetAngle) * speed,
       vy: Math.sin(targetAngle) * speed,
-      cruiseSpeed: speed,
       radius,
       kind,
       health,
       maxHealth,
       damage: definition.contactDamage * CONFIG.difficulty.damageScale(state.sector),
-      score: Number.isFinite(settingsValue.score) ? settingsValue.score : settingsValue.noScore ? 0 : definition.score,
-      noDrops: Boolean(settingsValue.noDrops),
-      threatCost: Number.isFinite(settingsValue.threatCost) ? settingsValue.threatCost : definition.threatCost,
-      generation: settingsValue.generation || (state.encounterData && state.encounterData.generation),
-      waveIndex: Number.isFinite(settingsValue.waveIndex) ? settingsValue.waveIndex : state.encounterData && state.encounterData.waveIndex,
+      score: Number.isFinite(spawnOptions.score) ? spawnOptions.score : spawnOptions.noScore ? 0 : definition.score,
+      noDrops: Boolean(spawnOptions.noDrops),
+      threatCost: Number.isFinite(spawnOptions.threatCost) ? spawnOptions.threatCost : definition.threatCost,
+      generation: spawnOptions.generation || (state.encounterData && state.encounterData.generation),
+      waveIndex: Number.isFinite(spawnOptions.waveIndex) ? spawnOptions.waveIndex : state.encounterData && state.encounterData.waveIndex,
       rotation: rng.range(0, TAU),
       rotationSpeed: rng.range(-0.65, 0.65) * (48 / Math.max(24, radius)),
       phase: rng.range(0, TAU),
-      hitFlash: Math.max(0, Number(settingsValue.hitFlash) || 0),
-      gateIndex: Math.max(0, Math.floor(Number(settingsValue.gateIndex) || 0)),
+      hitFlash: Math.max(0, Number(spawnOptions.hitFlash) || 0),
+      gateIndex: Math.max(0, Math.floor(Number(spawnOptions.gateIndex) || 0)),
       points: makeAsteroidPoints(radius),
-      fragment: Boolean(settingsValue.fragment),
-      ballisticFragment: Boolean(settingsValue.ballisticFragment),
-      splitRemaining: Number.isFinite(settingsValue.splitRemaining) ?
-        Math.max(0, Math.floor(settingsValue.splitRemaining)) :
+      splitRemaining: Number.isFinite(spawnOptions.splitRemaining) ?
+        Math.max(0, Math.floor(spawnOptions.splitRemaining)) :
         definition.split ? Math.max(1, Math.floor(definition.split.generations || 1)) : 0,
-      required: settingsValue.required !== false,
-      collisionGrace: Math.max(0, Number.isFinite(settingsValue.collisionGrace) ? settingsValue.collisionGrace : automaticPosition ? CONFIG.combatField.spawnCollisionGraceSeconds : 0),
+      required: spawnOptions.required !== false,
+      collisionGrace: Math.max(0, Number.isFinite(spawnOptions.collisionGrace) ? spawnOptions.collisionGrace : automaticPosition ? CONFIG.combatField.spawnCollisionGraceSeconds : 0),
       dead: false
     };
     state.asteroids.push(asteroid);
@@ -1837,16 +1828,16 @@
   }
 
   function spawnAlien(type, options) {
-    const settingsValue = options || {};
+    const spawnOptions = options || {};
     const definition = CONFIG.aliens[type] || CONFIG.aliens.scout;
     if (state.aliens.length >= CONFIG.caps.aliens) return null;
-    const automaticPosition = !Number.isFinite(settingsValue.x);
-    const position = automaticPosition ? spawnPosition(0.75, 1.1, definition.radius) : settingsValue;
+    const automaticPosition = !Number.isFinite(spawnOptions.x);
+    const position = automaticPosition ? spawnPosition(0.75, 1.1, definition.radius) : spawnOptions;
     if (!position) return null;
     if (automaticPosition && !state.combatField.active) applySpawnClearance(position, definition.radius);
-    const health = Number.isFinite(settingsValue.health) ? Math.max(0.01, settingsValue.health) :
+    const health = Number.isFinite(spawnOptions.health) ? Math.max(0.01, spawnOptions.health) :
       definition.baseHealth * CONFIG.difficulty.healthScale(state.sector);
-    const maxHealth = Number.isFinite(settingsValue.maxHealth) ? Math.max(health, settingsValue.maxHealth) : health;
+    const maxHealth = Number.isFinite(spawnOptions.maxHealth) ? Math.max(health, spawnOptions.maxHealth) : health;
     const alien = {
       id: nextEntityId++,
       x: position.x,
@@ -1859,11 +1850,11 @@
       maxHealth,
       speed: definition.baseSpeed * CONFIG.difficulty.speedScale(state.sector),
       damage: definition.contactDamage * CONFIG.difficulty.damageScale(state.sector),
-      score: Number.isFinite(settingsValue.score) ? settingsValue.score : definition.score,
-      noDrops: Boolean(settingsValue.noDrops),
-      threatCost: Number.isFinite(settingsValue.threatCost) ? settingsValue.threatCost : definition.threatCost,
-      generation: settingsValue.generation || (state.encounterData && state.encounterData.generation),
-      waveIndex: Number.isFinite(settingsValue.waveIndex) ? settingsValue.waveIndex : state.encounterData && state.encounterData.waveIndex,
+      score: Number.isFinite(spawnOptions.score) ? spawnOptions.score : definition.score,
+      noDrops: Boolean(spawnOptions.noDrops),
+      threatCost: Number.isFinite(spawnOptions.threatCost) ? spawnOptions.threatCost : definition.threatCost,
+      generation: spawnOptions.generation || (state.encounterData && state.encounterData.generation),
+      waveIndex: Number.isFinite(spawnOptions.waveIndex) ? spawnOptions.waveIndex : state.encounterData && state.encounterData.waveIndex,
       angle: Math.atan2(state.ship.y - position.y, state.ship.x - position.x),
       heading: Math.atan2(state.ship.y - position.y, state.ship.x - position.x),
       aimAngle: Math.atan2(state.ship.y - position.y, state.ship.x - position.x),
@@ -1872,9 +1863,8 @@
       state: "approach",
       stateTimer: 0,
       phase: rng.range(0, TAU),
-      children: 0,
-      parent: settingsValue.parent || null,
-      required: settingsValue.required !== false,
+      parent: spawnOptions.parent || null,
+      required: spawnOptions.required !== false,
       dead: false
     };
     state.aliens.push(alien);
@@ -1953,8 +1943,6 @@
       score: entry.score,
       noDrops: entry.noDrops,
       threatCost: entry.threatCost,
-      fragment: entry.fragment,
-      ballisticFragment: entry.ballisticFragment,
       splitRemaining: entry.splitRemaining,
       hitFlash: entry.hitFlash,
       collisionGrace: entry.collisionGrace,
@@ -2266,15 +2254,22 @@
         steerAlien(alien, dx / distance * radial + -dy / distance * alien.orbitDirection * 0.35, dy / distance * radial + dx / distance * alien.orbitDirection * 0.35, dt, 0.72);
         if (alien.cooldown <= 0 && distance < 790) {
           alien.cooldown = CONFIG.difficulty.scaledCooldown(CONFIG.aliens.carrier.baseCooldown, state.sector);
+          const carrierPattern = CONFIG.aliens.carrier.pattern;
           const livingChildren = state.aliens.filter((item) => item.parent === alien && !item.dead).length;
-          if (livingChildren < CONFIG.aliens.carrier.pattern.maxChildren && state.aliens.length < CONFIG.caps.aliens - 1) {
-            for (let childIndex = 0; childIndex < 2 && state.aliens.length < CONFIG.caps.aliens; childIndex += 1) {
-              const child = spawnAlien("scout", {
-                x: alien.x + Math.cos(alien.angle + Math.PI + (childIndex ? 0.5 : -0.5)) * 32,
-                y: alien.y + Math.sin(alien.angle + Math.PI + (childIndex ? 0.5 : -0.5)) * 32,
+          const childCount = Math.min(
+            carrierPattern.count,
+            carrierPattern.maxChildren - livingChildren,
+            CONFIG.caps.aliens - state.aliens.length
+          );
+          if (childCount > 0) {
+            for (let childIndex = 0; childIndex < childCount; childIndex += 1) {
+              const angleOffset = childCount === 1 ? 0 : childIndex - (childCount - 1) * 0.5;
+              const child = spawnAlien(carrierPattern.spawnType, {
+                x: alien.x + Math.cos(alien.angle + Math.PI + angleOffset) * 32,
+                y: alien.y + Math.sin(alien.angle + Math.PI + angleOffset) * 32,
                 generation: alien.generation,
                 threatCost: 0,
-                score: 35,
+                score: carrierPattern.childScore,
                 noDrops: true,
                 required: false,
                 parent: alien
@@ -2432,10 +2427,8 @@
       angle: spawnAngle + Math.PI,
       rotation: 0,
       rotationSpeed: 0.35,
-      points: null,
       attackTimer: 1.1,
       secondaryTimer: 3.2,
-      spiralAngle: rng.range(0, TAU),
       telegraph: null,
       action: null,
       actionConfig: null,
@@ -2967,8 +2960,6 @@
         threatCost: 0,
         score: Math.max(1, Math.round(CONFIG.asteroids[kind].score * 0.22)),
         noDrops: true,
-        fragment: true,
-        ballisticFragment: circular,
         splitRemaining: Math.max(0, Math.floor(Number(splitRemaining) || 0)),
         required: parent.required,
         generation: parent.generation,
@@ -2977,6 +2968,7 @@
       });
       if (child) spawned += 1;
     }
+    // Required descendants expand the finite objective before the parent is credited as cleared.
     if (spawned && parent.required && state.encounterData && parent.generation === state.encounterData.generation) {
       state.encounterData.waveRequiredTotal += spawned;
       state.encounterData.stageRequiredTotal += spawned;
@@ -2985,19 +2977,18 @@
   }
 
   function killThreat(entity, cause) {
-    if (!entity || entity.dead || entity.deathProcessed) return false;
+    if (!entity || entity.dead) return false;
+    const deathCause = cause || "player";
     entity.dead = true;
-    entity.deathProcessed = true;
-    entity.deathCause = cause || "player";
     const encounter = state.encounterData;
     const countsForWave = Boolean(encounter && entity.generation === encounter.generation && entity.required);
     if (countsForWave) {
       encounter.stageRequiredCleared += 1;
       if (entity.waveIndex === encounter.waveIndex) encounter.waveRequiredCleared += 1;
     }
-    const rewarded = entity.deathCause !== "asteroid" && entity.deathCause !== "environment";
+    const rewarded = deathCause !== "asteroid" && deathCause !== "environment";
     if (encounter) {
-      encounter.lastDeathCause = entity.deathCause;
+      encounter.lastDeathCause = deathCause;
       if (rewarded) encounter.playerKills += 1;
       else encounter.environmentalKills += 1;
     }
@@ -3171,7 +3162,6 @@
   }
 
   function showPowerup(text) {
-    state.powerupText = text;
     state.powerupTextTimer = 4;
     if (dom.powerupStatus) dom.powerupStatus.textContent = text;
   }
@@ -3282,6 +3272,7 @@
           entity.dead = true;
           state.stats.culled += 1;
           if (CONFIG.culling.requeueEncounterThreats && data && !data.complete && entity.generation === data.generation) {
+            // Preserve the finite encounter state exactly; culling is relocation, never completion.
             data.requeue.push({
               family: entity.type ? "alien" : "asteroid",
               kind: entity.type || entity.kind,
@@ -3293,8 +3284,6 @@
               score: entity.score,
               noDrops: entity.noDrops,
               threatCost: entity.threatCost,
-              fragment: entity.fragment,
-              ballisticFragment: entity.ballisticFragment,
               splitRemaining: entity.splitRemaining,
               hitFlash: entity.hitFlash,
               collisionGrace: entity.collisionGrace,
@@ -3364,11 +3353,7 @@
     ];
     const points = [state.camera, state.aimWorld, state.arena, state.combatField];
     if (state.boss && state.boss.telegraph) points.push(state.boss.telegraph);
-    const result = Core.rebaseOrigin(state.ship, collections, points, CONFIG.world.floatingOriginThreshold, CONFIG.world.chunkSize * 16);
-    if (result.rebased) {
-      state.worldOffset.x += result.dx;
-      state.worldOffset.y += result.dy;
-    }
+    Core.rebaseOrigin(state.ship, collections, points, CONFIG.world.floatingOriginThreshold, CONFIG.world.chunkSize * 16);
   }
 
   function clearPressed() {
@@ -3560,6 +3545,7 @@
     }
   }
 
+  // Tests receive one intentional deterministic surface instead of reaching through globals.
   function debugSnapshot() {
     return {
       mode: state.mode,
@@ -3663,7 +3649,6 @@
     input,
     setSeed: debugSetSeed,
     setStage: debugSetStage,
-    beginStage: debugSetStage,
     spawnAsteroid: (kind, options) => spawnAsteroid(kind, options),
     spawnAlien: (type, options) => spawnAlien(type, options),
     spawnPickup: (x, y, kind) => spawnPickup(x, y, kind),
@@ -3688,10 +3673,8 @@
       get aimOrigin() { return { x: touchSticks.aim.originX, y: touchSticks.aim.originY }; },
       clearTouchSticks,
       updateOrientationState
-    }),
-    config: CONFIG
+    })
   });
-  ND.GameDebug = debugApi;
   ND.game = debugApi;
 
   function updateGameoverPresentation(dt) {

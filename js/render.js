@@ -2,6 +2,7 @@
   "use strict";
 
   const ND = global.ND = global.ND || {};
+  const CONFIG = ND.CONFIG;
   const TAU = Math.PI * 2;
   const mod = (value, span) => ((value % span) + span) % span;
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -144,23 +145,6 @@
       hue: from.hue + (to.hue - from.hue) * amount,
       bodies,
       visibleBodies
-    };
-  }
-
-  function bodyById(scene, id) {
-    return scene.bodies.find((body) => body.id === id) || {
-      id, type: id, x: 0, y: 0, size: 0, alpha: 0, hue: id === "earth" ? 205 : 18
-    };
-  }
-
-  function planetFrame(stage, transitionProgress, sector) {
-    const scene = sceneFrame(stage, sector, transitionProgress);
-    return {
-      stage: scene.fromStage,
-      sector: scene.fromSector,
-      progress: scene.progress,
-      earth: bodyById(scene, "earth"),
-      mars: bodyById(scene, "mars")
     };
   }
 
@@ -356,7 +340,6 @@
 
   ND.RenderDebug = Object.freeze({
     sceneFrame,
-    planetFrame,
     cinematicProfile,
     screenAnchor,
     asteroidCrackStage,
@@ -506,7 +489,9 @@
         return;
       }
 
-      const shake = this.reduced || cinematic.streaks ? 0 : Math.max(0, state.shake || 0);
+      const shake = this.reduced || cinematic.streaks
+        ? 0
+        : clamp(Number(state.shake) || 0, 0, CONFIG.camera.maxShake);
       ctx.save();
       ctx.translate((Math.random() * 2 - 1) * shake, (Math.random() * 2 - 1) * shake);
       if (!cinematic.streaks) {

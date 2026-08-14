@@ -391,7 +391,6 @@ function register(test) {
     rendererProbe.render({
       mode: "menu",
       camera: { x: 0, y: 0 },
-      worldOffset: { x: 0, y: 0 },
       sector: 1,
       settings: { reducedEffects: false }
     }, 0);

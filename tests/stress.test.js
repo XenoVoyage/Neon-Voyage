@@ -27,6 +27,9 @@ function assertCapped(runtime, peaks) {
     assert.ok(state[name].length <= cap, `${name} exceeded cap ${cap}`);
     state[name].forEach((entity, index) => assertFiniteEntity(entity, `${name}[${index}]`));
   }
+  peaks.drones = Math.max(peaks.drones || 0, state.ship.drones.length);
+  assert.ok(state.ship.drones.length <= caps.drones, `drones exceeded cap ${caps.drones}`);
+  state.ship.drones.forEach((drone, index) => assertFiniteEntity(drone, `drones[${index}]`));
   assertFiniteEntity(state.ship, "ship");
   assert.ok(Number.isFinite(state.score) && Number.isFinite(state.time) && Number.isFinite(state.runTime));
   assert.ok(Number.isFinite(state.camera.x) && Number.isFinite(state.camera.y));
@@ -82,7 +85,7 @@ function stress(seed, seconds) {
 }
 
 module.exports = function register(test) {
-  test("twenty-minute deterministic arcade stress stays finite and within every cap", () => {
+  test("twenty-minute deterministic arcade stress stays finite and within every enforced collection cap", () => {
     const run = stress(440044, 1200);
     assert.ok(run.stageChanges >= 9, `stress run exercised only ${run.stageChanges} stage changes`);
     assert.ok(run.runtime.game.state.stats.spawned > 100, "stress run did not exercise enough spawning");

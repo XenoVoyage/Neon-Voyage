@@ -1,10 +1,10 @@
-# Neon Voyage v2026.8.13 — release audit
+# Neon Voyage v2026.8.14 — release audit
 
-- Audited: 2026-08-13
+- Audited: 2026-08-14
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 119/119 automated checks; pull request, required check, merge, Pages deployment, and live Play pending**
+- Result: **PASS — 124/124 automated source checks**
 
-Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated browser viewports and Pointer Events and is not a claim of acceptance on physical touch hardware.
+Observed with Node v24.19.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated browser viewports and Pointer Events and is not a claim of acceptance on physical touch hardware.
 
 ## Release properties
 
@@ -20,7 +20,7 @@ Observed with Node v24.14.0 on Linux x64. The harness uses Node built-ins only; 
 
 Passed:
 
-- The immutable v2026.8.13 configuration defines nine ordered stages: Earth Orbit, Inner Belt, Deep Drift, Shattered Frontier, Titan Gate, First Contact, Strike Wing, Raid Fleet, and Command Arena.
+- The immutable v2026.8.14 configuration defines nine ordered stages: Earth Orbit, Inner Belt, Deep Drift, Shattered Frontier, Titan Gate, First Contact, Strike Wing, Raid Fleet, and Command Arena.
 - Stages 1–4 contain asteroid and non-sentient anomaly hazards only. The Titan is Stage 5, ordinary alien spacecraft first appear at Stage 6, and the alien Harrower boss remains Stage 9.
 - The first Earth Orbit wave contains exactly three required rocks, all visible at entry, and cannot over-spawn its configured total.
 - Across 1,024 fixed seeds at each of six phone, tablet, and desktop viewports, every Earth Orbit opening rock preserves at least 72 px of ship-surface clearance, 18 px of threat separation, and 2.2 seconds of predicted contact time.
@@ -109,9 +109,11 @@ Passed:
 - The two README gameplay captures are small repository-local WebP files under `docs/assets/`, are referenced with meaningful alternative text, and are documentation-only rather than runtime resources.
 - Every runtime resource is local, relative, and valid beneath the `/Neon-Voyage/` GitHub Pages repository subpath. Direct `file://` launch requires no server.
 - Runtime JavaScript passes syntax checking. The release tree contains no symlinks and stays below conservative offline payload limits.
-- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version v2026.8.13.
+- Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version v2026.8.14 with no leading zeroes.
+- Every runtime script and test suite is registered exactly once. Local Markdown links resolve, documentation images have meaningful descriptions, and release text is free of conflict markers, trailing whitespace, and missing final newlines.
+- `SHA256SUMS` recursively covers the complete release tree outside explicit local-output directories and verifies every frozen file.
 - The dependency-free browser VM loads every local script, draws Canvas frames and local stage previews, launches a run, exposes the HUD, and maintains one animation loop.
-- CI and Pages workflows publish the unchanged repository root without installing dependencies or running a production build.
+- CI and Pages workflows publish the unchanged repository root without installing dependencies or running a production build. Manual Pages dispatches are guarded to `main`, and checkout credentials are not persisted.
 
 ## Long-run verification
 
@@ -127,15 +129,15 @@ Passed:
 node tests/run.js
 ```
 
-Expected result for this source snapshot: `119/119 tests passed`.
+Expected result for this source snapshot: `124/124 tests passed`.
 
 ## Browser smoke and acceptance
 
 - The automated rendered/browser-VM smoke loads every local script, draws Canvas and Continue previews, starts a run, drives Pointer Events through movement, aim, fire, Dash, Pulse, pause, malformed terminals, lifecycle cleanup, and simulation, then verifies neutral stick state.
 - Phone- and tablet-class landscape behavior is exercised through deterministic simulated viewports and pointer sequences. This is automated coverage, not physical-device acceptance.
-- The six runtime celestial assets and two documentation captures were rendered from the local Canvas game and inspected in their intended compositions. This is a rendered asset check, not a hands-on browser playthrough.
-- No installed browser executable was available for hands-on local candidate play, and the available cloud browser cannot open the local/file preview URL. No prepublication browser play is claimed.
-- A live desktop Play from the GitHub Pages repository-subpath URL is required immediately after deployment. This release must not be declared complete until that action and the deployed v2026.8.13 version are observed successfully.
+- The six added deep-space worlds and two documentation captures were rendered from the local Canvas game and inspected in their intended compositions. This is a rendered asset check, not a hands-on browser playthrough.
+- No prepublication hands-on browser play is claimed by this source audit.
+- The release process requires a live desktop Play from the GitHub Pages repository-subpath URL immediately after deployment. That observation belongs to the pull request, Actions history, and release handoff because it necessarily occurs after this source snapshot is merged.
 
 ## Acceptance and publication boundary
 
@@ -145,6 +147,6 @@ Automated checks validate contracts, safety, determinism, and simulated browser 
 
 - The repository contains the `Offline audit` pull-request workflow, whose required check context is exactly `Offline audit / audit`.
 - Project governance requires pull requests into `main`, blocks direct/force pushes and branch deletion, and permits one required approval only when a genuine independent reviewer is available.
-- Server-side protection is **active and verified** through the `Protect main` ruleset (ID `20790923`) targeting the default branch. It requires pull requests and the strict `audit` status context, blocks deletion and non-fast-forward pushes, has no bypass actors, and currently requires zero approvals for solo maintenance.
+- The previously verified server-side protection targets the default branch, requires pull requests and the strict `audit` status context, blocks deletion and non-fast-forward pushes, has no bypass actors, and currently requires zero approvals for solo maintenance.
 
-`SHA256SUMS` must be regenerated only after all release files are frozen. The v2026.8.13 pull request, required check, merge, Pages deployment, repository metadata, and live URL have not yet been verified for this candidate.
+This audit records the frozen source candidate. Pull-request checks, merge state, Pages deployment, and live Play are external publication gates evidenced by GitHub history and the release handoff; they do not require a post-merge source edit that would immediately invalidate this checksum snapshot.

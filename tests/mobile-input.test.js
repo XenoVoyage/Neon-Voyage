@@ -977,7 +977,9 @@ module.exports = function register(test) {
     browser.document.visibilityState = "hidden";
     browser.emit(browser.document, "visibilitychange");
     assert.equal(game.state.mode, "paused", "hidden touch tab did not pause safely");
-    assert.equal(game.state.pausedByVisibility, true);
+    assert.equal(game.mobile.movePointerId, null, "hidden touch tab retained movement ownership");
+    assert.equal(game.mobile.aimPointerId, null, "hidden touch tab retained aim ownership");
+    assert.equal(game.input.touchFire, false, "hidden touch tab retained automatic fire");
   });
 
   test("browser touch smoke moves, aims, fires, and returns to neutral through real PointerEvents", () => {
@@ -1021,7 +1023,6 @@ module.exports = function register(test) {
     game.state.ship.vy = -45;
     browser.window.dispatchEvent({ type: "blur" });
     assert.equal(game.state.mode, "paused");
-    assert.equal(game.state.pausedByVisibility, true);
     assert.equal(game.state.ship.vx, 123, "desktop blur discarded intentional inertial state");
     assert.equal(game.state.ship.vy, -45, "desktop blur discarded intentional inertial state");
   });

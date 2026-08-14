@@ -11,6 +11,11 @@ const {
   listFiles
 } = require("./_harness");
 
+const RELEASE_IGNORED_DIRECTORIES = new Set([
+  ".git", ".idea", ".vscode", ".test-output", ".pw-tmp", "coverage", "dist", "node_modules"
+]);
+const RUNTIME_IGNORED_DIRECTORIES = new Set([...RELEASE_IGNORED_DIRECTORIES, ".github", "tests"]);
+
 function htmlReferences(html) {
   return Array.from(html.matchAll(/\b(?:src|href|poster)\s*=\s*["']([^"']+)["']/gi), (match) => match[1]);
 }
@@ -32,11 +37,24 @@ function localFile(reference) {
 }
 
 function runtimeSourceFiles() {
-  return listFiles(PROJECT_ROOT).filter((file) => {
-    if (!/\.(?:html|css|js)$/i.test(file)) return false;
-    const relative = path.relative(PROJECT_ROOT, file);
-    return !relative.startsWith(`tests${path.sep}`) && !relative.startsWith(`.github${path.sep}`);
+  return listFiles(PROJECT_ROOT, RUNTIME_IGNORED_DIRECTORIES)
+    .filter((file) => /\.(?:html|css|js)$/i.test(file));
+}
+
+function releaseFiles() {
+  return listFiles(PROJECT_ROOT, RELEASE_IGNORED_DIRECTORIES).filter((file) => {
+    const relative = path.relative(PROJECT_ROOT, file).split(path.sep).join("/");
+    if (relative === "SHA256SUMS" || relative === ".DS_Store" || relative === "Thumbs.db") return false;
+    return !/(?:\.log|\.zip|\.swp|\.swo|~)$/i.test(relative);
   });
+}
+
+function markdownReferences(source) {
+  return Array.from(source.matchAll(/(!?)\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g), (match) => ({
+    image: match[1] === "!",
+    label: match[2].trim(),
+    target: match[3].replace(/^<|>$/g, "")
+  }));
 }
 
 module.exports = function register(test) {
@@ -53,6 +71,7 @@ module.exports = function register(test) {
       "default-src 'none'",
       "script-src 'self'",
       "style-src 'self'",
+      "img-src 'self'",
       "connect-src 'none'",
       "font-src 'none'",
       "media-src 'none'",
@@ -64,6 +83,7 @@ module.exports = function register(test) {
     ]) assert.ok(csp.includes(directive), `CSP missing ${directive}`);
     assert.ok(!csp.includes("unsafe-inline"), "inline script/style execution is forbidden");
     assert.ok(!csp.includes("unsafe-eval"), "dynamic code execution is forbidden");
+    assert.ok(!/\bimg-src\b[^;]*\bdata:/i.test(csp), "unused data-image permission weakens the CSP");
     assert.ok(!/<script\b(?![^>]*\bsrc=)[^>]*>/i.test(html), "inline scripts are forbidden");
     assert.ok(!/<style\b/i.test(html), "inline styles are forbidden");
     assert.ok(!/\sstyle\s*=/i.test(html), "style attributes are forbidden");
@@ -99,12 +119,14 @@ module.exports = function register(test) {
 
   test("README gameplay images are local, lightweight, complete WebP documentation assets", () => {
     const readme = readProject("README.md");
-    const references = Array.from(
-      readme.matchAll(/!\[[^\]]*\]\((docs\/assets\/[a-z0-9-]+\.webp)\)/gi),
-      (match) => match[1]
-    );
+    const imageMatches = Array.from(readme.matchAll(/!\[([^\]]*)\]\((docs\/assets\/[a-z0-9-]+\.webp)\)/gi));
+    const references = imageMatches.map((match) => match[2]);
     assert.equal(references.length, 2, "README should use exactly two restrained gameplay images");
     assert.equal(new Set(references).size, references.length, "README gameplay images must be unique");
+
+    for (const match of imageMatches) {
+      assert.ok(match[1].trim().length >= 12, `${match[2]} needs meaningful alternative text`);
+    }
 
     for (const reference of references) {
       const file = localFile(reference);
@@ -122,6 +144,33 @@ module.exports = function register(test) {
     assert.deepEqual(files, references.slice().sort(), "every README gameplay image must be referenced exactly once");
   });
 
+  test("README stays concise, player-facing, and connected to the project guides", () => {
+    const readme = readProject("README.md");
+    assert.ok(readme.split(/\r?\n/).length <= 65, "README has grown beyond its public landing-page role");
+    assert.match(readme, /## \[Play Neon Voyage\]/);
+    assert.match(readme, /## How to play/);
+    assert.match(readme, /## Run locally/);
+    assert.match(readme, /docs\/GAME_DESIGN\.md/);
+    assert.doesNotMatch(readme, /\b\d+\/\d+ tests passed\b|\bNode v\d+|Content Security Policy|fixed[- ]step|Pointer Events/i,
+      "README contains implementation or audit detail that belongs in technical documentation");
+  });
+
+  test("local Markdown links resolve and image descriptions are meaningful", () => {
+    const markdownFiles = releaseFiles().filter((file) => file.endsWith(".md"));
+    assert.ok(markdownFiles.length >= 8, "expected the public, design, security, audit, and test guides");
+    for (const file of markdownFiles) {
+      const source = fs.readFileSync(file, "utf8");
+      for (const reference of markdownReferences(source)) {
+        if (reference.image) assert.ok(reference.label.length >= 8, `${path.relative(PROJECT_ROOT, file)} has an empty or vague image description`);
+        if (/^(?:[a-z]+:)?\/\//i.test(reference.target) || reference.target.startsWith("#") || reference.target.startsWith("mailto:")) continue;
+        const clean = reference.target.split(/[?#]/, 1)[0];
+        const resolved = path.resolve(path.dirname(file), clean);
+        assert.ok(resolved.startsWith(PROJECT_ROOT + path.sep), `${reference.target} escapes the repository`);
+        assert.ok(fs.existsSync(resolved), `${path.relative(PROJECT_ROOT, file)} links to missing ${reference.target}`);
+      }
+    }
+  });
+
   test("plain scripts use deterministic dependency order with no module loader", () => {
     const scripts = Array.from(html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi), (match) => match[1]);
     assert.ok(scripts.length >= 5, "expected the local runtime systems");
@@ -130,9 +179,38 @@ module.exports = function register(test) {
     assert.equal(scripts.at(-1), "js/game.js");
     assert.equal(new Set(scripts).size, scripts.length, "runtime scripts must not be loaded twice");
     for (const script of scripts) assert.ok(/^js\/[a-z0-9-]+\.js$/i.test(script), `unexpected script path ${script}`);
+    const runtimeScripts = listFiles(path.join(PROJECT_ROOT, "js"))
+      .filter((file) => file.endsWith(".js"))
+      .map((file) => path.relative(PROJECT_ROOT, file).split(path.sep).join("/"))
+      .sort();
+    assert.deepEqual(scripts.slice().sort(), runtimeScripts, "every runtime script must be loaded exactly once");
     const tags = Array.from(html.matchAll(/<script\b([^>]*)>/gi), (match) => match[1]);
     assert.ok(tags.every((tag) => /\bdefer\b/i.test(tag)), "every script must use defer");
     assert.ok(tags.every((tag) => !/\btype=["']module["']/i.test(tag)), "ES modules break direct local compatibility");
+  });
+
+  test("every test suite is registered exactly once", () => {
+    const runner = readProject("tests/run.js");
+    const registered = Array.from(runner.matchAll(/require\(["'](\.\/[a-z0-9-]+\.test)["']\)/gi), (match) => match[1]).sort();
+    const suites = listFiles(path.join(PROJECT_ROOT, "tests"))
+      .filter((file) => file.endsWith(".test.js"))
+      .map((file) => `./${path.basename(file, ".js")}`)
+      .sort();
+    assert.deepEqual(registered, suites, "every test suite must be registered exactly once");
+  });
+
+  test("release text files are free of merge markers and whitespace damage", () => {
+    const textFiles = releaseFiles().filter((file) => {
+      const relative = path.relative(PROJECT_ROOT, file);
+      return /\.(?:css|html|js|json|md|txt|ya?ml)$/i.test(relative) || ["LICENSE", ".gitignore", ".nojekyll"].includes(relative);
+    });
+    for (const file of textFiles) {
+      const relative = path.relative(PROJECT_ROOT, file);
+      const source = fs.readFileSync(file, "utf8");
+      assert.ok(source.endsWith("\n"), `${relative} is missing its final newline`);
+      assert.doesNotMatch(source, /[ \t]+$/m, `${relative} contains trailing whitespace`);
+      assert.doesNotMatch(source, /^(?:<<<<<<<|=======|>>>>>>>)(?: |$)/m, `${relative} contains a merge marker`);
+    }
   });
 
   test("runtime contains no network, telemetry, dynamic code, workers, or dependencies", () => {
@@ -166,7 +244,7 @@ module.exports = function register(test) {
   });
 
   test("repository has no symlinks and stays within practical offline payload limits", () => {
-    const files = listFiles(PROJECT_ROOT).filter((file) => !file.includes(`${path.sep}.git${path.sep}`));
+    const files = listFiles(PROJECT_ROOT, RELEASE_IGNORED_DIRECTORIES);
     let runtimeBytes = 0;
     for (const file of files) {
       const stats = fs.lstatSync(file);
@@ -184,13 +262,13 @@ module.exports = function register(test) {
     for (const script of scripts) childProcess.execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
   });
 
-  test("release metadata and public documentation agree on version v2026.8.13", () => {
+  test("release metadata and public documentation agree on version v2026.8.14", () => {
     const version = readProject("VERSION.txt").trim();
-    assert.equal(version, "Neon Voyage v2026.8.13");
-    assert.match(readProject("js/config.js"), /version:\s*["']v2026\.8\.13["']/);
-    assert.match(readProject("README.md"), /Version v2026\.8\.13/);
-    assert.match(readProject("CHANGELOG.md"), /^## \[v2026\.8\.13\]/m);
-    assert.match(readProject("AUDIT.md"), /^# Neon Voyage v2026\.8\.13/m);
+    assert.equal(version, "Neon Voyage v2026.8.14");
+    assert.match(readProject("js/config.js"), /version:\s*["']v2026\.8\.14["']/);
+    assert.match(readProject("README.md"), /Version v2026\.8\.14/);
+    assert.match(readProject("CHANGELOG.md"), /^## \[v2026\.8\.14\] — 2026-08-14$/m);
+    assert.match(readProject("AUDIT.md"), /^# Neon Voyage v2026\.8\.14/m);
     assert.ok(fs.existsSync(path.join(PROJECT_ROOT, "AGENTS.md")), "project contributor instructions are required");
   });
 
@@ -211,19 +289,9 @@ module.exports = function register(test) {
       entries.set(relative, match[1]);
     }
 
-    const roots = [".github/workflows", "assets", "docs/assets", "js", "tests"];
-    const expected = [];
-    for (const entry of fs.readdirSync(PROJECT_ROOT, { withFileTypes: true })) {
-      if (!entry.isFile() || entry.name === "SHA256SUMS" || /\.(?:log|zip)$/i.test(entry.name)) continue;
-      expected.push(entry.name);
-    }
-    for (const root of roots) {
-      const directory = path.join(PROJECT_ROOT, root);
-      for (const file of listFiles(directory)) {
-        expected.push(path.relative(PROJECT_ROOT, file).split(path.sep).join("/"));
-      }
-    }
-    expected.sort();
+    const expected = releaseFiles()
+      .map((file) => path.relative(PROJECT_ROOT, file).split(path.sep).join("/"))
+      .sort();
     assert.deepEqual(Array.from(entries.keys()).sort(), expected, "checksum manifest must exactly cover release files");
   });
 
@@ -234,6 +302,9 @@ module.exports = function register(test) {
     assert.match(workflow, /actions\/upload-pages-artifact@v\d+/);
     assert.match(workflow, /actions\/deploy-pages@v\d+/);
     assert.match(workflow, /path:\s*[.'"]+/);
+    assert.match(workflow, /^\s{4}if:\s*github\.ref\s*==\s*['"]refs\/heads\/main['"]\s*$/m,
+      "manual Pages dispatch must not deploy an unmerged branch");
+    assert.match(workflow, /actions\/checkout@v\d+\s*\n\s*with:\s*\n\s*persist-credentials:\s*false/m);
     assert.ok(!/\b(?:npm|yarn|pnpm|bun)\b/i.test(workflow), "Pages must not install or build dependencies");
   });
 
@@ -248,15 +319,20 @@ module.exports = function register(test) {
     assert.match(ci, /^permissions:\s*\n\s*contents:\s*read\s*$/m, "the audit must keep read-only contents permission");
     assert.doesNotMatch(ci, /continue-on-error\s*:\s*true/i, "the required audit cannot be advisory");
     assert.doesNotMatch(ci, /\b(?:contents|actions|checks|pull-requests):\s*write\b/i, "the audit has unnecessary write permission");
+    assert.match(ci, /actions\/checkout@v\d+\s*\n\s*with:\s*\n\s*persist-credentials:\s*false/m);
     assert.doesNotMatch(pages, /^\s*pull_request:\s*$/m, "Pages must deploy only after merge to main");
     assert.match(pages, /^\s*push:\s*\n\s*branches:\s*\[main\]\s*$/m);
 
     assert.match(agents, /Read this file at the start of every task/);
-    assert.match(agents, /update it only when an enduring project invariant/);
+    assert.match(agents, /Update this file only when an enduring invariant/);
     assert.match(agents, /Treat `main` as protected/);
     assert.match(agents, /Never push directly to it, force-push it, delete it, or bypass branch protection/);
     assert.match(agents, /required `Offline audit \/ audit` check passes/);
     assert.match(agents, /merge through a pull request/);
     assert.match(agents, /never self-approve or fabricate review/);
+    assert.match(agents, /Prefer simple, direct code/);
+    assert.match(agents, /Remove code, fields, selectors, assets, tests, and documentation only after proving they are unused/);
+    assert.match(agents, /docs\/GAME_DESIGN\.md/);
+    assert.match(agents, /SECURITY\.md/);
   });
 };
