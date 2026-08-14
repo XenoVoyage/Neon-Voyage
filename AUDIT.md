@@ -1,4 +1,4 @@
-# Neon Voyage v2026.8.14 — release audit
+# Neon Voyage v2026.8.14 — source audit
 
 - Audited: 2026-08-14
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
@@ -6,7 +6,7 @@
 
 Observed with Node v24.19.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated browser viewports and Pointer Events and is not a claim of acceptance on physical touch hardware.
 
-## Release properties
+## Runtime properties
 
 - Runtime dependencies: **0**
 - Build step: **none**
@@ -105,13 +105,13 @@ Passed:
 
 - The Content Security Policy denies unspecified sources and blocks runtime connections, frames, objects, fonts, media, workers, forms, and base-URI changes.
 - Runtime source contains no remote URL, network API, telemetry, dynamic code, worker, service worker, module loader, package manifest, lockfile, or `node_modules`.
-- All nine raster resources—including the six AI-generated deep-space worlds—are repository-local, referenced exactly once from the renderer's celestial manifest, and absent from external URLs. No outside source image is used.
+- All nine runtime raster resources—including the six AI-generated deep-space worlds—are repository-local and absent from external URLs. The eight planets/worlds are declared in the renderer's celestial manifest; `deep-space.webp` is loaded separately as the shared backdrop. No outside source image is used.
 - The two README gameplay captures are small repository-local WebP files under `docs/assets/`, are referenced with meaningful alternative text, and are documentation-only rather than runtime resources.
 - Every runtime resource is local, relative, and valid beneath the `/Neon-Voyage/` GitHub Pages repository subpath. Direct `file://` launch requires no server.
-- Runtime JavaScript passes syntax checking. The release tree contains no symlinks and stays below conservative offline payload limits.
+- Runtime JavaScript passes syntax checking. The frozen source tree contains no symlinks and stays below conservative offline payload limits.
 - Runtime configuration, visible UI metadata, `VERSION.txt`, README, changelog, and this audit agree on version v2026.8.14 with no leading zeroes.
 - Every runtime script and test suite is registered exactly once. Local Markdown links resolve, documentation images have meaningful descriptions, and release text is free of conflict markers, trailing whitespace, and missing final newlines.
-- `SHA256SUMS` recursively covers the complete release tree outside explicit local-output directories and verifies every frozen file.
+- `SHA256SUMS` recursively covers the complete frozen source tree outside explicit local-output directories and verifies every frozen file.
 - The dependency-free browser VM loads every local script, draws Canvas frames and local stage previews, launches a run, exposes the HUD, and maintains one animation loop.
 - CI and Pages workflows publish the unchanged repository root without installing dependencies or running a production build. Manual Pages dispatches are guarded to `main`, and checkout credentials are not persisted.
 
@@ -131,6 +131,8 @@ node tests/run.js
 
 Expected result for this source snapshot: `124/124 tests passed`.
 
+That command reproduces the dependency-free source and browser-VM checks. It does not reproduce the historical `@napi-rs/canvas` inspection: no committed script, package, exact command, or output artifact exists for that separate rendered observation. Future rendered checks must record their tool, command, environment, target files, and observed result without adding a browser-game dependency.
+
 ## Browser smoke and acceptance
 
 - The automated rendered/browser-VM smoke loads every local script, draws Canvas and Continue previews, starts a run, drives Pointer Events through movement, aim, fire, Dash, Pulse, pause, malformed terminals, lifecycle cleanup, and simulation, then verifies neutral stick state.
@@ -149,4 +151,4 @@ Automated checks validate contracts, safety, determinism, and simulated browser 
 - Project governance requires pull requests into `main`, blocks direct/force pushes and branch deletion, and permits one required approval only when a genuine independent reviewer is available.
 - The previously verified server-side protection targets the default branch, requires pull requests and the strict `audit` status context, blocks deletion and non-fast-forward pushes, has no bypass actors, and currently requires zero approvals for solo maintenance.
 
-This audit records the frozen source candidate. Pull-request checks, merge state, Pages deployment, and live Play are external publication gates evidenced by GitHub history and the release handoff; they do not require a post-merge source edit that would immediately invalidate this checksum snapshot.
+This audit records the frozen source candidate for runtime version `v2026.8.14`; the version label is not evidence that a Git tag or GitHub Release exists. Pull-request checks, merge state, Pages deployment, an immutable release tag, and live Play are external publication gates evidenced by GitHub history and the release handoff. They do not require a post-merge source edit that would immediately invalidate this checksum snapshot.
