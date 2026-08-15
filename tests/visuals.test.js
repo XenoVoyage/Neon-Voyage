@@ -395,9 +395,10 @@ module.exports = function register(test) {
     assert.match(renderer, /state\.ship\s*&&\s*state\.ship\.orbitBlades/);
     assert.match(renderer, /mine\.owner\s*===\s*"player"/);
     assert.match(renderer, /boss\.type\s*===\s*"leviathan"/);
-    assert.match(renderer, /const fieldShape = state\.arena\.shape === "field"/);
-    assert.match(renderer, /if \(fieldShape\) \{\s*ctx\.rect\(/,
-      "Leviathan field arena is not rendered as a field boundary");
+    assert.match(renderer, /this\.drawCombatField\(state, time\)/,
+      "boss stages cannot reuse the normal field cues");
+    assert.doesNotMatch(renderer, /drawArena\s*\(/,
+      "the removed glowing boss boundary is still rendered");
     assert.match(renderer, /amplifier:\s*"#ffb45f"/);
     assert.match(renderer, /aegis:\s*"#7bdcff"/);
   });

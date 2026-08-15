@@ -1,8 +1,8 @@
-# Neon Voyage v2026.8.15b — source audit
+# Neon Voyage v2026.8.15c — source audit
 
 - Audited: 2026-08-15
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 167/167 automated source checks**
+- Result: **PASS — 168/168 automated source checks**
 
 Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated viewports, Pointer Events, DOM behavior, and Canvas calls. It is not physical-device acceptance.
 
@@ -21,8 +21,9 @@ Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins onl
 Passed:
 
 - The immutable configuration defines 20 finite stages. Stages 1–5 build asteroid pressure, Stages 6–9 stage familiar alien roles, Stage 10 contains the Harrower, Stages 11–15 introduce evolved anomaly counterplay, Stages 16–19 stage advanced fleets, and Stage 20 contains the Leviathan.
-- Boss ownership remains config-driven. Harrower uses a circular arena; Leviathan uses a responsive rectangular field. Defeating Stage 20 advances to bounded Sector 2 without visually returning to Earth.
+- Boss ownership remains config-driven. Harrower and Leviathan reuse the responsive normal combat field with subtle boundary cues; the separate glowing circular boss boundary is absent. Defeating Stage 20 advances to bounded Sector 2 without visually returning to Earth.
 - Non-boss root counts rise within each authored arc: 12/14/16/18, 12/14/16/18, 14/16/18/20, and 14/16/18/20. Titan stages remain finite specialist encounters, and every stage waits for required descendants, optional hazards, carrier children, requeues, and boss escorts.
+- Mixed-kind asteroid groups use deterministic balanced bags: each authored kind differs by at most one root, the same seed repeats the same order, and downstream random state consumes the same number of draws. Late anomaly waves retain their finite totals while limiting guaranteed massive-root clustering.
 - Natural reward pacing uses six stage bands. Drop chance rises 26/28/29/31/34/38 percent; pity occurs after 4/4/4/4/3/3 eligible kills; module-cache weight, permanent-draft chance, unlock catalog, and Mk I–V ceiling increase later in the journey.
 - Only Stages 3, 6, 9, 12, 15, and 18 grant authored milestone modules. Natural drops, Enigma cards, caches, milestones, and boss cores use one bounded eligibility path.
 - Existing schema-3 and migrated legacy loadouts are never clamped or downgraded by the new reward gates. A grandfathered future module remains usable but cannot gain another tier before its authored unlock.
@@ -38,7 +39,7 @@ Passed:
 - Gunships lock the warned laser line, then sweep it only at the bounded authored angular rate. The damaging line matches the telegraph, uses no projectile allocation, stops later simulation after a lethal hit, and restores its exact angle after requeue.
 - Brood Carriers reduce distant direct damage to 30 percent, become normally vulnerable inside 300 px, and launch only their configured Lancer children. Stable lineage survives repeated hard culls without exceeding the six-child lifetime cap.
 - Leviathan reflection has warning, active, and cooldown phases and exists only while shield nodes survive. It reflects capped direct player bullets that hit the boss body, does not recursively reflect hostile fire, and leaves node hits and other authored module counters distinct.
-- Compact 568×320 and desktop boss simulations keep every living node circle inside its authored arena/field and visible viewport. Boss death still waits for surviving escorts and clears owned hostile ordnance safely.
+- Compact 568×320, tablet-class, and desktop boss simulations keep both command ships and every living node circle inside the shared responsive field and visible viewport. Boss entries begin without ship overlap and an attack-disabled two-second entry window causes no contact damage. Boss death still waits for surviving escorts and clears owned hostile ordnance safely.
 
 ## Player power, Enigma, and HUD
 
@@ -50,6 +51,7 @@ Passed:
 - Enigma deterministically slows combat to a complete pause and offers three distinct eligible cards. Early bands may omit a permanent card; all paths retain bounded temporary/support fallbacks and cannot bypass the mandatory selection.
 - Each Enigma card owns one local decorative Canvas preview driven by the existing animation frame. It adds no asset, random source, listener, or animation loop and remains finite in reduced-effects mode.
 - Desktop HUD rows list equipped systems and active timed countdowns only. Compact touch layouts replace each row with one pointer-transparent accessible summary so status never steals either movement/aim touch half.
+- Independent touch sticks retain pointer-ID roles while their enlarged bases follow bounded drag overshoot. Idle stick hotspots remain hidden, unavailable Dash/Pulse slots pass touches through to the aim half, and the action buttons become visible, focusable, and interactive only at the same readiness thresholds used by simulation.
 - Late-stage and boss nebula washes are locally rendered, cached on resize, interpolated with the existing scene handoff, and subdued by reduced-effects mode.
 
 ## Persistence and finite state
@@ -64,7 +66,7 @@ Passed:
 
 ## Automated evidence boundary
 
-The frozen run registered and passed 167 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (16), mobile input (39), gameplay (66), visuals (12), and stress (2). `SHA256SUMS` exactly covered and verified all 47 release files outside its documented self/exclusion rules.
+The frozen run registered and passed 168 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (16), mobile input (39), gameplay (67), visuals (12), and stress (2). `SHA256SUMS` exactly covered and verified all 47 release files outside its documented self/exclusion rules.
 
 The browser VM loads every classic script, constructs the DOM and Canvas surfaces, starts a run, creates real Enigma buttons/previews, projects shield and compact summaries, and keeps one animation loop. Responsive contracts cover 568×320 and 667×375 phone landscapes and a 1024×768 tablet-class viewport. This is automated source and simulated-browser evidence, not a pixel-comparison test or hands-on device play.
 
@@ -74,7 +76,7 @@ The browser VM loads every classic script, constructs the DOM and Canvas surface
 node tests/run.js
 ```
 
-Observed result for this frozen source tree: `167/167 tests passed`.
+Observed result for this frozen source tree: `168/168 tests passed`.
 
 ## Browser and publication boundary
 

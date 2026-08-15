@@ -69,7 +69,7 @@ Put new logic in the file that already owns its responsibility. Generalize only 
 - Asteroids are ballistic hazards. Asteroid pairs bounce without damaging one another; genuine asteroid-to-alien impacts remain reward-free.
 - Split trees and hard-cull requeues preserve objective ownership and finite state. They must never duplicate, drop, or silently resolve a threat.
 - Campaign checkpoints store bounded weapon loadouts for earned stages, not live battlefield state. Continue starts a fresh Sector 1 field; New Game confirms before replacing campaign progress.
-- Touch sticks are independent, radial, dynamic, and pointer-ID owned. Every terminal, capture-loss, visibility, pause, orientation, or page-lifecycle path must return input to neutral without timing out a deliberate stationary hold.
+- Touch sticks are independent, radial, dynamically placed with bounded floating follow, and pointer-ID owned. Every terminal, capture-loss, visibility, pause, orientation, or page-lifecycle path must return input to neutral without timing out a deliberate stationary hold.
 - Automatic spawns account for full radii, field containment, nearby threats, and safe contact time. Unsafe spawns remain pending instead of being forced or discarded.
 
 See `docs/GAME_DESIGN.md` for product intent and `tests/README.md` for the stable verification map. Exact tuning belongs only in `js/config.js`.

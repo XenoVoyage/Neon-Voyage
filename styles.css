@@ -277,8 +277,7 @@ dd {
 .meter-label,
 .module-heading,
 .module-rank,
-.objective-label,
-.stick-zone > span {
+.objective-label {
   color: var(--ink-dim);
   font-size: 0.62rem;
   font-weight: 800;
@@ -1559,53 +1558,31 @@ kbd {
 .stick-zone {
   position: absolute;
   z-index: 1;
-  bottom: calc(var(--safe-bottom) + 4px);
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  width: 132px;
-  height: 132px;
+  top: var(--stick-y, 0);
+  left: var(--stick-x, 0);
+  width: 0;
+  height: 0;
   pointer-events: none;
   touch-action: none;
 }
 
-.stick-zone.is-engaged {
-  top: var(--stick-y);
-  right: auto;
-  bottom: auto;
-  left: var(--stick-x);
-  display: block;
-  width: 0;
-  height: 0;
-}
-
-.stick-zone.is-engaged .stick-ring {
+.stick-ring {
   position: absolute;
   top: 0;
   left: 0;
-  transform: translate(-50%, -50%);
-}
-
-.stick-zone.is-engaged > span {
-  opacity: 0;
-}
-
-.move-zone {
-  left: var(--safe-left);
-}
-
-.aim-zone {
-  right: var(--safe-right);
-}
-
-.stick-ring {
-  position: relative;
-  width: 104px;
-  height: 104px;
+  width: 124px;
+  height: 124px;
   border: 1px solid rgba(125, 229, 248, 0.26);
   border-radius: 50%;
   background: radial-gradient(circle, rgba(102, 247, 255, 0.055), rgba(5, 12, 25, 0.34));
   box-shadow: inset 0 0 26px rgba(102, 247, 255, 0.06);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity 100ms ease-out;
+}
+
+.stick-zone.is-engaged .stick-ring {
+  opacity: 1;
 }
 
 .stick-ring::before,
@@ -1633,8 +1610,8 @@ kbd {
   z-index: 1;
   top: 50%;
   left: 50%;
-  width: 42px;
-  height: 42px;
+  width: 52px;
+  height: 52px;
   border: 1px solid rgba(197, 250, 255, 0.5);
   border-radius: 50%;
   background: rgba(31, 72, 89, 0.62);
@@ -1659,7 +1636,7 @@ kbd {
   bottom: calc(var(--safe-bottom) + 14px);
   display: grid;
   gap: 7px;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .touch-button {
@@ -1672,11 +1649,23 @@ kbd {
   font-size: 0.54rem;
   font-weight: 850;
   letter-spacing: 0.05em;
+  opacity: 0;
+  pointer-events: none;
   text-transform: uppercase;
   touch-action: none;
+  transform: scale(0.86);
+  transition: opacity 120ms ease-out, transform 120ms ease-out, visibility 120ms;
+  visibility: hidden;
 }
 
-.touch-button:active {
+.touch-button.is-usable {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+  visibility: visible;
+}
+
+.touch-button.is-usable:active {
   transform: scale(0.94);
 }
 
@@ -1864,16 +1853,6 @@ kbd {
   .settings-note {
     margin-right: 17px;
     margin-left: 17px;
-  }
-
-  .stick-zone {
-    width: 116px;
-    height: 116px;
-  }
-
-  .stick-ring {
-    width: 90px;
-    height: 90px;
   }
 
   .touch-actions {
@@ -2122,15 +2101,9 @@ kbd {
     letter-spacing: 0.11em;
   }
 
-  .is-touch-capable .stick-zone {
-    bottom: calc(var(--safe-bottom) + 2px);
-    width: 110px;
-    height: 110px;
-  }
-
   .is-touch-capable .stick-ring {
-    width: 84px;
-    height: 84px;
+    width: 112px;
+    height: 112px;
   }
 
   .is-touch-capable .touch-actions {
@@ -2255,16 +2228,6 @@ kbd {
     min-height: 43px;
     padding-top: 5px;
     padding-bottom: 5px;
-  }
-
-  .stick-zone {
-    width: 106px;
-    height: 106px;
-  }
-
-  .stick-ring {
-    width: 82px;
-    height: 82px;
   }
 
   .touch-actions {

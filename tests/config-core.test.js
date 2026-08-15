@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.15b configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.15b");
+  test("Neon Voyage v2026.8.15c configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.15c");
     assert.ok(CONFIG.presentation.gameoverEffectDuration > 0 && CONFIG.presentation.gameoverEffectDuration <= 1);
     collectFrozen(CONFIG, new Set());
   });
@@ -116,6 +116,11 @@ module.exports = function register(test) {
         for (const group of wave.required.concat(wave.hazards || [])) {
           assert.equal(group.family, "asteroid", `${stage.id} must remain an evolved anomaly field`);
         }
+        const guaranteedMassiveRoots = wave.required.concat(wave.hazards || []).reduce((total, group) => {
+          const allMassive = group.family === "asteroid" && group.kinds.every((kind) => CONFIG.asteroids[kind].radius >= 90);
+          return total + (allMassive ? group.cap || group.count : 0);
+        }, 0);
+        assert.ok(guaranteedMassiveRoots <= 2, `${stage.id}/${wave.label} clusters too many massive roots`);
       }
     }
     for (const stage of stages.slice(15, 19)) {
@@ -220,8 +225,8 @@ module.exports = function register(test) {
     });
     assert.ok(Object.keys(CONFIG.bosses).length >= 2);
     assert.notEqual(CONFIG.bosses.harrower.label, CONFIG.bosses.leviathan.label);
-    assert.equal(CONFIG.bosses.harrower.arenaShape, "circle");
-    assert.equal(CONFIG.bosses.leviathan.arenaShape, "field");
+    assert.equal("arenaShape" in CONFIG.bosses.harrower, false);
+    assert.equal("arenaShape" in CONFIG.bosses.leviathan, false);
     assert.deepEqual(JSON.parse(JSON.stringify(CONFIG.bosses.leviathan.reflectionShield)), {
       warning: 1,
       active: 1.6,

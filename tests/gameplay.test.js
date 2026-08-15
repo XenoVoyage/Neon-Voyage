@@ -1254,6 +1254,36 @@ module.exports = function register(test) {
     }
   });
 
+  test("mixed asteroid groups use a deterministic balanced bag instead of all-large outliers", () => {
+    const { game } = boot(12055, { width: 1280, height: 720 });
+    const hazardKinds = ["rock", "crystal", "volatile", "armored"];
+    const stageFiveHazards = (seed, sector) => {
+      game.setSeed(seed);
+      game.setStage(5, sector || 1);
+      return game.state.asteroids
+        .filter((asteroid) => !asteroid.dead && asteroid.required === false)
+        .map((asteroid) => asteroid.kind)
+        .concat(game.state.encounterData.pendingSpawns
+          .filter((entry) => entry.family === "asteroid" && entry.required === false)
+          .map((entry) => entry.kind));
+    };
+
+    for (let seed = 1; seed <= 256; seed += 1) {
+      const kinds = stageFiveHazards(seed, 1);
+      assert.equal(kinds.length, 5, `seed ${seed} lost a Stage 5 hazard root`);
+      const counts = hazardKinds.map((kind) => kinds.filter((entry) => entry === kind).length);
+      assert.ok(Math.max(...counts) - Math.min(...counts) <= 1,
+        `seed ${seed} produced an unbalanced mixed hazard group: ${counts.join("/")}`);
+    }
+
+    const first = stageFiveHazards(77, 1);
+    const second = stageFiveHazards(77, 1);
+    assert.deepEqual(second, first, "the same seed changed balanced hazard order");
+    const capped = stageFiveHazards(77, 37);
+    assert.equal(capped.length, 8);
+    assert.deepEqual(hazardKinds.map((kind) => capped.filter((entry) => entry === kind).length), [2, 2, 2, 2]);
+  });
+
   test("stage clear waits for an optional asteroid, then protects a one-hull ship through hyperspace", () => {
     const { game, CONFIG } = boot(551);
     const state = game.state;
@@ -2270,7 +2300,7 @@ module.exports = function register(test) {
     const state = game.state;
     game.setStage(10, 1);
     runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
-    assert.equal(state.boss && state.boss.type, "harrower", "Harrower did not enter the Stage 10 arena");
+    assert.equal(state.boss && state.boss.type, "harrower", "Harrower did not enter the Stage 10 field");
     clearEntities(state);
     for (const id of Object.keys(state.ship.modules)) state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
     state.ship.modules.homingSalvo = 0;
@@ -2681,7 +2711,7 @@ module.exports = function register(test) {
     assert.ok(alien.y >= alienTop - 1e-7 && alien.vy >= 0, "alien did not bounce off the top boundary");
   });
 
-  test("locked boss arena contains extreme positions and dash velocity", () => {
+  test("boss stages use the normal rectangular field for extreme positions and dash velocity", () => {
     const { game, CONFIG } = boot(901);
     const state = game.state;
     game.setStage(10, 1);
@@ -2693,20 +2723,24 @@ module.exports = function register(test) {
     state.ship.vx = CONFIG.world.playerDashSpeed * 5;
     state.ship.vy = -CONFIG.world.playerDashSpeed * 4;
     game.step(CONFIG.world.fixedStep);
-    const maximum = state.arena.radius - CONFIG.bossArena.boundaryPadding - state.ship.radius;
-    assert.ok(Math.hypot(state.ship.x - state.arena.x, state.ship.y - state.arena.y) <= maximum + 1e-7);
-    const dx = state.ship.x - state.arena.x;
-    const dy = state.ship.y - state.arena.y;
-    assert.ok(state.ship.vx * dx + state.ship.vy * dy <= 1e-7, "boss boundary kept outward velocity");
+    const right = state.combatField.x + state.combatField.halfWidth - state.ship.radius;
+    const top = state.combatField.y - state.combatField.halfHeight + state.ship.radius;
+    assert.ok(state.ship.x <= right + 1e-7 && state.ship.vx <= 0, "boss field kept outward horizontal velocity");
+    assert.ok(state.ship.y >= top - 1e-7 && state.ship.vy >= 0, "boss field kept outward vertical velocity");
   });
 
-  test("Harrower keeps a circular arena while Leviathan owns a responsive rectangular field", () => {
+  test("both bosses reuse the responsive normal combat field", () => {
     for (const layout of [{ width: 1280, height: 720 }, { width: 568, height: 320 }, { width: 1024, height: 768 }]) {
-      for (const [stage, shape] of [[10, "circle"], [20, "field"]]) {
+      for (const stage of [10, 20]) {
         const { browser, game, CONFIG } = boot(9000 + stage + layout.width, layout);
         const state = game.state;
         game.setStage(stage, 1);
-        assert.equal(state.arena.shape, shape);
+        assert.equal(state.arena.shape, "field");
+        assert.equal(state.combatField.active, true);
+        approximately(state.arena.x, state.combatField.x, 1e-9, "boss field center x");
+        approximately(state.arena.y, state.combatField.y, 1e-9, "boss field center y");
+        approximately(state.arena.halfWidth, state.combatField.halfWidth, 1e-9, "boss field half width");
+        approximately(state.arena.halfHeight, state.combatField.halfHeight, 1e-9, "boss field half height");
         assert.ok(Number.isFinite(state.arena.halfWidth) && Number.isFinite(state.arena.halfHeight));
         state.arena.active = true;
         state.arena.locked = true;
@@ -2716,52 +2750,70 @@ module.exports = function register(test) {
         state.ship.vx = 500;
         state.ship.vy = -500;
         game.step(CONFIG.world.fixedStep);
-        if (shape === "circle") {
-          const maximum = state.arena.radius - CONFIG.bossArena.boundaryPadding - state.ship.radius;
-          assert.ok(Math.hypot(state.ship.x - state.arena.x, state.ship.y - state.arena.y) <= maximum + 1e-7);
-        } else {
-          const inset = CONFIG.bossArena.boundaryPadding + state.ship.radius;
-          assert.ok(state.ship.x >= state.arena.x - state.arena.halfWidth + inset - 1e-7);
-          assert.ok(state.ship.x <= state.arena.x + state.arena.halfWidth - inset + 1e-7);
-          assert.ok(state.ship.y >= state.arena.y - state.arena.halfHeight + inset - 1e-7);
-          assert.ok(state.ship.y <= state.arena.y + state.arena.halfHeight - inset + 1e-7);
-        }
+        const inset = state.ship.radius;
+        assert.ok(state.ship.x >= state.arena.x - state.arena.halfWidth + inset - 1e-7);
+        assert.ok(state.ship.x <= state.arena.x + state.arena.halfWidth - inset + 1e-7);
+        assert.ok(state.ship.y >= state.arena.y - state.arena.halfHeight + inset - 1e-7);
+        assert.ok(state.ship.y <= state.arena.y + state.arena.halfHeight - inset + 1e-7);
 
         const before = { halfWidth: state.arena.halfWidth, halfHeight: state.arena.halfHeight };
+        state.ship.x = state.arena.x;
+        state.ship.y = state.arena.y;
         browser.window.innerWidth = Math.max(320, layout.height);
         browser.window.innerHeight = Math.max(320, layout.width * 0.5);
         browser.window.dispatchEvent({ type: "resize" });
-        assert.equal(state.arena.shape, shape, "resize changed the authored arena shape");
+        assert.equal(state.arena.shape, "field", "resize changed the boss field shape");
         assert.ok(Number.isFinite(state.arena.halfWidth) && Number.isFinite(state.arena.halfHeight));
-        if (shape === "field" && (browser.window.innerWidth !== layout.width || browser.window.innerHeight !== layout.height)) {
+        approximately(state.arena.halfWidth, state.combatField.halfWidth, 1e-9, "resized boss field half width");
+        approximately(state.arena.halfHeight, state.combatField.halfHeight, 1e-9, "resized boss field half height");
+        if (browser.window.innerWidth !== layout.width || browser.window.innerHeight !== layout.height) {
           assert.ok(state.arena.halfWidth !== before.halfWidth || state.arena.halfHeight !== before.halfHeight,
-            "Leviathan field ignored viewport resize");
+            "boss field ignored viewport resize");
         }
       }
     }
   });
 
-  test("compact Leviathan spawn keeps its body and every shield node inside the field on frame one", () => {
-    const { game, CONFIG } = boot(9019, { width: 568, height: 320 });
-    const state = game.state;
-    game.setStage(20, 1);
-    state.arena.warning = CONFIG.world.fixedStep * 0.5;
-    game.step(CONFIG.world.fixedStep);
-    const boss = state.boss;
-    assert.ok(boss && boss.type === "leviathan");
-    const left = state.arena.x - state.arena.halfWidth;
-    const right = state.arena.x + state.arena.halfWidth;
-    const top = state.arena.y - state.arena.halfHeight;
-    const bottom = state.arena.y + state.arena.halfHeight;
-    for (const entity of [boss].concat(boss.nodes)) {
-      assert.ok(entity.x - entity.radius >= left - 1e-7, "compact boss component escaped left field edge");
-      assert.ok(entity.x + entity.radius <= right + 1e-7, "compact boss component escaped right field edge");
-      assert.ok(entity.y - entity.radius >= top - 1e-7, "compact boss component escaped top field edge");
-      assert.ok(entity.y + entity.radius <= bottom + 1e-7, "compact boss component escaped bottom field edge");
+  test("boss spawns keep every component in-field and avoid compact entry contact", () => {
+    const layouts = [
+      { width: 568, height: 320, label: "phone" },
+      { width: 667, height: 375, label: "wide phone" },
+      { width: 1024, height: 768, label: "tablet" },
+      { width: 1280, height: 720, label: "desktop" }
+    ];
+    for (const [layoutIndex, layout] of layouts.entries()) {
+      for (const stage of [10, 20]) {
+        const { game, CONFIG } = boot(9019 + layoutIndex * 30 + stage, layout);
+        const state = game.state;
+        game.setStage(stage, 1);
+        state.arena.warning = CONFIG.world.fixedStep * 0.5;
+        game.step(CONFIG.world.fixedStep);
+        const boss = state.boss;
+        const context = `Stage ${stage} ${layout.label} ${layout.width}x${layout.height}`;
+        assert.ok(boss, `${context} did not spawn its boss`);
+        const left = state.arena.x - state.arena.halfWidth;
+        const right = state.arena.x + state.arena.halfWidth;
+        const top = state.arena.y - state.arena.halfHeight;
+        const bottom = state.arena.y + state.arena.halfHeight;
+        for (const entity of [boss].concat(boss.nodes)) {
+          assert.ok(entity.x - entity.radius >= left - 1e-7, `${context} component escaped left field edge`);
+          assert.ok(entity.x + entity.radius <= right + 1e-7, `${context} component escaped right field edge`);
+          assert.ok(entity.y - entity.radius >= top - 1e-7, `${context} component escaped top field edge`);
+          assert.ok(entity.y + entity.radius <= bottom + 1e-7, `${context} component escaped bottom field edge`);
+        }
+        const separations = boss.nodes.map((node) => Math.hypot(node.x - boss.x, node.y - boss.y));
+        assert.ok(separations.every((distance, index) => Number.isFinite(distance) && distance >= boss.radius + boss.nodes[index].radius),
+          `${context} shield node overlapped the boss body on spawn`);
+        const surface = Math.hypot(boss.x - state.ship.x, boss.y - state.ship.y) - boss.radius - state.ship.radius;
+        assert.ok(surface >= -1e-7, `${context} boss overlapped the ship by ${-surface}px on entry`);
+        boss.attackTimer = Infinity;
+        boss.secondaryTimer = Infinity;
+        state.ship.hull = 100;
+        state.ship.invulnerable = 0;
+        runSteps(game, 2, CONFIG.world.fixedStep);
+        assert.equal(state.ship.hull, 100, `${context} caused unavoidable entry contact`);
+      }
     }
-    const separations = boss.nodes.map((node) => Math.hypot(node.x - boss.x, node.y - boss.y));
-    assert.ok(separations.every((distance, index) => Number.isFinite(distance) && distance >= boss.radius + boss.nodes[index].radius),
-      "compact shield node overlapped the Leviathan body on spawn");
   });
 
   test("Leviathan reflects only direct body bullets while live nodes govern shield damage and HUD weakness", () => {
@@ -2861,13 +2913,13 @@ module.exports = function register(test) {
       "boss HUD retained a disabled reflector weakness");
   });
 
-  test("both authored bosses wait for every surviving arena escort before hyperspace", () => {
+  test("both authored bosses wait for every surviving field escort before hyperspace", () => {
     for (const [stage, bossType] of [[10, "harrower"], [20, "leviathan"]]) {
       const { game, CONFIG } = boot(875 + stage);
       const state = game.state;
       game.setStage(stage, 1);
       runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
-      assert.equal(state.boss && state.boss.type, bossType, `${bossType} did not enter its authored arena`);
+      assert.equal(state.boss && state.boss.type, bossType, `${bossType} did not enter its authored field`);
       const escort = game.spawnAlien(stage === 20 ? "lancer" : "scout", {
         x: state.ship.x + 120,
         y: state.ship.y,
@@ -2884,55 +2936,58 @@ module.exports = function register(test) {
       game.killThreat(escort, "player");
       game.step(CONFIG.world.fixedStep);
       assert.equal(state.encounterData.complete, true);
-      assert.equal(state.mode, "transition", `clean ${bossType} arena did not enter hyperspace`);
+      assert.equal(state.mode, "transition", `clean ${bossType} field did not enter hyperspace`);
     }
   });
 
-  test("boss camera keeps the authored arena circle fully visible from every legal ship edge", () => {
+  test("boss camera keeps the full rectangular field visible from every legal edge and corner", () => {
     const layouts = [
       { width: 1280, height: 720, label: "desktop" },
       { width: 320, height: 568, label: "portrait" },
       { width: 568, height: 320, label: "landscape" }
     ];
-    const edges = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const edges = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]];
     const tolerance = 1;
 
     for (const [layoutIndex, layout] of layouts.entries()) {
-      const { browser, game, CONFIG } = boot(951 + layoutIndex, layout);
-      const state = game.state;
-      game.setStage(10, 1);
-      clearEntities(state);
-      freezeDirector(state);
-      state.arena.active = true;
-      state.arena.locked = true;
-      state.arena.warning = Infinity;
-      state.boss = null;
-      state.ship.invulnerable = 1e9;
-      const legalRadius = Math.max(0, state.arena.radius - CONFIG.bossArena.boundaryPadding - state.ship.radius);
+      for (const stage of [10, 20]) {
+        const { browser, game, CONFIG } = boot(951 + layoutIndex * 30 + stage, layout);
+        const state = game.state;
+        game.setStage(stage, 1);
+        clearEntities(state);
+        freezeDirector(state);
+        state.arena.active = true;
+        state.arena.locked = true;
+        state.arena.warning = Infinity;
+        state.boss = null;
+        state.ship.invulnerable = 1e9;
+        const legalX = Math.max(0, state.arena.halfWidth - state.ship.radius);
+        const legalY = Math.max(0, state.arena.halfHeight - state.ship.radius);
 
-      for (const [edgeX, edgeY] of edges) {
-        state.ship.x = state.arena.x + edgeX * legalRadius;
-        state.ship.y = state.arena.y + edgeY * legalRadius;
-        state.ship.vx = 0;
-        state.ship.vy = 0;
-        state.camera.x = state.arena.x;
-        state.camera.y = state.arena.y;
-        game.input.touchMoveX = 0;
-        game.input.touchMoveY = 0;
-        runSteps(game, 3, CONFIG.world.fixedStep);
+        for (const [edgeX, edgeY] of edges) {
+          state.ship.x = state.arena.x + edgeX * legalX;
+          state.ship.y = state.arena.y + edgeY * legalY;
+          state.ship.vx = 0;
+          state.ship.vy = 0;
+          state.camera.x = state.arena.x;
+          state.camera.y = state.arena.y;
+          game.input.touchMoveX = 0;
+          game.input.touchMoveY = 0;
+          runSteps(game, 3, CONFIG.world.fixedStep);
 
-        const centerX = state.arena.x - state.camera.x + browser.window.innerWidth * 0.5;
-        const centerY = state.arena.y - state.camera.y + browser.window.innerHeight * 0.5;
-        const context = `${layout.label} ${layout.width}x${layout.height} ship edge ${edgeX},${edgeY}`;
-        assert.ok(centerX - state.arena.radius >= -tolerance, `arena clipped left in ${context}`);
-        assert.ok(centerX + state.arena.radius <= browser.window.innerWidth + tolerance, `arena clipped right in ${context}`);
-        assert.ok(centerY - state.arena.radius >= -tolerance, `arena clipped top in ${context}`);
-        assert.ok(centerY + state.arena.radius <= browser.window.innerHeight + tolerance, `arena clipped bottom in ${context}`);
+          const centerX = state.arena.x - state.camera.x + browser.window.innerWidth * 0.5;
+          const centerY = state.arena.y - state.camera.y + browser.window.innerHeight * 0.5;
+          const context = `stage ${stage} ${layout.label} ${layout.width}x${layout.height} ship edge ${edgeX},${edgeY}`;
+          assert.ok(centerX - state.arena.halfWidth >= -tolerance, `field clipped left in ${context}`);
+          assert.ok(centerX + state.arena.halfWidth <= browser.window.innerWidth + tolerance, `field clipped right in ${context}`);
+          assert.ok(centerY - state.arena.halfHeight >= -tolerance, `field clipped top in ${context}`);
+          assert.ok(centerY + state.arena.halfHeight <= browser.window.innerHeight + tolerance, `field clipped bottom in ${context}`);
+        }
       }
     }
   });
 
-  test("boss-sector wrap preserves every legal arena-edge screen anchor on narrow viewports", () => {
+  test("boss-sector wrap preserves every legal field-edge screen anchor on narrow viewports", () => {
     const layouts = [
       { width: 568, height: 320, label: "landscape" },
       { width: 320, height: 568, label: "portrait" }
@@ -2950,9 +3005,10 @@ module.exports = function register(test) {
         game.step(CONFIG.world.fixedStep);
         assert.equal(state.boss && state.boss.type, "leviathan", `${layout.label} Leviathan did not spawn`);
 
-        const legalRadius = Math.max(0, state.arena.radius - CONFIG.bossArena.boundaryPadding - state.ship.radius);
-        state.ship.x = state.arena.x + edgeX * legalRadius;
-        state.ship.y = state.arena.y + edgeY * legalRadius;
+        const legalX = Math.max(0, state.arena.halfWidth - state.ship.radius);
+        const legalY = Math.max(0, state.arena.halfHeight - state.ship.radius);
+        state.ship.x = state.arena.x + edgeX * legalX;
+        state.ship.y = state.arena.y + edgeY * legalY;
         state.ship.vx = edgeX * 180;
         state.ship.vy = edgeY * 180;
         state.camera.x = state.arena.x;

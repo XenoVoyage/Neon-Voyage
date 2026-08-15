@@ -865,7 +865,6 @@
       ctx.translate((Math.random() * 2 - 1) * shake, (Math.random() * 2 - 1) * shake);
       if (!cinematic.streaks) {
         this.drawCombatField(state, time);
-        this.drawArena(state, time);
         this.drawEffects(state.effects, state.camera, "back");
         this.drawPlayerFields(state, time);
         for (const pickup of state.pickups) this.drawPickup(pickup, state.camera, time);
@@ -1211,34 +1210,6 @@
         ctx.moveTo(middle - length * 0.5, position);
         ctx.lineTo(middle + length * 0.5, position);
       }
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    drawArena(state, time) {
-      if (!state.arena || !state.arena.active) return;
-      const ctx = this.ctx;
-      const point = this.worldToScreen(state.arena.x, state.arena.y, state.camera);
-      const fieldShape = state.arena.shape === "field";
-      const halfWidth = Math.max(1, Number(state.arena.halfWidth) || Number(state.arena.radius) || 1);
-      const halfHeight = Math.max(1, Number(state.arena.halfHeight) || Number(state.arena.radius) || 1);
-      ctx.save();
-      ctx.strokeStyle = state.arena.warning > 0 ? "rgba(255,209,102,0.72)" : "rgba(255,79,216,0.72)";
-      ctx.lineWidth = 3;
-      ctx.setLineDash([12, 14]);
-      ctx.lineDashOffset = this.reduced ? 0 : -time * 42;
-      ctx.shadowColor = "#ff4fd8";
-      ctx.shadowBlur = this.reduced ? 0 : 18;
-      ctx.beginPath();
-      if (fieldShape) {
-        ctx.rect(point.x - halfWidth, point.y - halfHeight, halfWidth * 2, halfHeight * 2);
-      } else {
-        ctx.arc(point.x, point.y, state.arena.radius, 0, TAU);
-      }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      ctx.globalAlpha = 0.12;
-      ctx.lineWidth = 14;
       ctx.stroke();
       ctx.restore();
     }

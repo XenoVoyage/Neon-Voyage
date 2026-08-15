@@ -10,7 +10,7 @@ Neon Voyage is a focused space-arcade expedition that begins above a familiar Ea
 | --- | --- |
 | Immediate control | Movement, aiming, firing, Dash, and Void Pulse respond predictably on every supported input |
 | Finite momentum | Authored waves end cleanly and transition quickly into the next stage |
-| Readable danger | Threat shape, color, motion, damage cracks, warnings, and arena edges communicate risk |
+| Readable danger | Threat shape, color, motion, damage cracks, warnings, and field edges communicate risk |
 | Build variety | Stacking temporary weapons, Enigma choices, and bounded Mk V modules shape each campaign |
 | Lightweight craft | The game stays local, fast, and dependency-free without sacrificing atmosphere |
 
@@ -36,7 +36,7 @@ Neon Voyage is a focused space-arcade expedition that begins above a familiar Ea
 | 7 | Strike Wing | Learn telegraphed striker charges beside the scout screen | — |
 | 8 | Raid Fleet | Add bombers and bounded carrier-supported formations | — |
 | 9 | Command Screen | Break the capital ship's final pickets and carriers | Shield Reactor tier |
-| 10 | Harrower Arena | Defeat the Harrower and every surviving escort | Boss-core upgrade or capped overflow |
+| 10 | Harrower Field | Defeat the Harrower and every surviving escort | Boss-core upgrade or capped overflow |
 | 11 | Ion Graveyard | Enter the evolved anomaly arc against razor and prismatic fields | — |
 | 12 | Prism Rift | Cross refracting prismatic and volatile formations | Prism Fan tier |
 | 13 | Gravity Scar | Control dense monoliths inside a collapsing field | — |
@@ -46,7 +46,7 @@ Neon Voyage is a focused space-arcade expedition that begins above a familiar Ea
 | 17 | Null Phalanx | Add warning/active Gunship lasers to coordinated lancer formations | — |
 | 18 | Siege Choir | Introduce armored Brood Carriers and their bounded lancer lineage | Seeker Rack tier |
 | 19 | Sovereign Guard | Clear the Leviathan's densest mixed fleet and Corona screen | — |
-| 20 | Leviathan Arena | Defeat the Leviathan and every surviving escort | Boss-core upgrade or capped overflow |
+| 20 | Leviathan Field | Defeat the Leviathan and every surviving escort | Boss-core upgrade or capped overflow |
 
 Stages 1–5 form an accessible asteroid-and-anomaly opening; ordinary alien spacecraft do not appear before Stage 6. Stages 6–9 introduce scout, striker, bomber, and carrier roles in sequence before the first command-ship battle. Stages 11–15 add evolved asteroid counterplay, while Stages 16–19 introduce lancer, Gunship, then Brood Carrier novelty before the Stage 20 boss. Authored group counts and the bounded health, damage, speed, fire-rate, and score curves increase pressure across the journey without turning any stage into endless spawning. Later sectors repeat the complete journey at the bounded final reward band and with deep-space scenery rather than returning visually to Earth.
 
@@ -54,19 +54,19 @@ Stages 1–5 form an accessible asteroid-and-anomaly opening; ordinary alien spa
 
 Movement is analog where the device supports it. Aim direction persists after release so the ship does not snap to an unrelated heading. Dash provides a short repositioning burst with a cooldown. Void Pulse is a charged local defense: it protects the nearby area but is not a screen-wide clear.
 
-Keyboard and mouse, gamepad, and touch share the same simulation actions. Mobile play uses landscape orientation and two independent dynamic sticks. The left half owns movement; the right half owns aim and automatic fire. Deflection controls strength. Touch ownership ends only through a matching terminal or a real browser lifecycle boundary, never through an inactivity timer.
+Keyboard and mouse, gamepad, and touch share the same simulation actions. Mobile play uses landscape orientation and two independent floating sticks. The left half owns movement; the right half owns aim and automatic fire. Each enlarged stick begins under its thumb and follows only when that thumb moves beyond the configured radius, preserving analog deflection without leaving the control behind. Dash and Pulse occupy stable touch slots but appear and accept input only while ready. Touch ownership ends only through a matching terminal or a real browser lifecycle boundary, never through an inactivity timer.
 
 Collecting an Enigma signal first neutralizes held input and eases the fixed-step simulation to zero over a short time fracture. Combat then remains fully suspended until the player selects one of three cards. Mouse, touch, number keys, and gamepad can make the choice; gameplay input and ordinary pause actions cannot bypass it. The ship remains protected through the slowdown and its return to combat.
 
 ## Combat and threats
 
-Asteroids are physical ballistic hazards. They separate and bounce when they hit one another instead of causing mutual destruction. Large authored asteroids can show progressive cracks and split through explicit finite generations. An asteroid can destroy an alien through a genuine approaching impact, but environmental destruction grants no player reward.
+Asteroids are physical ballistic hazards. They separate and bounce when they hit one another instead of causing mutual destruction. Mixed-kind groups use balanced seeded orders so one repeated kind cannot dominate by chance, while late anomaly waves limit guaranteed massive roots and introduce smaller bodies alongside them. Large authored asteroids can show progressive cracks and split through explicit finite generations. An asteroid can destroy an alien through a genuine approaching impact, but environmental destruction grants no player reward.
 
 An Auric Colossus owns an exact 1→3→6 split tree. Its children include explosive shards with a local 120 px death blast and magnetic shards that pull the ship only inside a 300 px field with one aggregate acceleration cap. Coronas warn before activating a rotating 520 px beam, return to a finite cooldown, and produce a separate local 160 px death blast. These hazards stay ballistic: their counterplay does not turn the asteroid family into projectile-firing spacecraft.
 
 Alien families have distinct staged roles: scouts strafe and fire, strikers telegraph charges, bombers place mines, legacy carriers launch bounded configured children, and lancers coordinate aggressive attack lines. Gunships stop to warn before a finite active laser and then return to cooldown instead of adding projectile spam. Brood Carriers take only 30% direct player-bullet damage beyond 300 px, take full damage at close range, launch two lancers at a time, and preserve a six-living-child lineage cap through hard-cull requeues.
 
-The Harrower and Leviathan use distinct configured phase sets, silhouettes, attacks, escorts, and containment. The Harrower owns a circular arena. The Leviathan owns a responsive rectangular field; while any shield node survives, its reflector cycles through warning, active, and cooldown phases. Direct player bullets that strike the active body deal only 25% damage and create bounded hostile reflections, while destroying all nodes disables that defense.
+The Harrower and Leviathan use distinct configured phase sets, silhouettes, attacks, and escorts inside the same responsive rectangular battlefield used by ordinary stages. Subtle edge cues preserve containment without a glowing boss-only circle. While any Leviathan shield node survives, its reflector cycles through warning, active, and cooldown phases. Direct player bullets that strike the active body deal only 25% damage and create bounded hostile reflections, while destroying all nodes disables that defense.
 
 A wave is complete only when all of its configured spawns are exhausted and the field is clean. Required objectives, optional hazards, fragments, carrier children, escorts, pending spawns, and hard-cull requeues all belong to that rule. Hyperspace never begins over a living encounter threat.
 
