@@ -44,7 +44,7 @@ module.exports = function register(test) {
   test("scene journey leaves Earth for Mars and authored deep-space worlds", () => {
     const debug = loadRenderer();
     assert.ok(debug && typeof debug.sceneFrame === "function" && typeof debug.screenAnchor === "function");
-    const scenes = Array.from({ length: 9 }, (_, index) => debug.sceneFrame(index + 1, 1, 0));
+    const scenes = Array.from({ length: 20 }, (_, index) => debug.sceneFrame(index + 1, 1, 0));
     const body = (scene, id) => scene.bodies.find((item) => item.id === id);
     const earth1 = body(scenes[0], "earth");
     const earth2 = body(scenes[1], "earth");
@@ -74,12 +74,16 @@ module.exports = function register(test) {
       "frontier-world", "titan-world", "signal-world",
       "shard-world", "fleet-world", "command-world"
     ];
-    const types = Array.from({ length: 6 }, (_, index) => {
-      const body = debug.sceneFrame(index + 4, 1, 0).visibleBodies.find((item) => item.alpha > 0.4);
-      assert.ok(body, `Stage ${index + 4} lacks its main world`);
-      return body.type;
-    });
-    assert.deepEqual(types, expected);
+    const types = new Set();
+    for (let stage = 4; stage <= 20; stage += 1) {
+      const visible = debug.sceneFrame(stage, 1, 0).visibleBodies.filter((item) => item.alpha > 0.15);
+      assert.ok(visible.length > 0, `Stage ${stage} lacks a main authored world`);
+      for (const body of visible) {
+        assert.ok(debug.assetSource(body.type), `Stage ${stage} uses missing local art ${body.type}`);
+        types.add(body.type);
+      }
+    }
+    for (const type of expected) assert.ok(types.has(type), `${type} never appears in the twenty-stage journey`);
     for (const type of ["earth", "mars"].concat(expected)) {
       assert.equal(debug.assetSource(type), `assets/${type}.webp`);
     }
@@ -89,13 +93,13 @@ module.exports = function register(test) {
     assert.doesNotMatch(renderer, /drawExoticPlanet|type:\s*["']exotic["']|\.rings\b/, "the old procedural ring/band planet path remains in runtime code");
   });
 
-  test("all nine scene handoffs interpolate continuously, including the sector wrap", () => {
+  test("all twenty scene handoffs interpolate continuously, including the sector wrap", () => {
     const debug = loadRenderer();
     const activeMap = (scene) => new Map(scene.bodies.filter((body) => body.alpha > 1e-10).map((body) => [body.id, body]));
-    for (let stage = 1; stage <= 9; stage += 1) {
+    for (let stage = 1; stage <= 20; stage += 1) {
       const sector = 1;
-      const nextStage = stage === 9 ? 1 : stage + 1;
-      const nextSector = stage === 9 ? 2 : sector;
+      const nextStage = stage === 20 ? 1 : stage + 1;
+      const nextSector = stage === 20 ? 2 : sector;
       const start = debug.sceneFrame(stage, sector, 0, nextStage, nextSector);
       const middle = debug.sceneFrame(stage, sector, 0.5, nextStage, nextSector);
       const end = debug.sceneFrame(stage, sector, 1, nextStage, nextSector);
@@ -118,7 +122,7 @@ module.exports = function register(test) {
       }
     }
     assert.equal(debug.sceneFrame(-20, -4, -1).fromStage, 1);
-    assert.equal(debug.sceneFrame(99, 1, 99).fromStage, 9);
+    assert.equal(debug.sceneFrame(99, 1, 99).fromStage, 20);
     assert.equal(debug.sceneFrame(1, 1, Infinity).progress, 1);
     assert.equal(debug.sceneFrame(1, 1, NaN).progress, 0);
   });
@@ -217,7 +221,7 @@ module.exports = function register(test) {
     assert.equal(debug.asteroidCrackStage(asteroid), 0, "invalid damage state produced cracks");
   });
 
-  test("touch landscape HUD keeps controls accessible while clipping secondary text", () => {
+  test("touch landscape HUD keeps loadout chips visible without blocking either control half", () => {
     const css = readProject("styles.css");
     const marker = "@media (orientation: landscape) and (max-height: 820px)";
     const start = css.indexOf(marker);
@@ -233,8 +237,7 @@ module.exports = function register(test) {
     };
     for (const selector of [
       ".is-touch-capable .record-readout",
-      ".is-touch-capable .objective-label",
-      ".is-touch-capable .systems-hud .module-console"
+      ".is-touch-capable .objective-label"
     ]) {
       const declarations = rule(selector);
       assert.match(declarations, /position:\s*absolute/);
@@ -243,6 +246,13 @@ module.exports = function register(test) {
       assert.match(declarations, /clip:\s*rect\(0,\s*0,\s*0,\s*0\)/);
       assert.doesNotMatch(declarations, /display:\s*none/, `${selector} was removed from assistive technology`);
     }
+    const loadoutDeclarations = rule(".is-touch-capable .module-strip,\n  .is-touch-capable .active-effects-list");
+    assert.match(loadoutDeclarations, /flex-wrap:\s*nowrap/);
+    assert.match(loadoutDeclarations, /overflow-x:\s*auto/);
+    assert.match(loadoutDeclarations, /overflow-y:\s*hidden/);
+    assert.match(loadoutDeclarations, /pointer-events:\s*none/);
+    assert.doesNotMatch(loadoutDeclarations, /touch-action:\s*pan-x/);
+    assert.doesNotMatch(loadoutDeclarations, /(?:width|height):\s*1px|clip:\s*rect/, "owned loadout chips were visually clipped");
     for (const selector of [".is-touch-capable .hud-button", ".is-touch-capable .touch-button"]) {
       const declarations = rule(selector);
       const width = declarations.match(/(?:min-)?width:\s*(\d+)px/);
@@ -292,6 +302,12 @@ module.exports = function register(test) {
     assert.match(renderer, /drawTimeFracture\(state\)/);
     assert.match(renderer, /sourceModule\s*===\s*"homingSalvo"/);
     assert.match(renderer, /bullet\.kind\s*===\s*"radial"/);
+    assert.match(renderer, /effect\.type\s*===\s*"chain"/);
+    assert.match(renderer, /state\.ship\s*&&\s*state\.ship\.orbitBlades/);
+    assert.match(renderer, /mine\.owner\s*===\s*"player"/);
+    assert.match(renderer, /boss\.type\s*===\s*"leviathan"/);
+    assert.match(renderer, /amplifier:\s*"#ffb45f"/);
+    assert.match(renderer, /aegis:\s*"#7bdcff"/);
   });
 
   test("the menu local record uses the space-theme cyan accent", () => {

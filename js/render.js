@@ -45,8 +45,53 @@
     Object.freeze({ depth: 0.9, hue: 256, bodies: Object.freeze([
       Object.freeze({ id: "fleet-world", type: "fleet-world", x: 0.74, y: 0.63, size: 0.46, alpha: 0.72, hue: 256 })
     ]) }),
+    Object.freeze({ depth: 0.96, hue: 285, bodies: Object.freeze([
+      Object.freeze({ id: "command-screen", type: "fleet-world", x: 0.18, y: 0.28, size: 0.33, alpha: 0.6, hue: 277 }),
+      Object.freeze({ id: "command-beacon", type: "shard-world", x: 0.9, y: 0.76, size: 0.16, alpha: 0.34, hue: 318 })
+    ]) }),
     Object.freeze({ depth: 1, hue: 344, bodies: Object.freeze([
-      Object.freeze({ id: "command-world", type: "command-world", x: 0.52, y: 0.16, size: 0.39, alpha: 0.82, hue: 344 })
+      Object.freeze({ id: "harrower-world", type: "command-world", x: 0.52, y: 0.16, size: 0.39, alpha: 0.82, hue: 344 })
+    ]) }),
+    Object.freeze({ depth: 1.08, hue: 32, bodies: Object.freeze([
+      Object.freeze({ id: "ion-remnant", type: "titan-world", x: 0.08, y: 0.72, size: 0.24, alpha: 0.42, hue: 28 }),
+      Object.freeze({ id: "ion-moon", type: "frontier-world", x: 0.82, y: 0.18, size: 0.1, alpha: 0.2, hue: 202 })
+    ]) }),
+    Object.freeze({ depth: 1.16, hue: 292, bodies: Object.freeze([
+      Object.freeze({ id: "prism-primary", type: "shard-world", x: 0.86, y: 0.48, size: 0.51, alpha: 0.72, hue: 298 }),
+      Object.freeze({ id: "prism-secondary", type: "signal-world", x: 0.12, y: 0.16, size: 0.12, alpha: 0.26, hue: 166 })
+    ]) }),
+    Object.freeze({ depth: 1.24, hue: 226, bodies: Object.freeze([
+      Object.freeze({ id: "gravity-anchor", type: "command-world", x: 0.06, y: 0.28, size: 0.22, alpha: 0.36, hue: 222 }),
+      Object.freeze({ id: "gravity-shear", type: "frontier-world", x: 0.88, y: 0.82, size: 0.31, alpha: 0.48, hue: 184 })
+    ]) }),
+    Object.freeze({ depth: 1.32, hue: 168, bodies: Object.freeze([
+      Object.freeze({ id: "halo-core", type: "frontier-world", x: 0.54, y: 0.24, size: 0.38, alpha: 0.58, hue: 166 }),
+      Object.freeze({ id: "halo-shard-left", type: "shard-world", x: 0.05, y: 0.82, size: 0.09, alpha: 0.19, hue: 312 }),
+      Object.freeze({ id: "halo-shard-right", type: "shard-world", x: 0.94, y: 0.68, size: 0.13, alpha: 0.24, hue: 326 })
+    ]) }),
+    Object.freeze({ depth: 1.4, hue: 118, bodies: Object.freeze([
+      Object.freeze({ id: "anomaly-crown", type: "signal-world", x: 0.48, y: 0.58, size: 0.62, alpha: 0.7, hue: 122 })
+    ]) }),
+    Object.freeze({ depth: 1.5, hue: 353, bodies: Object.freeze([
+      Object.freeze({ id: "vanguard-muster", type: "fleet-world", x: 0.14, y: 0.64, size: 0.42, alpha: 0.62, hue: 350 }),
+      Object.freeze({ id: "vanguard-signal", type: "signal-world", x: 0.84, y: 0.16, size: 0.15, alpha: 0.3, hue: 145 })
+    ]) }),
+    Object.freeze({ depth: 1.6, hue: 208, bodies: Object.freeze([
+      Object.freeze({ id: "null-bastion", type: "titan-world", x: 0.82, y: 0.3, size: 0.43, alpha: 0.66, hue: 212 }),
+      Object.freeze({ id: "null-shard", type: "shard-world", x: 0.1, y: 0.78, size: 0.18, alpha: 0.28, hue: 292 })
+    ]) }),
+    Object.freeze({ depth: 1.7, hue: 278, bodies: Object.freeze([
+      Object.freeze({ id: "siege-choir", type: "command-world", x: 0.78, y: 0.78, size: 0.3, alpha: 0.5, hue: 282 }),
+      Object.freeze({ id: "siege-fleet", type: "fleet-world", x: 0.22, y: 0.18, size: 0.24, alpha: 0.42, hue: 248 })
+    ]) }),
+    Object.freeze({ depth: 1.82, hue: 322, bodies: Object.freeze([
+      Object.freeze({ id: "sovereign-gate", type: "command-world", x: 0.92, y: 0.5, size: 0.58, alpha: 0.78, hue: 326 }),
+      Object.freeze({ id: "sovereign-guard", type: "fleet-world", x: 0.18, y: 0.7, size: 0.24, alpha: 0.4, hue: 256 })
+    ]) }),
+    Object.freeze({ depth: 1.96, hue: 264, bodies: Object.freeze([
+      Object.freeze({ id: "leviathan-well", type: "signal-world", x: 0.5, y: 0.18, size: 0.48, alpha: 0.72, hue: 266 }),
+      Object.freeze({ id: "leviathan-remnant", type: "titan-world", x: 0.07, y: 0.9, size: 0.28, alpha: 0.38, hue: 26 }),
+      Object.freeze({ id: "leviathan-shard", type: "shard-world", x: 0.92, y: 0.82, size: 0.16, alpha: 0.3, hue: 314 })
     ]) })
   ]);
 
@@ -428,17 +473,10 @@
     }
 
     buildEncounterWashes() {
-      const themes = [
-        ["rgba(25,92,160,0.15)", "rgba(68,211,255,0.09)"],
-        ["rgba(150,72,28,0.14)", "rgba(255,151,75,0.085)"],
-        ["rgba(54,61,145,0.15)", "rgba(117,121,255,0.09)"],
-        ["rgba(20,117,109,0.15)", "rgba(70,255,211,0.085)"],
-        ["rgba(155,91,25,0.15)", "rgba(255,194,78,0.09)"],
-        ["rgba(27,123,80,0.145)", "rgba(85,255,163,0.085)"],
-        ["rgba(126,39,137,0.155)", "rgba(255,87,226,0.095)"],
-        ["rgba(55,42,148,0.16)", "rgba(137,109,255,0.095)"],
-        ["rgba(156,39,70,0.17)", "rgba(255,74,177,0.1)"]
-      ];
+      const themes = SCENE_KEYFRAMES.map((scene, index) => [
+        `hsla(${mod(scene.hue - 24 - index * 3, 360)}, 72%, 46%, 0.15)`,
+        `hsla(${mod(scene.hue + 34 + index * 5, 360)}, 88%, 66%, 0.09)`
+      ]);
       this.encounterWashes = themes.map((colors, index) => {
         const mirrored = index % 2 === 1;
         const base = this.ctx.createLinearGradient(
@@ -498,6 +536,7 @@
         this.drawCombatField(state, time);
         this.drawArena(state, time);
         this.drawEffects(state.effects, state.camera, "back");
+        this.drawPlayerFields(state, time);
         for (const pickup of state.pickups) this.drawPickup(pickup, state.camera, time);
         for (const mine of state.mines) this.drawMine(mine, state.camera, time);
         for (const asteroid of state.asteroids) this.drawAsteroid(asteroid, state.camera, time);
@@ -509,6 +548,7 @@
       }
       this.drawShip(state.ship, state.camera, time, cinematic.streaks, state);
       if (!cinematic.streaks) {
+        this.drawOrbitBlades(state);
         this.drawEffects(state.effects, state.camera, "front");
         this.drawFloaters(state.floaters, state.camera);
         this.drawReticle(state);
@@ -748,17 +788,8 @@
     }
 
     encounterAccent(encounter) {
-      return [
-        "#66f7ff",
-        "#ffb267",
-        "#9298ff",
-        "#62f7c8",
-        "#ffd166",
-        "#72ffa5",
-        "#ff67d9",
-        "#9f8cff",
-        "#ff5f9e"
-      ][stageNumber(encounter) - 1];
+      const scene = SCENE_KEYFRAMES[stageNumber(encounter) - 1];
+      return `hsl(${mod(scene.hue + 18, 360)} 92% 70%)`;
     }
 
     drawCombatField(state, time) {
@@ -864,6 +895,75 @@
       ctx.restore();
     }
 
+    drawPlayerFields(state, time) {
+      const ship = state.ship;
+      const modules = ship && ship.modules;
+      if (!ship || !modules) return;
+      const tractorTier = Math.max(0, Number(modules.tractorField) || 0);
+      const reactorTier = Math.max(0, Number(modules.shieldReactor) || 0);
+      if (tractorTier <= 0 && reactorTier <= 0) return;
+      const point = this.worldToScreen(ship.x, ship.y, state.camera);
+      const ctx = this.ctx;
+      ctx.save();
+      ctx.translate(point.x, point.y);
+      if (tractorTier > 0 && !this.reduced) {
+        const radius = 54 + tractorTier * 8;
+        ctx.rotate(-time * 0.16);
+        ctx.strokeStyle = "#72f7c8";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 12]);
+        ctx.lineDashOffset = time * 9;
+        ctx.globalAlpha = 0.09 + tractorTier * 0.012;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, -Math.PI * 0.82, Math.PI * 0.18);
+        ctx.arc(0, 0, radius, Math.PI * 0.34, Math.PI * 1.34);
+        ctx.stroke();
+      }
+      if (reactorTier > 0 && ship.shield > 0) {
+        const pulse = this.reduced ? 0 : (time * (0.58 + reactorTier * 0.04)) % 1;
+        const radius = 30 + pulse * (10 + reactorTier * 2);
+        ctx.setLineDash([]);
+        ctx.globalAlpha = this.reduced ? 0.2 : (1 - pulse) * (0.16 + reactorTier * 0.018);
+        ctx.strokeStyle = "#66f7ff";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    drawOrbitBlades(state) {
+      const blades = state.ship && state.ship.orbitBlades;
+      if (!Array.isArray(blades) || blades.length === 0) return;
+      const ctx = this.ctx;
+      for (const blade of blades) {
+        const point = this.worldToScreen(blade.x, blade.y, state.camera);
+        if (!this.onScreen(point.x, point.y, 18)) continue;
+        const radius = clamp(Number(blade.radius) || 9, 6, 15);
+        ctx.save();
+        ctx.translate(point.x, point.y);
+        ctx.rotate(Number(blade.angle) || 0);
+        ctx.strokeStyle = "#b8fdff";
+        ctx.fillStyle = "rgba(36, 168, 184, 0.9)";
+        ctx.lineWidth = 1.25;
+        ctx.shadowColor = "#66f7ff";
+        ctx.shadowBlur = this.reduced ? 0 : 8;
+        ctx.beginPath();
+        ctx.moveTo(radius, 0);
+        ctx.lineTo(-radius * 0.28, -radius * 0.5);
+        ctx.lineTo(-radius, 0);
+        ctx.lineTo(-radius * 0.28, radius * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(radius * 0.28, -0.75, radius * 0.38, 1.5);
+        ctx.restore();
+      }
+    }
+
     drawShip(ship, camera, time, cinematic, state) {
       const point = cinematic
         ? screenAnchor(state, { width: this.width, height: this.height }) || this.worldToScreen(ship.x, ship.y, camera)
@@ -875,15 +975,18 @@
       if (!cinematic && ship.invulnerable > 0 && Math.floor(time * 18) % 2 === 0) ctx.globalAlpha = 0.34;
       this.shipPath(1, cinematic ? Math.max(0.9, ship.engine || 0) : ship.engine || 0, time, false);
       ctx.restore();
-      if (ship.shield > 0) {
+      if (ship.shield > 0 || ship.aegisTimer > 0) {
+        const aegisActive = ship.aegisTimer > 0;
         ctx.save();
         ctx.translate(point.x, point.y);
         ctx.rotate(time * 0.55);
-        ctx.strokeStyle = `rgba(85,245,255,${0.25 + Math.min(0.55, ship.shield / 150)})`;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 8]);
+        ctx.strokeStyle = aegisActive
+          ? "rgba(178, 224, 255, 0.82)"
+          : `rgba(85,245,255,${0.25 + Math.min(0.55, ship.shield / 150)})`;
+        ctx.lineWidth = aegisActive ? 2.5 : 2;
+        ctx.setLineDash(aegisActive ? [10, 4] : [6, 8]);
         ctx.beginPath();
-        ctx.arc(0, 0, 28, 0, TAU * clamp(ship.shield / 100, 0.18, 1));
+        ctx.arc(0, 0, aegisActive ? 31 : 28, 0, aegisActive ? TAU : TAU * clamp(ship.shield / 100, 0.18, 1));
         ctx.stroke();
         ctx.restore();
       }
@@ -956,7 +1059,15 @@
       const point = this.worldToScreen(asteroid.x, asteroid.y, camera);
       if (!this.onScreen(point.x, point.y, asteroid.radius)) return;
       const ctx = this.ctx;
-      const color = asteroid.kind === "crystal" ? "#ff66dd" : asteroid.kind === "volatile" ? "#ffb84d" : asteroid.kind === "armored" ? "#a7b8c8" : asteroid.kind === "titan" ? "#ffd166" : "#72dff3";
+      const color = {
+        crystal: "#ff66dd",
+        volatile: "#ffb84d",
+        armored: "#a7b8c8",
+        titan: "#ffd166",
+        razor: "#7dffcf",
+        prismatic: "#b88cff",
+        monolith: "#6ea8ff"
+      }[asteroid.kind] || "#72dff3";
       ctx.save();
       ctx.translate(point.x, point.y);
       ctx.rotate(asteroid.rotation || 0);
@@ -972,7 +1083,13 @@
         else ctx.lineTo(x, y);
       }
       ctx.closePath();
-      ctx.fillStyle = asteroid.kind === "crystal" ? "rgba(38,15,48,0.95)" : "rgba(13,21,32,0.97)";
+      ctx.fillStyle = asteroid.kind === "crystal" || asteroid.kind === "prismatic"
+        ? "rgba(38,15,48,0.95)"
+        : asteroid.kind === "razor"
+          ? "rgba(8, 31, 31, 0.97)"
+          : asteroid.kind === "monolith"
+            ? "rgba(8, 15, 34, 0.98)"
+            : "rgba(13,21,32,0.97)";
       ctx.strokeStyle = color;
       ctx.lineWidth = asteroid.kind === "titan" ? 3 : 1.6;
       ctx.shadowColor = color;
@@ -1018,9 +1135,33 @@
         ctx.arc(0, 0, asteroid.radius * 0.27, 0, TAU);
         ctx.fill();
       }
-      if (asteroid.kind === "armored" || asteroid.kind === "titan") {
+      if (asteroid.kind === "prismatic") {
+        ctx.globalAlpha = 0.58;
+        ctx.strokeStyle = "#e1c9ff";
+        ctx.lineWidth = 1;
+        for (let index = 0; index < count; index += 2) {
+          const angle = points.length ? points[index].angle : index / count * TAU;
+          const radius = points.length ? points[index].radius : asteroid.radius * 0.82;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+          ctx.stroke();
+        }
+      }
+      if (asteroid.kind === "razor") {
+        ctx.globalAlpha = 0.7;
+        ctx.strokeStyle = "#c2fff0";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(-asteroid.radius * 0.62, asteroid.radius * 0.2);
+        ctx.lineTo(asteroid.radius * 0.7, -asteroid.radius * 0.25);
+        ctx.moveTo(-asteroid.radius * 0.4, -asteroid.radius * 0.38);
+        ctx.lineTo(asteroid.radius * 0.48, asteroid.radius * 0.36);
+        ctx.stroke();
+      }
+      if (asteroid.kind === "armored" || asteroid.kind === "titan" || asteroid.kind === "monolith") {
         ctx.globalAlpha = 0.68;
-        ctx.strokeStyle = "#c7d5df";
+        ctx.strokeStyle = asteroid.kind === "monolith" ? "#9bc4ff" : "#c7d5df";
         ctx.lineWidth = Math.max(2, asteroid.radius * 0.035);
         for (let i = 0; i < 3; i += 1) {
           ctx.beginPath();
@@ -1039,7 +1180,13 @@
       ctx.translate(point.x, point.y);
       const heading = Number.isFinite(alien.heading) ? alien.heading : Number.isFinite(alien.angle) ? alien.angle : 0;
       ctx.rotate(heading);
-      const color = alien.type === "bomber" ? "#ffd166" : alien.type === "carrier" ? "#ff5aa5" : alien.type === "striker" ? "#b68cff" : "#62f7c8";
+      const color = {
+        bomber: "#ffd166",
+        carrier: "#ff5aa5",
+        striker: "#b68cff",
+        lancer: "#5fe5ff",
+        gunship: "#ff7b72"
+      }[alien.type] || "#62f7c8";
       ctx.strokeStyle = color;
       ctx.fillStyle = "rgba(9,15,29,0.96)";
       ctx.lineWidth = 1.7;
@@ -1067,6 +1214,12 @@
       } else if (alien.type === "bomber") {
         ctx.beginPath();
         ctx.moveTo(17, 0); ctx.quadraticCurveTo(4, -18, -15, -13); ctx.lineTo(-20, -5); ctx.lineTo(-14, 0); ctx.lineTo(-20, 5); ctx.lineTo(-15, 13); ctx.quadraticCurveTo(4, 18, 17, 0); ctx.closePath();
+      } else if (alien.type === "lancer") {
+        ctx.beginPath();
+        ctx.moveTo(29, 0); ctx.lineTo(4, -6); ctx.lineTo(-9, -15); ctx.lineTo(-6, -4); ctx.lineTo(-22, -7); ctx.lineTo(-14, 0); ctx.lineTo(-22, 7); ctx.lineTo(-6, 4); ctx.lineTo(-9, 15); ctx.lineTo(4, 6); ctx.closePath();
+      } else if (alien.type === "gunship") {
+        ctx.beginPath();
+        ctx.moveTo(23, 0); ctx.lineTo(9, -13); ctx.lineTo(-15, -17); ctx.lineTo(-25, -7); ctx.lineTo(-17, 0); ctx.lineTo(-25, 7); ctx.lineTo(-15, 17); ctx.lineTo(9, 13); ctx.closePath();
       } else {
         ctx.beginPath();
         ctx.moveTo(27, 0); ctx.quadraticCurveTo(5, -21, -25, -14); ctx.lineTo(-14, 0); ctx.lineTo(-25, 14); ctx.quadraticCurveTo(5, 21, 27, 0); ctx.closePath();
@@ -1077,7 +1230,8 @@
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.72;
       ctx.beginPath();
-      ctx.ellipse(3, 0, alien.type === "carrier" ? 12 : 7, alien.type === "carrier" ? 7 : 4, 0, 0, TAU);
+      const heavy = alien.type === "carrier" || alien.type === "gunship";
+      ctx.ellipse(3, 0, heavy ? 12 : 7, heavy ? 7 : 4, 0, 0, TAU);
       ctx.fill();
       ctx.globalAlpha = 0.52;
       ctx.strokeStyle = "#d9ffff";
@@ -1115,37 +1269,81 @@
       ctx.save();
       ctx.translate(point.x, point.y);
       ctx.rotate(boss.angle || 0);
-      ctx.fillStyle = "rgba(10,14,30,0.98)";
-      ctx.strokeStyle = "#ff5ecf";
-      ctx.lineWidth = 3;
-      ctx.shadowColor = "#ff4fd8";
-      ctx.shadowBlur = this.reduced ? 0 : 20;
-      ctx.beginPath();
-      ctx.moveTo(boss.radius * 0.85, 0);
-      ctx.quadraticCurveTo(boss.radius * 0.2, -boss.radius * 0.54, -boss.radius * 0.8, -boss.radius * 0.38);
-      ctx.lineTo(-boss.radius * 0.45, 0);
-      ctx.lineTo(-boss.radius * 0.8, boss.radius * 0.38);
-      ctx.quadraticCurveTo(boss.radius * 0.2, boss.radius * 0.54, boss.radius * 0.85, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = "#62f7ff";
-      ctx.globalAlpha = 0.66;
-      ctx.beginPath();
-      ctx.ellipse(boss.radius * 0.08, 0, boss.radius * 0.3, boss.radius * 0.14, 0, 0, TAU);
-      ctx.fill();
+      if (boss.type === "leviathan") {
+        const radius = boss.radius;
+        const pulse = 0.88 + Math.sin(time * 2.4) * 0.08;
+        ctx.fillStyle = "rgba(8, 9, 27, 0.99)";
+        ctx.strokeStyle = "#9a7dff";
+        ctx.lineWidth = 3.4;
+        ctx.shadowColor = "#7257ff";
+        ctx.shadowBlur = this.reduced ? 0 : 24;
+        ctx.beginPath();
+        ctx.moveTo(radius * 0.94, 0);
+        ctx.quadraticCurveTo(radius * 0.48, -radius * 0.5, radius * 0.02, -radius * 0.34);
+        ctx.quadraticCurveTo(-radius * 0.5, -radius * 0.72, -radius * 0.92, -radius * 0.18);
+        ctx.lineTo(-radius * 0.6, 0);
+        ctx.lineTo(-radius * 0.92, radius * 0.18);
+        ctx.quadraticCurveTo(-radius * 0.5, radius * 0.72, radius * 0.02, radius * 0.34);
+        ctx.quadraticCurveTo(radius * 0.48, radius * 0.5, radius * 0.94, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "rgba(120, 236, 255, 0.72)";
+        ctx.lineWidth = 1.5;
+        for (let index = 0; index < 4; index += 1) {
+          const x = radius * (0.34 - index * 0.25);
+          const rib = radius * (0.22 + index * 0.035) * pulse;
+          ctx.beginPath();
+          ctx.moveTo(x, -rib);
+          ctx.quadraticCurveTo(x - radius * 0.13, 0, x, rib);
+          ctx.stroke();
+        }
+        ctx.fillStyle = "#d9ffff";
+        ctx.globalAlpha = 0.92;
+        ctx.beginPath();
+        ctx.ellipse(radius * 0.48, -radius * 0.13, radius * 0.075, radius * 0.045, -0.16, 0, TAU);
+        ctx.ellipse(radius * 0.48, radius * 0.13, radius * 0.075, radius * 0.045, 0.16, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = "#ff57d8";
+        ctx.beginPath();
+        ctx.arc(radius * 0.51, -radius * 0.13, radius * 0.022, 0, TAU);
+        ctx.arc(radius * 0.51, radius * 0.13, radius * 0.022, 0, TAU);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = "rgba(10,14,30,0.98)";
+        ctx.strokeStyle = "#ff5ecf";
+        ctx.lineWidth = 3;
+        ctx.shadowColor = "#ff4fd8";
+        ctx.shadowBlur = this.reduced ? 0 : 20;
+        ctx.beginPath();
+        ctx.moveTo(boss.radius * 0.85, 0);
+        ctx.quadraticCurveTo(boss.radius * 0.2, -boss.radius * 0.54, -boss.radius * 0.8, -boss.radius * 0.38);
+        ctx.lineTo(-boss.radius * 0.45, 0);
+        ctx.lineTo(-boss.radius * 0.8, boss.radius * 0.38);
+        ctx.quadraticCurveTo(boss.radius * 0.2, boss.radius * 0.54, boss.radius * 0.85, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#62f7ff";
+        ctx.globalAlpha = 0.66;
+        ctx.beginPath();
+        ctx.ellipse(boss.radius * 0.08, 0, boss.radius * 0.3, boss.radius * 0.14, 0, 0, TAU);
+        ctx.fill();
+      }
       ctx.restore();
 
       if (boss.nodes) {
+        const leviathan = boss.type === "leviathan";
         for (const node of boss.nodes) {
           if (node.health <= 0) continue;
           const nodePoint = this.worldToScreen(node.x, node.y, camera);
           ctx.save();
           ctx.translate(nodePoint.x, nodePoint.y);
           ctx.rotate(time * 1.4 + node.index);
-          ctx.strokeStyle = "#6fffff";
-          ctx.fillStyle = "rgba(12,35,48,0.9)";
+          ctx.strokeStyle = leviathan ? "#b79dff" : "#6fffff";
+          ctx.fillStyle = leviathan ? "rgba(28, 18, 54, 0.92)" : "rgba(12,35,48,0.9)";
           ctx.lineWidth = 2;
           ctx.beginPath();
           for (let i = 0; i < 6; i += 1) {
@@ -1266,12 +1464,24 @@
     drawMine(mine, camera, time) {
       const point = this.worldToScreen(mine.x, mine.y, camera);
       if (!this.onScreen(point.x, point.y, mine.radius + 12)) return;
+      const playerOwned = mine.owner === "player" || mine.sourceModule === "mineLayer";
       const ctx = this.ctx;
       ctx.save();
       ctx.translate(point.x, point.y);
-      ctx.rotate(time * 0.8 + mine.phase);
-      ctx.strokeStyle = mine.armed ? "#ff5d7a" : "#ffd166";
-      ctx.fillStyle = "rgba(35,15,24,0.92)";
+      if (playerOwned && !this.reduced && mine.triggerRadius > mine.radius) {
+        ctx.globalAlpha = 0.11 + Math.sin(time * 3 + (mine.phase || 0)) * 0.025;
+        ctx.strokeStyle = "#66f7ff";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 9]);
+        ctx.beginPath();
+        ctx.arc(0, 0, mine.triggerRadius, 0, TAU);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.globalAlpha = 1;
+      ctx.rotate((playerOwned ? -1 : 1) * time * 0.8 + (mine.phase || 0));
+      ctx.strokeStyle = playerOwned ? "#8ffcff" : mine.armed ? "#ff5d7a" : "#ffd166";
+      ctx.fillStyle = playerOwned ? "rgba(7, 31, 40, 0.94)" : "rgba(35,15,24,0.92)";
       ctx.lineWidth = 2;
       ctx.beginPath();
       for (let i = 0; i < 8; i += 1) {
@@ -1282,6 +1492,16 @@
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.closePath(); ctx.fill(); ctx.stroke();
+      if (playerOwned) {
+        ctx.rotate(-Math.PI * 0.25);
+        ctx.fillStyle = "#d8ffff";
+        ctx.beginPath();
+        ctx.moveTo(4, 0);
+        ctx.lineTo(-2, -2.8);
+        ctx.lineTo(-2, 2.8);
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -1290,9 +1510,12 @@
       if (!this.onScreen(point.x, point.y, 24)) return;
       const colors = {
         shield: "#55f5ff",
+        aegis: "#7bdcff",
         rapid: "#ffd166",
+        amplifier: "#ffb45f",
         repair: "#7dff9b",
         module: "#ff4fd8",
+        moduleUpgrade: "#ff4fd8",
         triShot: "#ff9a62",
         piercing: "#ff6b7d",
         pulseCharge: "#bca4ff",
@@ -1302,9 +1525,12 @@
       };
       const labels = {
         shield: "S",
+        aegis: "G",
         rapid: "R",
+        amplifier: "A",
         repair: "+",
         module: "M",
+        moduleUpgrade: "M",
         triShot: "3",
         piercing: "P",
         pulseCharge: "E",
@@ -1329,10 +1555,36 @@
       }
       ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.rotate(-time * 1.25 - pickup.phase);
-      ctx.fillStyle = color;
-      ctx.font = "900 11px ui-sans-serif, system-ui, sans-serif";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(labels[pickup.kind] || "?", 0, 0.5);
+      if (pickup.kind === "amplifier") {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(2, -8);
+        ctx.lineTo(-4, 0);
+        ctx.lineTo(0, 0);
+        ctx.lineTo(-2, 8);
+        ctx.lineTo(6, -2);
+        ctx.lineTo(2, -2);
+        ctx.closePath();
+        ctx.fill();
+      } else if (pickup.kind === "aegis") {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.8;
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(0, -7.5);
+        ctx.lineTo(6, -4.5);
+        ctx.lineTo(5, 2.5);
+        ctx.quadraticCurveTo(3.8, 6, 0, 8);
+        ctx.quadraticCurveTo(-3.8, 6, -5, 2.5);
+        ctx.lineTo(-6, -4.5);
+        ctx.closePath();
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = color;
+        ctx.font = "900 11px ui-sans-serif, system-ui, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(labels[pickup.kind] || "?", 0, 0.5);
+      }
       ctx.restore();
     }
 
@@ -1362,7 +1614,38 @@
         const point = this.worldToScreen(effect.x, effect.y, camera);
         const alpha = clamp(effect.life / effect.maxLife, 0, 1);
         ctx.globalAlpha = alpha;
-        if (effect.type === "ring") {
+        if (effect.type === "chain") {
+          const target = this.worldToScreen(effect.targetX, effect.targetY, camera);
+          const dx = target.x - point.x;
+          const dy = target.y - point.y;
+          const length = Math.max(1, Math.hypot(dx, dy));
+          const normalX = -dy / length;
+          const normalY = dx / length;
+          ctx.strokeStyle = effect.color || "#a7ffff";
+          ctx.lineWidth = this.reduced ? 1.7 : 2.2;
+          ctx.shadowColor = effect.color || "#66f7ff";
+          ctx.shadowBlur = this.reduced ? 0 : 9;
+          ctx.beginPath();
+          ctx.moveTo(point.x, point.y);
+          if (!this.reduced) {
+            for (let index = 1; index < 5; index += 1) {
+              const progress = index / 5;
+              const offset = (index % 2 ? 1 : -1) * (3 + mod(effect.x + effect.y + index * 11, 5));
+              ctx.lineTo(
+                point.x + dx * progress + normalX * offset,
+                point.y + dy * progress + normalY * offset
+              );
+            }
+          }
+          ctx.lineTo(target.x, target.y);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = alpha * 0.75;
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(target.x, target.y, 2.4, 0, TAU);
+          ctx.fill();
+        } else if (effect.type === "ring") {
           ctx.strokeStyle = effect.color;
           ctx.lineWidth = 1 + alpha * 4;
           ctx.beginPath(); ctx.arc(point.x, point.y, effect.radius, 0, TAU); ctx.stroke();

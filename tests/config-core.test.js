@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.15 configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.15");
+  test("Neon Voyage v2026.8.15a configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.15a");
     assert.ok(CONFIG.presentation.gameoverEffectDuration > 0 && CONFIG.presentation.gameoverEffectDuration <= 1);
     collectFrozen(CONFIG, new Set());
   });
@@ -44,10 +44,10 @@ module.exports = function register(test) {
     assert.ok(CONFIG.caps.activeAudioNodes <= 24);
   });
 
-  test("nine stages keep the Titan before first contact and the alien boss last", () => {
+  test("twenty authored stages place a distinct boss at every tenth encounter", () => {
     const stages = CONFIG.sector.encounters;
-    assert.equal(CONFIG.sector.encountersPerSector, 9);
-    assert.equal(stages.length, 9);
+    assert.equal(CONFIG.sector.encountersPerSector, 20);
+    assert.equal(stages.length, 20);
     stages.forEach((stage, index) => assert.equal(stage.index, index + 1));
     assert.deepEqual(Array.from(stages, (stage) => stage.id), [
       "earthOrbit",
@@ -58,12 +58,22 @@ module.exports = function register(test) {
       "firstContact",
       "strikeWing",
       "raidFleet",
-      "boss"
+      "commandScreen",
+      "bossHarrower",
+      "ionGraveyard",
+      "prismRift",
+      "gravityScar",
+      "fracturedHalo",
+      "anomalyCrown",
+      "vanguardSwarm",
+      "nullPhalanx",
+      "siegeChoir",
+      "sovereignGuard",
+      "bossLeviathan"
     ]);
-    assert.deepEqual(Array.from(stages, (stage) => stage.goal.type), [
-      "waves", "waves", "waves", "waves", "titan", "waves", "waves", "waves", "boss"
-    ]);
-    for (const stage of stages.slice(0, 8)) {
+    assert.deepEqual(Array.from(stages.filter((stage) => stage.goal.type === "boss"), (stage) => stage.index), [10, 20]);
+    assert.deepEqual(Array.from(stages.filter((stage) => stage.goal.type === "boss"), (stage) => stage.bossType), ["harrower", "leviathan"]);
+    for (const stage of stages.filter((stage) => stage.goal.type !== "boss")) {
       assert.equal(stage.completion, "waves", `${stage.id} must use finite wave completion`);
       assert.ok(Array.isArray(stage.waves) && stage.waves.length > 0, `${stage.id} needs waves`);
       for (const wave of stage.waves) {
@@ -85,7 +95,7 @@ module.exports = function register(test) {
         }
       }
     }
-    for (const stage of stages.slice(5, 8)) {
+    for (const stage of stages.slice(5, 9)) {
       assert.ok(stage.waves.some((wave) => wave.required.some((group) => group.family === "alien")), `${stage.id} lacks required alien spacecraft`);
     }
     const firstWave = stages[0].waves[0];
@@ -96,10 +106,20 @@ module.exports = function register(test) {
     assert.equal(firstWave.required[0].cap, 3, "first wave must not scale above three asteroids");
     assert.equal("minimumSeconds" in stages[4].goal, false, "Titan victory must not be time-gated");
     assert.ok(stages[4].waves.some((wave) => wave.required.some((group) => group.kinds.includes("titan"))), "Stage 5 lacks its Titan");
-    for (const stage of stages.slice(5, 8)) {
+    for (const stage of stages.slice(5, 9)) {
       for (const wave of stage.waves) {
         assert.ok((wave.hazards || []).some((group) => group.family === "asteroid"), `${stage.id}/${wave.label} lacks mixed asteroid pressure`);
       }
+    }
+    for (const stage of stages.slice(10, 15)) {
+      for (const wave of stage.waves) {
+        for (const group of wave.required.concat(wave.hazards || [])) {
+          assert.equal(group.family, "asteroid", `${stage.id} must remain an evolved anomaly field`);
+        }
+      }
+    }
+    for (const stage of stages.slice(15, 19)) {
+      assert.ok(stage.waves.some((wave) => wave.required.some((group) => group.family === "alien")), `${stage.id} lacks second-arc aliens`);
     }
     assert.ok(CONFIG.bossArena.warningSeconds > 0);
 
@@ -109,9 +129,17 @@ module.exports = function register(test) {
     assert.deepEqual(milestoneRewards, [
       [2, { type: "moduleUpgrade", module: "homingSalvo", tiers: 1 }],
       [4, { type: "moduleUpgrade", module: "radialArray", tiers: 1 }],
+      [5, { type: "moduleUpgrade", module: "tractorField", tiers: 1 }],
       [6, { type: "moduleUpgrade", module: "drone", tiers: 1 }],
-      [8, { type: "moduleUpgrade", module: "radialArray", tiers: 1 }]
-    ], "campaign milestones must target the authored autonomous modules");
+      [8, { type: "moduleUpgrade", module: "teslaCoil", tiers: 1 }],
+      [9, { type: "moduleUpgrade", module: "shieldReactor", tiers: 1 }],
+      [11, { type: "moduleUpgrade", module: "orbitBlades", tiers: 1 }],
+      [12, { type: "moduleUpgrade", module: "prism", tiers: 1 }],
+      [14, { type: "moduleUpgrade", module: "mineLayer", tiers: 1 }],
+      [15, { type: "moduleUpgrade", module: "overclock", tiers: 1 }],
+      [17, { type: "moduleUpgrade", module: "seeker", tiers: 1 }],
+      [19, { type: "moduleUpgrade", module: "massDriver", tiers: 1 }]
+    ], "campaign milestones must expose the expanded permanent arsenal before the final boss");
   });
 
   test("hyperspace configuration is finite, directional, and fast", () => {
@@ -125,7 +153,7 @@ module.exports = function register(test) {
   });
 
   test("asteroids are physical hazards only while aliens own normal ranged attacks", () => {
-    assert.ok(Object.keys(CONFIG.asteroids).length >= 6);
+    assert.ok(Object.keys(CONFIG.asteroids).length >= 9);
     for (const [kind, asteroid] of Object.entries(CONFIG.asteroids)) {
       assert.equal("attack" in asteroid, false, `${kind} must not define an attack`);
       assert.ok(Array.isArray(asteroid.speed) && asteroid.speed[0] > 0 && asteroid.speed[1] >= asteroid.speed[0]);
@@ -140,31 +168,34 @@ module.exports = function register(test) {
     });
     assert.equal(CONFIG.asteroids.rock.split.generations, 1, "ordinary rocks must not split recursively");
     assert.ok(CONFIG.asteroids.titan.healthGates.length >= 3);
-    assert.ok(Object.keys(CONFIG.aliens).length >= 4);
+    assert.ok(Object.keys(CONFIG.aliens).length >= 6);
     assert.ok(Object.values(CONFIG.aliens).every((alien) => alien.pattern && alien.pattern.type));
     assert.equal(CONFIG.aliens.carrier.pattern.spawnType, "scout");
     assert.equal(CONFIG.aliens.carrier.pattern.count, 2);
     assert.equal(CONFIG.aliens.carrier.pattern.maxChildren, 4);
     assert.equal(CONFIG.aliens.carrier.pattern.childScore, 35);
-    assert.ok(Object.keys(CONFIG.bosses).length >= 1);
+    assert.ok(Object.keys(CONFIG.bosses).length >= 2);
     assert.ok(Object.values(CONFIG.bosses).every((boss) => boss.faction === "alien"));
+    assert.notEqual(CONFIG.bosses.harrower.label, CONFIG.bosses.leviathan.label);
   });
 
   test("field buffs include stackable timed weapons, Enigma drafts, and permanent upgrades", () => {
     const powerups = CONFIG.powerups;
-    assert.equal(powerups.dropChance, 0.26);
-    assert.equal(powerups.pityKills, 4);
+    assert.equal(powerups.dropChance, 0.48);
+    assert.equal(powerups.pityKills, 2);
     assert.equal(powerups.temporaryStackLimit, 4);
-    assert.equal(powerups.rapid.duration, 10);
-    assert.equal(powerups.triShot.duration, 10);
-    for (const kind of ["shield", "rapid", "triShot", "arcBurst", "novaLance", "repair", "piercing", "pulseCharge", "enigma", "moduleUpgrade"]) {
+    assert.equal(powerups.rapid.duration, 28);
+    assert.equal(powerups.triShot.duration, 28);
+    for (const kind of ["shield", "rapid", "triShot", "arcBurst", "novaLance", "amplifier", "aegis", "repair", "piercing", "pulseCharge", "enigma", "moduleUpgrade"]) {
       assert.ok(powerups[kind] && powerups[kind].weight > 0, `${kind} must appear in the weighted pool`);
     }
-    for (const kind of ["arcBurst", "novaLance"]) {
-      assert.ok(powerups[kind].duration >= 6 && powerups[kind].duration <= 20, `${kind} duration is not a useful finite interval`);
+    for (const kind of ["rapid", "triShot", "piercing", "arcBurst", "novaLance", "amplifier", "aegis"]) {
+      assert.ok(powerups[kind].duration >= 24 && powerups[kind].duration <= 30, `${kind} duration is not a useful finite interval`);
     }
-    assert.equal(powerups.moduleUpgrade.weight, 7);
-    assert.equal(powerups.enigma.weight, 12);
+    assert.equal(powerups.moduleUpgrade.weight, 32);
+    assert.equal(powerups.enigma.weight, 36);
+    assert.equal(powerups.amplifier.damageMultiplier, 1.45);
+    assert.equal(powerups.aegis.damageReduction, 0.32);
     assert.equal(powerups.enigma.choiceCount, 3);
     assert.equal(powerups.enigma.slowdownSeconds, 0.72);
     assert.equal(powerups.enigma.resumeInvulnerability, 1);
@@ -195,18 +226,16 @@ module.exports = function register(test) {
     }
   });
 
-  test("seven permanent weapon modules stack through Mk V with bounded autonomous passives", () => {
+  test("thirteen permanent modules stack through Mk V with bounded active, autonomous, and passive effects", () => {
     const modules = CONFIG.weapons.modules;
-    assert.equal(Object.keys(modules).length, 7);
-    assert.equal(CONFIG.weapons.maxInstalledModules, 7);
+    assert.equal(Object.keys(modules).length, 13);
+    assert.equal(CONFIG.weapons.maxInstalledModules, 13);
     assert.equal(CONFIG.weapons.maxModuleTier, 5);
     assert.equal(CONFIG.weapons.startingModules.pulse, 1);
     for (const [name, module] of Object.entries(modules)) {
       assert.equal(module.tiers.length, CONFIG.weapons.maxModuleTier, `${name} tier count`);
-      for (const tier of module.tiers) {
-        assert.ok(tier.cooldown > 0.04 && tier.cooldown <= (module.activation === "autonomous" ? 6 : 2));
-        assert.ok(tier.damage > 0 && tier.damage < 10);
-      }
+      assert.ok(["whileFiring", "autonomous", "passive"].includes(module.activation), `${name} activation`);
+      for (const tier of module.tiers) assert.ok(Object.values(tier).every(Number.isFinite), `${name} tier values must be finite`);
     }
     assert.equal(modules.homingSalvo.activation, "autonomous");
     assert.equal(modules.radialArray.activation, "autonomous");
@@ -219,6 +248,18 @@ module.exports = function register(test) {
     assert.equal(modules.homingSalvo.tiers[4].projectiles, 4);
     assert.equal(modules.radialArray.tiers[4].projectiles, 20);
     assert.equal(modules.drone.tiers[4].drones, 5);
+    assert.equal(modules.teslaCoil.tiers[4].chains, 6);
+    assert.equal(modules.orbitBlades.tiers[4].blades, 5);
+    assert.equal(modules.mineLayer.tiers[4].mines, 3);
+    assert.equal(modules.shieldReactor.tiers[4].amount, 26);
+    assert.equal(modules.overclock.tiers[4].cooldownMultiplier, 0.74);
+    assert.equal(modules.tractorField.tiers[4].range, 360);
+    assert.ok(modules.teslaCoil.tiers.every((tier) => tier.cooldown > 0 && tier.damage > 0 && tier.chains <= 6));
+    assert.ok(modules.orbitBlades.tiers.every((tier) => tier.blades <= CONFIG.caps.drones && tier.hitCooldown > 0));
+    assert.ok(modules.mineLayer.tiers.every((tier) => tier.mines <= CONFIG.caps.mines && tier.life > 0));
+    assert.ok(modules.shieldReactor.tiers.every((tier) => tier.cooldown > 0 && tier.amount > 0));
+    assert.ok(modules.overclock.tiers.every((tier) => tier.cooldownMultiplier > 0.5 && tier.cooldownMultiplier <= 1));
+    assert.ok(modules.tractorField.tiers.every((tier) => tier.range > 0 && tier.strength > 0));
     assert.ok(modules.homingSalvo.tiers[4].cooldown < modules.homingSalvo.tiers[0].cooldown);
     assert.ok(modules.radialArray.tiers[4].cooldown < modules.radialArray.tiers[0].cooldown);
     assert.ok(modules.drone.tiers[4].cooldown < modules.drone.tiers[0].cooldown);

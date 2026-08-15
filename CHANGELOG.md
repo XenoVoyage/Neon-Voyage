@@ -2,6 +2,19 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.15a] — 2026-08-15
+
+### Added
+
+- Expanded the voyage to 20 authored stages: an accessible asteroid opening, a mixed alien arc, the Harrower at Stage 10, evolved anomaly fields, advanced alien fleets, and the Leviathan at Stage 20.
+- Added six bounded Mk V systems: Tesla Coil, Orbit Blades, Mine Layer, Shield Reactor, Overclock Matrix, and Tractor Field. Added long-lasting Damage Amplifier and Aegis Field pickups.
+
+### Changed
+
+- Made field rewards much more frequent with a 48% drop chance, a two-kill pity interval, and substantially higher Enigma and module-upgrade weights. Timed enhancements now last 24–30 seconds per pickup and still stack to four durations.
+- Replaced empty module placeholders with an equipped-only permanent-module strip and separate countdown chips for active timed effects.
+- Upgraded campaign progress to strict schema 3 with 20 bounded checkpoints while preserving valid nine-stage schema-2 and legacy schema-1 saves.
+
 ## [v2026.8.15] — 2026-08-15
 
 ### Added

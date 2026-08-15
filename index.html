@@ -116,12 +116,21 @@
         </div>
       </div>
 
-      <div class="module-console">
-        <div class="module-heading">
-          <span>Modules</span>
-          <span id="powerup-status" class="powerup-status" aria-live="polite"></span>
-        </div>
-        <div id="module-strip" class="module-strip" role="list" aria-label="Installed weapon modules"></div>
+      <div class="loadout-readouts">
+        <section id="module-console" class="module-console" aria-labelledby="module-heading-label">
+          <div class="module-heading">
+            <span id="module-heading-label">Permanent</span>
+            <span id="powerup-status" class="powerup-status" aria-live="polite"></span>
+          </div>
+          <div id="module-strip" class="module-strip" role="list" aria-label="Installed permanent modules"></div>
+        </section>
+
+        <section id="active-effects" class="active-effects is-hidden" aria-labelledby="active-effects-label">
+          <div class="module-heading">
+            <span id="active-effects-label">Timed</span>
+          </div>
+          <div id="active-effects-list" class="active-effects-list" role="list" aria-label="Active timed enhancements"></div>
+        </section>
       </div>
 
       <div class="meter-block pulse-block">
@@ -152,7 +161,7 @@
 
         <div class="menu-meta">
           <span>Local record <strong id="menu-high-score">000000</strong></span>
-          <span>Version v2026.8.15</span>
+          <span>Version v2026.8.15a</span>
         </div>
       </div>
     </section>
