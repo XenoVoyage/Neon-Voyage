@@ -351,7 +351,9 @@ function register(test) {
     pickupRun.game.applyPickup(pickupRun.game.spawnPickup(0, 0, "module"));
     let written = storedProgress(pickupStorage);
     assert.equal(written.checkpoints["1"].timers.rapidTimer, pickupRun.CONFIG.powerups.rapid.duration);
-    assert.equal(written.checkpoints["1"].modules.homingSalvo, 1);
+    assert.equal(written.checkpoints["1"].modules.pulse, 1);
+    assert.equal(written.checkpoints["1"].modules.homingSalvo, 0,
+      "a forced early module cache bypassed the Stage 3 module gate");
     pickupRun.game.state.ship.rapidTimer = 3.25;
     pickupRun.game.state.ship.modules.prism = 2;
     pickupRun.browser.elements.get("pause-button").click();
@@ -368,6 +370,7 @@ function register(test) {
     deathRun.browser.elements.get("start-button").click();
     deathRun.game.state.ship.modules.seeker = 2;
     deathRun.game.state.ship.novaLanceTimer = 6;
+    deathRun.game.state.score = 1e12;
     deathRun.game.state.ship.hull = 1;
     deathRun.game.state.ship.invulnerable = 0;
     deathRun.game.state.asteroids.length = 0;
@@ -382,10 +385,15 @@ function register(test) {
     assert.equal(written.checkpoints["1"].modules.seeker, 2);
     assert.equal(written.checkpoints["1"].timers.novaLanceTimer, deathRun.game.state.ship.novaLanceTimer);
     assert.ok(written.checkpoints["1"].timers.novaLanceTimer > 5.9);
+    assert.equal(JSON.parse(deathStorage.get(SAVE_KEY)).highScore, 999999999,
+      "extreme run score escaped the validated local-record ceiling");
     deathRun.browser.elements.get("restart-button").click();
     assert.equal(deathRun.browser.elements.get("new-game-modal").open, false);
     assert.equal(deathRun.game.state.ship.modules.seeker, 2);
     assert.equal(deathRun.game.state.ship.novaLanceTimer, written.checkpoints["1"].timers.novaLanceTimer);
+    const acceptedClamp = boot({ storage: deathStorage });
+    assert.equal(acceptedClamp.browser.elements.get("menu-high-score").textContent, "999999999",
+      "clamped high score invalidated on reload");
   });
 
   test("New Game requires explicit confirmation, cancels safely, and erases only campaign data", () => {
@@ -439,56 +447,50 @@ function register(test) {
   });
 
   test("a genuine clear snapshots the rewarded loadout for the next stage and restores it after reboot", () => {
-    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(2, 2))]]);
+    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(3, 3))]]);
     const first = boot({ storage });
     first.browser.elements.get("continue-button").click();
-    stageCards(first.browser)[1].click();
+    stageCards(first.browser)[2].click();
     first.game.applyPickup(first.game.spawnPickup(0, 0, "rapid"));
     first.game.applyPickup(first.game.spawnPickup(0, 0, "novaLance"));
     finishCurrentStage(first.game, first.CONFIG.world.fixedStep);
 
     assert.equal(first.game.state.mode, "transition");
-    assert.equal(first.game.progress.maxUnlockedStage, 3);
-    assert.equal(first.game.progress.lastPlayedStage, 3);
+    assert.equal(first.game.progress.maxUnlockedStage, 4);
+    assert.equal(first.game.progress.lastPlayedStage, 4);
     assert.equal(first.browser.elements.get("continue-button").disabled, false);
     const written = storedProgress(storage);
     assert.equal(written.schema, 3);
-    assert.equal(written.checkpoints["3"].modules.homingSalvo, 1, "guaranteed reward was omitted from next checkpoint");
-    assert.equal(written.checkpoints["3"].timers.rapidTimer, first.game.state.ship.rapidTimer);
-    assert.equal(written.checkpoints["3"].timers.novaLanceTimer, first.game.state.ship.novaLanceTimer);
-    assert.ok(written.checkpoints["3"].timers.rapidTimer > 9.9);
+    assert.equal(written.checkpoints["4"].modules.homingSalvo, 1, "guaranteed reward was omitted from next checkpoint");
+    assert.equal(written.checkpoints["4"].timers.rapidTimer, first.game.state.ship.rapidTimer);
+    assert.equal(written.checkpoints["4"].timers.novaLanceTimer, first.game.state.ship.novaLanceTimer);
+    assert.ok(written.checkpoints["4"].timers.rapidTimer > 9.9);
     first.game.state.ship.modules.homingSalvo = 3;
-    assert.equal(written.checkpoints["3"].modules.homingSalvo, 1, "stored checkpoint aliased live ship modules");
+    assert.equal(written.checkpoints["4"].modules.homingSalvo, 1, "stored checkpoint aliased live ship modules");
     first.browser.elements.get("pause-button").click();
     first.browser.elements.get("pause-menu-button").click();
-    assert.equal(storedProgress(storage).lastPlayedStage, 3, "leaving during transit replaced the newly unlocked checkpoint");
-    assert.equal(storedProgress(storage).checkpoints["3"].modules.homingSalvo, 1);
+    assert.equal(storedProgress(storage).lastPlayedStage, 4, "leaving during transit replaced the newly unlocked checkpoint");
+    assert.equal(storedProgress(storage).checkpoints["4"].modules.homingSalvo, 1);
 
     const reloaded = boot({ storage });
-    assert.equal(reloaded.game.progress.maxUnlockedStage, 3);
-    assert.equal(reloaded.game.progress.lastPlayedStage, 3);
+    assert.equal(reloaded.game.progress.maxUnlockedStage, 4);
+    assert.equal(reloaded.game.progress.lastPlayedStage, 4);
     assert.equal(reloaded.browser.elements.get("continue-button").disabled, false);
     reloaded.browser.elements.get("continue-button").click();
-    stageCards(reloaded.browser)[2].click();
+    stageCards(reloaded.browser)[3].click();
     assert.equal(reloaded.game.state.ship.modules.homingSalvo, 1);
-    assert.equal(reloaded.game.state.ship.rapidTimer, written.checkpoints["3"].timers.rapidTimer);
-    assert.equal(reloaded.game.state.ship.novaLanceTimer, written.checkpoints["3"].timers.novaLanceTimer);
+    assert.equal(reloaded.game.state.ship.rapidTimer, written.checkpoints["4"].timers.rapidTimer);
+    assert.equal(reloaded.game.state.ship.novaLanceTimer, written.checkpoints["4"].timers.novaLanceTimer);
   });
 
-  test("authored campaign milestones stack every expanded module into the next checkpoint", () => {
+  test("authored three-stage milestones stack their targeted module into the next checkpoint", () => {
     const milestones = [
-      { stage: 2, moduleId: "homingSalvo", before: 0 },
-      { stage: 4, moduleId: "radialArray", before: 1 },
-      { stage: 5, moduleId: "tractorField", before: 0 },
+      { stage: 3, moduleId: "homingSalvo", before: 0 },
       { stage: 6, moduleId: "drone", before: 2 },
-      { stage: 8, moduleId: "teslaCoil", before: 0 },
       { stage: 9, moduleId: "shieldReactor", before: 1 },
-      { stage: 11, moduleId: "orbitBlades", before: 0 },
       { stage: 12, moduleId: "prism", before: 2 },
-      { stage: 14, moduleId: "mineLayer", before: 0 },
       { stage: 15, moduleId: "overclock", before: 1 },
-      { stage: 17, moduleId: "seeker", before: 2 },
-      { stage: 19, moduleId: "massDriver", before: 3 }
+      { stage: 18, moduleId: "seeker", before: 2 }
     ];
     for (const item of milestones) {
       const stageLoadout = checkpoint({ modules: { [item.moduleId]: item.before } });
@@ -521,25 +523,25 @@ function register(test) {
   });
 
   test("a capped targeted milestone falls back to one eligible permanent module", () => {
-    const stage8 = checkpoint({ modules: { teslaCoil: 5 } });
-    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(8, 8, { 8: stage8 }))]]);
+    const stage9 = checkpoint({ modules: { shieldReactor: 5 } });
+    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(9, 9, { 9: stage9 }))]]);
     const { browser, game, CONFIG } = boot({ storage });
     browser.elements.get("continue-button").click();
-    stageCards(browser)[7].click();
+    stageCards(browser)[8].click();
     const before = JSON.parse(JSON.stringify(game.state.ship.modules));
     finishCurrentStage(game, CONFIG.world.fixedStep);
     const changed = MODULE_IDS.filter((id) => game.state.ship.modules[id] !== before[id]);
     assert.deepEqual(changed, ["homingSalvo"]);
-    assert.equal(game.state.ship.modules.teslaCoil, 5);
+    assert.equal(game.state.ship.modules.shieldReactor, 5);
     assert.equal(game.state.ship.modules.homingSalvo, 1);
-    assert.equal(storedProgress(storage).checkpoints["9"].modules.homingSalvo, 1);
+    assert.equal(storedProgress(storage).checkpoints["10"].modules.homingSalvo, 1);
   });
 
   test("stacked temporary caps and an Enigma choice persist without saving live draft state", () => {
-    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(2, 2))]]);
+    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(16, 16))]]);
     const first = boot({ storage });
     first.browser.elements.get("continue-button").click();
-    stageCards(first.browser)[1].click();
+    stageCards(first.browser)[15].click();
     for (let index = 0; index < first.CONFIG.powerups.temporaryStackLimit + 2; index += 1) {
       first.game.applyPickup(first.game.spawnPickup(0, 0, "rapid"));
     }
@@ -560,14 +562,14 @@ function register(test) {
     assert.ok(stackedRemaining <= first.CONFIG.powerups.rapid.duration * first.CONFIG.powerups.temporaryStackLimit);
     assert.equal(first.game.chooseEnhancement(permanentIndex), true);
     const written = storedProgress(storage);
-    assert.equal(written.checkpoints["2"].timers.rapidTimer, stackedRemaining);
-    assert.equal(written.checkpoints["2"].modules[selectedModule], first.game.state.ship.modules[selectedModule]);
+    assert.equal(written.checkpoints["16"].timers.rapidTimer, stackedRemaining);
+    assert.equal(written.checkpoints["16"].modules[selectedModule], first.game.state.ship.modules[selectedModule]);
     assert.equal("upgradeDraft" in written, false);
     assert.equal("enigma" in written, false);
 
     const reloaded = boot({ storage });
     reloaded.browser.elements.get("continue-button").click();
-    stageCards(reloaded.browser)[1].click();
+    stageCards(reloaded.browser)[15].click();
     assert.equal(reloaded.game.state.ship.rapidTimer, stackedRemaining);
     assert.equal(reloaded.game.state.ship.modules[selectedModule], first.game.state.ship.modules[selectedModule]);
     assert.equal(reloaded.game.snapshot().enigma.phase, "idle");

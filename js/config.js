@@ -23,6 +23,20 @@
     return Math.sqrt(safeSector(sector) - 1);
   }
 
+  function safeStage(stage) {
+    const value = Number(stage);
+    return Number.isFinite(value) ? Math.max(1, Math.min(20, Math.floor(value))) : 1;
+  }
+
+  function stageProgress(stage) {
+    const amount = (safeStage(stage) - 1) / 19;
+    return amount * amount * (3 - amount * 2);
+  }
+
+  function stageMultiplier(stage, maximum) {
+    return 1 + stageProgress(stage) * (maximum - 1);
+  }
+
   const difficultyCaps = {
     healthMultiplier: 3,
     bossHealthMultiplier: 3.6,
@@ -32,32 +46,50 @@
     scoreMultiplier: 2.4
   };
 
-  function healthScale(sector) {
-    return Math.min(difficultyCaps.healthMultiplier, 1 + sectorRoot(sector) * 0.32);
+  function healthScale(sector, stage) {
+    return Math.min(
+      difficultyCaps.healthMultiplier,
+      (1 + sectorRoot(sector) * 0.32) * stageMultiplier(stage, 1.38)
+    );
   }
 
-  function bossHealthScale(sector) {
-    return Math.min(difficultyCaps.bossHealthMultiplier, 1 + sectorRoot(sector) * 0.44);
+  function bossHealthScale(sector, stage) {
+    return Math.min(
+      difficultyCaps.bossHealthMultiplier,
+      (1 + sectorRoot(sector) * 0.44) * stageMultiplier(stage, 1.5)
+    );
   }
 
-  function damageScale(sector) {
-    return Math.min(difficultyCaps.damageMultiplier, 1 + Math.log2(safeSector(sector)) * 0.16);
+  function damageScale(sector, stage) {
+    return Math.min(
+      difficultyCaps.damageMultiplier,
+      (1 + Math.log2(safeSector(sector)) * 0.16) * stageMultiplier(stage, 1.22)
+    );
   }
 
-  function speedScale(sector) {
-    return Math.min(difficultyCaps.speedMultiplier, 1 + sectorRoot(sector) * 0.055);
+  function speedScale(sector, stage) {
+    return Math.min(
+      difficultyCaps.speedMultiplier,
+      (1 + sectorRoot(sector) * 0.055) * stageMultiplier(stage, 1.12)
+    );
   }
 
-  function fireRateScale(sector) {
-    return Math.min(difficultyCaps.fireRateMultiplier, 1 + sectorRoot(sector) * 0.08);
+  function fireRateScale(sector, stage) {
+    return Math.min(
+      difficultyCaps.fireRateMultiplier,
+      (1 + sectorRoot(sector) * 0.08) * stageMultiplier(stage, 1.18)
+    );
   }
 
-  function scoreScale(sector) {
-    return Math.min(difficultyCaps.scoreMultiplier, 1 + sectorRoot(sector) * 0.18);
+  function scoreScale(sector, stage) {
+    return Math.min(
+      difficultyCaps.scoreMultiplier,
+      (1 + sectorRoot(sector) * 0.18) * stageMultiplier(stage, 1.18)
+    );
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.15a",
+    version: "v2026.8.15b",
 
     world: {
       fixedStep: 1 / 60,
@@ -185,7 +217,6 @@
           label: "CROSS THE INNER BELT",
           completion: "waves",
           goal: { type: "waves" },
-          guaranteedReward: { type: "moduleUpgrade", module: "homingSalvo", tiers: 1 },
           waves: [
             {
               label: "CRYSTAL VEIN",
@@ -216,11 +247,12 @@
           label: "ENTER THE DEEP DRIFT",
           completion: "waves",
           goal: { type: "waves" },
+          guaranteedReward: { type: "moduleUpgrade", module: "homingSalvo", tiers: 1 },
           waves: [
             {
               label: "RESONANT SHARDS",
               required: [
-                { family: "asteroid", kinds: ["crystal", "volatile"], count: 4, sectorStep: 0.5, cap: 6 }
+                { family: "asteroid", kinds: ["crystal", "volatile"], count: 5, sectorStep: 0.5, cap: 7 }
               ]
             },
             {
@@ -243,19 +275,20 @@
           label: "CROSS THE SHATTERED FRONTIER",
           completion: "waves",
           goal: { type: "waves" },
-          guaranteedReward: { type: "moduleUpgrade", module: "radialArray", tiers: 1 },
           waves: [
             {
-              label: "COLOSSAL WAKE",
+              label: "AURIC WAKE",
               required: [
-                { family: "asteroid", kinds: ["colossal"], count: 1, sectorStep: 0.25, cap: 2 },
-                { family: "asteroid", kinds: ["armored"], count: 2, sectorStep: 0.4, cap: 3 }
+                { family: "asteroid", kinds: ["auricColossus"], count: 1, sectorStep: 0.2, cap: 2 },
+                { family: "asteroid", kinds: ["armored"], count: 3, sectorStep: 0.4, cap: 5 },
+                { family: "asteroid", kinds: ["rock", "crystal"], count: 4, sectorStep: 0.55, cap: 7 }
               ]
             },
             {
               label: "RESONANT STORM",
               required: [
-                { family: "asteroid", kinds: ["crystal", "volatile"], count: 5, sectorStep: 0.6, cap: 8 },
+                { family: "asteroid", kinds: ["crystal", "volatile"], count: 6, sectorStep: 0.65, cap: 9 },
+                { family: "asteroid", kinds: ["armored"], count: 3, sectorStep: 0.4, cap: 5 },
                 { family: "asteroid", kinds: ["colossal"], count: 1, cap: 1 }
               ]
             }
@@ -267,15 +300,15 @@
           label: "SHATTER THE TITAN GATE",
           completion: "waves",
           goal: { type: "titan" },
-          guaranteedReward: { type: "moduleUpgrade", module: "tractorField", tiers: 1 },
           waves: [
             {
               label: "TITAN",
               required: [
-                { family: "asteroid", kinds: ["titan"], count: 1, cap: 1 }
+                { family: "asteroid", kinds: ["titan"], count: 1, cap: 1 },
+                { family: "asteroid", kinds: ["auricColossus"], count: 1, cap: 1 }
               ],
               hazards: [
-                { family: "asteroid", kinds: ["rock", "volatile", "armored"], count: 3, sectorStep: 0.45, cap: 5 }
+                { family: "asteroid", kinds: ["rock", "crystal", "volatile", "armored"], count: 5, sectorStep: 0.5, cap: 8 }
               ]
             }
           ]
@@ -291,7 +324,7 @@
             {
               label: "UNKNOWN SIGNALS",
               required: [
-                { family: "alien", kinds: ["scout"], count: 3, sectorStep: 0.5, cap: 5 }
+                { family: "alien", kinds: ["scout"], count: 4, sectorStep: 0.5, cap: 6 }
               ],
               hazards: [
                 { family: "asteroid", kinds: ["crystal"], count: 2, cap: 2 }
@@ -318,7 +351,7 @@
             {
               label: "INTERCEPTORS",
               required: [
-                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.4, cap: 3 },
+                { family: "alien", kinds: ["scout"], count: 3, sectorStep: 0.4, cap: 5 },
                 { family: "alien", kinds: ["striker"], count: 2, sectorStep: 0.5, cap: 4 }
               ],
               hazards: [
@@ -326,10 +359,10 @@
               ]
             },
             {
-              label: "BOMBER LINE",
+              label: "STRIKE LINE",
               required: [
-                { family: "alien", kinds: ["striker"], count: 3, sectorStep: 0.5, cap: 5 },
-                { family: "alien", kinds: ["bomber"], count: 2, sectorStep: 0.35, cap: 3 }
+                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.4, cap: 4 },
+                { family: "alien", kinds: ["striker"], count: 3, sectorStep: 0.5, cap: 5 }
               ],
               hazards: [
                 { family: "asteroid", kinds: ["crystal", "armored"], count: 2, cap: 2 }
@@ -343,12 +376,12 @@
           label: "BREAK THE RAID FLEET",
           completion: "waves",
           goal: { type: "waves" },
-          guaranteedReward: { type: "moduleUpgrade", module: "teslaCoil", tiers: 1 },
           waves: [
             {
-              label: "ESCORT WALL",
+              label: "BOMBER ESCORT",
               required: [
-                { family: "alien", kinds: ["scout", "striker"], count: 4, sectorStep: 0.6, cap: 6 },
+                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.35, cap: 4 },
+                { family: "alien", kinds: ["striker"], count: 2, sectorStep: 0.4, cap: 4 },
                 { family: "alien", kinds: ["bomber"], count: 2, sectorStep: 0.35, cap: 3 }
               ],
               hazards: [
@@ -358,11 +391,12 @@
             {
               label: "RAID COMMAND",
               required: [
-                { family: "alien", kinds: ["striker", "bomber"], count: 4, sectorStep: 0.65, cap: 7 },
+                { family: "alien", kinds: ["striker"], count: 2, sectorStep: 0.4, cap: 4 },
+                { family: "alien", kinds: ["bomber"], count: 2, sectorStep: 0.35, cap: 4 },
                 { family: "alien", kinds: ["carrier"], count: 1, sectorStep: 0.25, cap: 2 }
               ],
               hazards: [
-                { family: "asteroid", kinds: ["armored"], count: 2, cap: 2 }
+                { family: "asteroid", kinds: ["armored"], count: 3, sectorStep: 0.35, cap: 5 }
               ]
             }
           ]
@@ -378,21 +412,25 @@
             {
               label: "COMMAND PICKETS",
               required: [
-                { family: "alien", kinds: ["scout", "striker"], count: 5, sectorStep: 0.6, cap: 8 },
-                { family: "alien", kinds: ["bomber"], count: 2, sectorStep: 0.35, cap: 3 }
+                { family: "alien", kinds: ["scout"], count: 3, sectorStep: 0.45, cap: 5 },
+                { family: "alien", kinds: ["striker"], count: 2, sectorStep: 0.4, cap: 4 },
+                { family: "alien", kinds: ["bomber"], count: 2, sectorStep: 0.35, cap: 4 },
+                { family: "alien", kinds: ["carrier"], count: 1, sectorStep: 0.2, cap: 2 }
               ],
               hazards: [
-                { family: "asteroid", kinds: ["volatile", "armored"], count: 2, cap: 3 }
+                { family: "asteroid", kinds: ["volatile"], count: 1, cap: 2 }
               ]
             },
             {
               label: "CAPITAL SCREEN",
               required: [
-                { family: "alien", kinds: ["striker", "bomber"], count: 5, sectorStep: 0.65, cap: 8 },
+                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.35, cap: 4 },
+                { family: "alien", kinds: ["striker"], count: 2, sectorStep: 0.4, cap: 4 },
+                { family: "alien", kinds: ["bomber"], count: 2, sectorStep: 0.35, cap: 4 },
                 { family: "alien", kinds: ["carrier"], count: 2, sectorStep: 0.2, cap: 3 }
               ],
               hazards: [
-                { family: "asteroid", kinds: ["colossal", "armored"], count: 2, cap: 2 }
+                { family: "asteroid", kinds: ["colossal", "armored"], count: 1, cap: 2 }
               ]
             }
           ]
@@ -411,13 +449,12 @@
           label: "ENTER THE ION GRAVEYARD",
           completion: "waves",
           goal: { type: "waves" },
-          guaranteedReward: { type: "moduleUpgrade", module: "orbitBlades", tiers: 1 },
           waves: [
             {
               label: "CHARGED SHARDS",
               required: [
                 { family: "asteroid", kinds: ["razor"], count: 4, sectorStep: 0.55, cap: 6 },
-                { family: "asteroid", kinds: ["crystal"], count: 2, sectorStep: 0.35, cap: 3 }
+                { family: "asteroid", kinds: ["crystal"], count: 3, sectorStep: 0.35, cap: 5 }
               ]
             },
             {
@@ -427,7 +464,7 @@
                 { family: "asteroid", kinds: ["prismatic"], count: 2, sectorStep: 0.3, cap: 3 }
               ],
               hazards: [
-                { family: "asteroid", kinds: ["volatile"], count: 2, sectorStep: 0.25, cap: 3 }
+                { family: "asteroid", kinds: ["volatile"], count: 1, sectorStep: 0.25, cap: 3 }
               ]
             }
           ]
@@ -443,8 +480,9 @@
             {
               label: "PRISM BLOOM",
               required: [
+                { family: "asteroid", kinds: ["auricColossus"], count: 1, sectorStep: 0.15, cap: 2 },
                 { family: "asteroid", kinds: ["prismatic"], count: 2, sectorStep: 0.3, cap: 3 },
-                { family: "asteroid", kinds: ["crystal"], count: 4, sectorStep: 0.5, cap: 6 }
+                { family: "asteroid", kinds: ["crystal"], count: 5, sectorStep: 0.5, cap: 7 }
               ]
             },
             {
@@ -469,16 +507,17 @@
             {
               label: "HEAVY DRIFT",
               required: [
+                { family: "asteroid", kinds: ["auricColossus"], count: 1, sectorStep: 0.15, cap: 2 },
                 { family: "asteroid", kinds: ["monolith"], count: 1, sectorStep: 0.2, cap: 2 },
-                { family: "asteroid", kinds: ["armored"], count: 3, sectorStep: 0.45, cap: 5 }
+                { family: "asteroid", kinds: ["armored"], count: 7, sectorStep: 0.6, cap: 10 }
               ]
             },
             {
               label: "COLLAPSE RING",
               required: [
                 { family: "asteroid", kinds: ["monolith"], count: 1, sectorStep: 0.2, cap: 2 },
-                { family: "asteroid", kinds: ["prismatic"], count: 2, sectorStep: 0.35, cap: 4 },
-                { family: "asteroid", kinds: ["razor"], count: 3, sectorStep: 0.45, cap: 5 }
+                { family: "asteroid", kinds: ["prismatic"], count: 3, sectorStep: 0.35, cap: 5 },
+                { family: "asteroid", kinds: ["razor"], count: 5, sectorStep: 0.55, cap: 8 }
               ]
             }
           ]
@@ -489,13 +528,13 @@
           label: "BREACH THE FRACTURED HALO",
           completion: "waves",
           goal: { type: "waves" },
-          guaranteedReward: { type: "moduleUpgrade", module: "mineLayer", tiers: 1 },
           waves: [
             {
               label: "SPLINTER HALO",
               required: [
+                { family: "asteroid", kinds: ["auricColossus"], count: 1, sectorStep: 0.15, cap: 2 },
                 { family: "asteroid", kinds: ["razor"], count: 6, sectorStep: 0.7, cap: 9 },
-                { family: "asteroid", kinds: ["prismatic"], count: 2, sectorStep: 0.35, cap: 4 }
+                { family: "asteroid", kinds: ["prismatic"], count: 3, sectorStep: 0.35, cap: 5 }
               ]
             },
             {
@@ -505,7 +544,8 @@
                 { family: "asteroid", kinds: ["colossal"], count: 1, sectorStep: 0.2, cap: 2 }
               ],
               hazards: [
-                { family: "asteroid", kinds: ["volatile"], count: 3, sectorStep: 0.45, cap: 5 }
+                { family: "asteroid", kinds: ["volatile"], count: 5, sectorStep: 0.5, cap: 8 },
+                { family: "asteroid", kinds: ["razor"], count: 2, sectorStep: 0.3, cap: 4 }
               ]
             }
           ]
@@ -519,9 +559,10 @@
           guaranteedReward: { type: "moduleUpgrade", module: "overclock", tiers: 1 },
           waves: [
             {
-              label: "CROWN FRAGMENTS",
+              label: "CORONA VEIL",
               required: [
-                { family: "asteroid", kinds: ["monolith"], count: 1, sectorStep: 0.2, cap: 2 },
+                { family: "asteroid", kinds: ["corona"], count: 1, sectorStep: 0.15, cap: 2 },
+                { family: "asteroid", kinds: ["auricColossus"], count: 1, sectorStep: 0.15, cap: 2 },
                 { family: "asteroid", kinds: ["prismatic"], count: 3, sectorStep: 0.45, cap: 5 },
                 { family: "asteroid", kinds: ["razor"], count: 4, sectorStep: 0.55, cap: 7 }
               ]
@@ -530,8 +571,10 @@
               label: "ANOMALY HEART",
               required: [
                 { family: "asteroid", kinds: ["titan"], count: 1, cap: 1 },
+                { family: "asteroid", kinds: ["auricColossus"], count: 1, sectorStep: 0.15, cap: 2 },
                 { family: "asteroid", kinds: ["monolith"], count: 1, sectorStep: 0.2, cap: 2 },
-                { family: "asteroid", kinds: ["prismatic"], count: 2, sectorStep: 0.35, cap: 4 }
+                { family: "asteroid", kinds: ["corona"], count: 1, sectorStep: 0.15, cap: 2 },
+                { family: "asteroid", kinds: ["prismatic"], count: 3, sectorStep: 0.35, cap: 5 }
               ]
             }
           ]
@@ -547,7 +590,7 @@
               label: "LANCER PROBE",
               required: [
                 { family: "alien", kinds: ["lancer"], count: 3, sectorStep: 0.5, cap: 5 },
-                { family: "alien", kinds: ["gunship"], count: 1, sectorStep: 0.25, cap: 2 }
+                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.35, cap: 4 }
               ],
               hazards: [
                 { family: "asteroid", kinds: ["razor"], count: 2, sectorStep: 0.3, cap: 3 }
@@ -556,8 +599,8 @@
             {
               label: "VANGUARD LINE",
               required: [
-                { family: "alien", kinds: ["gunship"], count: 2, sectorStep: 0.3, cap: 3 },
-                { family: "alien", kinds: ["scout", "lancer"], count: 5, sectorStep: 0.6, cap: 8 }
+                { family: "alien", kinds: ["lancer"], count: 4, sectorStep: 0.55, cap: 7 },
+                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.35, cap: 4 }
               ],
               hazards: [
                 { family: "asteroid", kinds: ["prismatic"], count: 1, sectorStep: 0.2, cap: 2 }
@@ -571,13 +614,12 @@
           label: "BREAK THE NULL PHALANX",
           completion: "waves",
           goal: { type: "waves" },
-          guaranteedReward: { type: "moduleUpgrade", module: "seeker", tiers: 1 },
           waves: [
             {
               label: "NULL SPEARS",
               required: [
                 { family: "alien", kinds: ["lancer"], count: 4, sectorStep: 0.55, cap: 7 },
-                { family: "alien", kinds: ["striker"], count: 2, sectorStep: 0.35, cap: 4 }
+                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.35, cap: 4 }
               ],
               hazards: [
                 { family: "asteroid", kinds: ["razor"], count: 2, sectorStep: 0.3, cap: 3 }
@@ -587,7 +629,8 @@
               label: "GUNSHIP SCREEN",
               required: [
                 { family: "alien", kinds: ["gunship"], count: 2, sectorStep: 0.35, cap: 4 },
-                { family: "alien", kinds: ["bomber", "lancer"], count: 4, sectorStep: 0.55, cap: 7 }
+                { family: "alien", kinds: ["lancer"], count: 3, sectorStep: 0.5, cap: 5 },
+                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.35, cap: 4 }
               ],
               hazards: [
                 { family: "asteroid", kinds: ["monolith"], count: 1, sectorStep: 0.2, cap: 2 }
@@ -601,12 +644,14 @@
           label: "SILENCE THE SIEGE CHOIR",
           completion: "waves",
           goal: { type: "waves" },
+          guaranteedReward: { type: "moduleUpgrade", module: "seeker", tiers: 1 },
           waves: [
             {
-              label: "SIEGE RHYTHM",
+              label: "LASER CANTICLE",
               required: [
-                { family: "alien", kinds: ["gunship"], count: 3, sectorStep: 0.4, cap: 5 },
-                { family: "alien", kinds: ["bomber"], count: 3, sectorStep: 0.4, cap: 5 }
+                { family: "alien", kinds: ["gunship"], count: 2, sectorStep: 0.35, cap: 4 },
+                { family: "alien", kinds: ["lancer"], count: 3, sectorStep: 0.5, cap: 5 },
+                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.35, cap: 4 }
               ],
               hazards: [
                 { family: "asteroid", kinds: ["prismatic"], count: 2, sectorStep: 0.3, cap: 3 }
@@ -615,11 +660,13 @@
             {
               label: "CARRIER CHORUS",
               required: [
-                { family: "alien", kinds: ["carrier"], count: 2, sectorStep: 0.2, cap: 3 },
-                { family: "alien", kinds: ["gunship", "lancer"], count: 5, sectorStep: 0.6, cap: 8 }
+                { family: "alien", kinds: ["broodCarrier"], count: 1, sectorStep: 0.15, cap: 2 },
+                { family: "alien", kinds: ["gunship"], count: 2, sectorStep: 0.35, cap: 4 },
+                { family: "alien", kinds: ["lancer"], count: 3, sectorStep: 0.5, cap: 5 }
               ],
               hazards: [
-                { family: "asteroid", kinds: ["razor"], count: 3, sectorStep: 0.4, cap: 5 }
+                { family: "asteroid", kinds: ["corona"], count: 1, sectorStep: 0.15, cap: 2 },
+                { family: "asteroid", kinds: ["razor"], count: 2, sectorStep: 0.35, cap: 4 }
               ]
             }
           ]
@@ -630,28 +677,31 @@
           label: "BREAK THE SOVEREIGN GUARD",
           completion: "waves",
           goal: { type: "waves" },
-          guaranteedReward: { type: "moduleUpgrade", module: "massDriver", tiers: 1 },
           waves: [
             {
               label: "SOVEREIGN GUARD",
               required: [
-                { family: "alien", kinds: ["gunship"], count: 3, sectorStep: 0.4, cap: 5 },
-                { family: "alien", kinds: ["lancer"], count: 4, sectorStep: 0.5, cap: 7 },
-                { family: "alien", kinds: ["carrier"], count: 1, sectorStep: 0.2, cap: 2 }
+                { family: "alien", kinds: ["broodCarrier"], count: 1, sectorStep: 0.15, cap: 2 },
+                { family: "alien", kinds: ["gunship"], count: 2, sectorStep: 0.35, cap: 4 },
+                { family: "alien", kinds: ["lancer"], count: 3, sectorStep: 0.5, cap: 5 },
+                { family: "alien", kinds: ["scout"], count: 2, sectorStep: 0.35, cap: 4 }
               ],
               hazards: [
-                { family: "asteroid", kinds: ["monolith"], count: 1, sectorStep: 0.2, cap: 2 }
+                { family: "asteroid", kinds: ["monolith"], count: 1, sectorStep: 0.2, cap: 2 },
+                { family: "asteroid", kinds: ["corona"], count: 1, sectorStep: 0.15, cap: 2 }
               ]
             },
             {
               label: "THRONE SCREEN",
               required: [
-                { family: "alien", kinds: ["carrier"], count: 2, sectorStep: 0.2, cap: 3 },
-                { family: "alien", kinds: ["gunship", "bomber"], count: 6, sectorStep: 0.65, cap: 10 },
-                { family: "alien", kinds: ["striker", "lancer"], count: 4, sectorStep: 0.5, cap: 7 }
+                { family: "alien", kinds: ["broodCarrier"], count: 2, sectorStep: 0.2, cap: 3 },
+                { family: "alien", kinds: ["gunship"], count: 3, sectorStep: 0.4, cap: 5 },
+                { family: "alien", kinds: ["lancer"], count: 2, sectorStep: 0.4, cap: 4 },
+                { family: "alien", kinds: ["scout"], count: 1, sectorStep: 0.3, cap: 3 }
               ],
               hazards: [
-                { family: "asteroid", kinds: ["prismatic", "razor"], count: 3, sectorStep: 0.35, cap: 5 }
+                { family: "asteroid", kinds: ["corona"], count: 1, sectorStep: 0.15, cap: 2 },
+                { family: "asteroid", kinds: ["prismatic"], count: 1, sectorStep: 0.25, cap: 3 }
               ]
             }
           ]
@@ -672,6 +722,10 @@
       radiusViewportRatio: 0.44,
       minRadius: 170,
       maxRadius: 520,
+      fieldHalfWidthViewportRatio: 0.43,
+      fieldHalfHeightViewportRatio: 0.39,
+      fieldMinHalfWidth: 140,
+      fieldMinHalfHeight: 112,
       viewportMargin: 12,
       boundaryPadding: 18,
       entryInvulnerability: 1.2,
@@ -773,6 +827,52 @@
         threatCost: 9,
         healthGates: [0.66, 0.33],
         gateFragments: { count: 2, into: "razor" }
+      },
+      auricColossus: {
+        label: "Auric Colossus",
+        radius: 112,
+        compactRadius: 94,
+        baseHealth: 34,
+        speed: [24, 40],
+        contactDamage: 52,
+        score: 850,
+        threatCost: 11,
+        split: { count: 3, into: "auricShard", radiusScale: 0.46, generations: 2 }
+      },
+      auricShard: {
+        label: "Auric Shard",
+        radius: 48,
+        baseHealth: 8,
+        speed: [58, 88],
+        contactDamage: 34,
+        score: 210,
+        threatCost: 3,
+        split: { count: 2, into: "auricShard", radiusScale: 0.52, generations: 1 },
+        variants: {
+          explosive: { blastRadius: 120, damage: 24 },
+          magnetic: { range: 300, acceleration: 240, totalAccelerationCap: 360, speedCap: 360 }
+        }
+      },
+      corona: {
+        label: "Corona",
+        radius: 72,
+        baseHealth: 22,
+        speed: [36, 58],
+        contactDamage: 44,
+        score: 520,
+        threatCost: 7,
+        hazard: {
+          type: "rotatingBeam",
+          warning: 1.1,
+          active: 1.5,
+          cooldown: 5.2,
+          range: 520,
+          width: 18,
+          angularSpeed: 0.75,
+          damage: 18,
+          tick: 0.32
+        },
+        deathExplosion: { radius: 160, damage: 22 }
       }
     },
 
@@ -819,7 +919,16 @@
         score: 520,
         threatCost: 6,
         contactDamage: 38,
-        pattern: { type: "droneLaunch", spawnType: "scout", count: 2, maxChildren: 4, childScore: 35 }
+        pattern: {
+          type: "droneLaunch",
+          spawnType: "scout",
+          count: 2,
+          maxChildren: 4,
+          childScore: 35,
+          preferredRange: 300,
+          retreatRange: 210,
+          launchRange: 460
+        }
       },
       lancer: {
         label: "Lancer",
@@ -837,11 +946,44 @@
         radius: 34,
         baseHealth: 16,
         baseSpeed: 92,
-        baseCooldown: 1.4,
+        baseCooldown: 4.8,
         score: 390,
         threatCost: 4,
         contactDamage: 35,
-        pattern: { type: "chaseStrafe", projectiles: 5, projectileSpeed: 310, damage: 15, spread: 0.48 }
+        pattern: {
+          type: "sweepingLaser",
+          warning: 0.85,
+          active: 1.05,
+          cooldown: 4.8,
+          range: 560,
+          width: 18,
+          damage: 18,
+          tick: 0.3,
+          sweepAngularSpeed: 0.42,
+          preferredRange: 390,
+          retreatRange: 250
+        }
+      },
+      broodCarrier: {
+        label: "Brood Carrier",
+        radius: 50,
+        baseHealth: 40,
+        baseSpeed: 50,
+        baseCooldown: 4.4,
+        score: 820,
+        threatCost: 9,
+        contactDamage: 44,
+        rangeArmor: { distance: 300, multiplier: 0.3 },
+        pattern: {
+          type: "droneLaunch",
+          spawnType: "lancer",
+          count: 2,
+          maxChildren: 6,
+          childScore: 45,
+          preferredRange: 270,
+          retreatRange: 180,
+          launchRange: 460
+        }
       }
     },
 
@@ -849,8 +991,9 @@
       harrower: {
         label: "HARROWER",
         faction: "alien",
+        arenaShape: "circle",
         radius: 82,
-        baseHealth: 420,
+        baseHealth: 500,
         score: 5600,
         contactDamage: 44,
         phases: [
@@ -886,10 +1029,20 @@
       leviathan: {
         label: "LEVIATHAN",
         faction: "alien",
+        arenaShape: "field",
         radius: 96,
-        baseHealth: 760,
+        baseHealth: 980,
         score: 10000,
         contactDamage: 50,
+        reflectionShield: {
+          warning: 1,
+          active: 1.6,
+          cooldown: 4.8,
+          damage: 12,
+          speed: 420,
+          life: 2.4,
+          damageMultiplier: 0.25
+        },
         phases: [
           {
             id: "stalker",
@@ -929,6 +1082,7 @@
       modules: {
         pulse: {
           label: "Pulse Repeater",
+          unlockStage: 1,
           activation: "whileFiring",
           projectileType: "bolt",
           color: "#8ffcff",
@@ -942,32 +1096,35 @@
         },
         homingSalvo: {
           label: "Homing Salvo",
+          unlockStage: 3,
           activation: "autonomous",
           projectileType: "missile",
           color: "#ffd166",
           tiers: [
-            { cooldown: 4.6, damage: 2.3, projectiles: 1, speed: 400, life: 2.5, turnRate: 3.4, blastRadius: 34, range: 820 },
-            { cooldown: 4, damage: 2.1, projectiles: 2, speed: 420, life: 2.6, turnRate: 3.7, blastRadius: 38, range: 860 },
-            { cooldown: 3.4, damage: 2.4, projectiles: 2, speed: 445, life: 2.7, turnRate: 4, blastRadius: 42, range: 900 },
-            { cooldown: 3, damage: 2.25, projectiles: 3, speed: 470, life: 2.8, turnRate: 4.3, blastRadius: 46, range: 940 },
-            { cooldown: 2.6, damage: 2.2, projectiles: 4, speed: 495, life: 2.9, turnRate: 4.6, blastRadius: 50, range: 980 }
+            { cooldown: 4.6, damage: 2.3, projectiles: 1, speed: 400, life: 2.5, turnRate: 3.4, blastRadius: 34, range: 480 },
+            { cooldown: 4, damage: 2.1, projectiles: 2, speed: 420, life: 2.6, turnRate: 3.7, blastRadius: 38, range: 530 },
+            { cooldown: 3.4, damage: 2.4, projectiles: 2, speed: 445, life: 2.7, turnRate: 4, blastRadius: 42, range: 580 },
+            { cooldown: 3, damage: 2.25, projectiles: 3, speed: 470, life: 2.8, turnRate: 4.3, blastRadius: 46, range: 630 },
+            { cooldown: 2.6, damage: 2.2, projectiles: 4, speed: 495, life: 2.9, turnRate: 4.6, blastRadius: 50, range: 680 }
           ]
         },
         radialArray: {
           label: "Radial Array",
+          unlockStage: 5,
           activation: "autonomous",
           projectileType: "radial",
           color: "#9d8cff",
           tiers: [
-            { cooldown: 5.8, damage: 0.9, projectiles: 8, speed: 470, life: 1.05, range: 560 },
-            { cooldown: 5.1, damage: 0.95, projectiles: 10, speed: 500, life: 1.1, range: 600 },
-            { cooldown: 4.5, damage: 1, projectiles: 12, speed: 530, life: 1.15, range: 640 },
-            { cooldown: 4, damage: 0.96, projectiles: 16, speed: 560, life: 1.2, range: 680 },
-            { cooldown: 3.5, damage: 0.92, projectiles: 20, speed: 590, life: 1.25, range: 720 }
+            { cooldown: 5.8, damage: 0.9, projectiles: 8, speed: 470, life: 1.05, range: 360 },
+            { cooldown: 5.1, damage: 0.95, projectiles: 10, speed: 500, life: 1.1, range: 400 },
+            { cooldown: 4.5, damage: 1, projectiles: 12, speed: 530, life: 1.15, range: 440 },
+            { cooldown: 4, damage: 0.96, projectiles: 16, speed: 560, life: 1.2, range: 480 },
+            { cooldown: 3.5, damage: 0.92, projectiles: 20, speed: 590, life: 1.25, range: 520 }
           ]
         },
         prism: {
           label: "Prism Fan",
+          unlockStage: 12,
           activation: "whileFiring",
           projectileType: "prism",
           color: "#ff68dc",
@@ -981,19 +1138,21 @@
         },
         seeker: {
           label: "Seeker Rack",
+          unlockStage: 17,
           activation: "whileFiring",
           projectileType: "missile",
           color: "#ffd166",
           tiers: [
-            { cooldown: 1.2, damage: 3, projectiles: 1, speed: 390, life: 2.4, turnRate: 3.1, blastRadius: 42 },
-            { cooldown: 1, damage: 2.9, projectiles: 2, speed: 410, life: 2.5, turnRate: 3.4, blastRadius: 46 },
-            { cooldown: 0.85, damage: 2.8, projectiles: 3, speed: 430, life: 2.6, turnRate: 3.7, blastRadius: 50 },
-            { cooldown: 0.72, damage: 2.7, projectiles: 4, speed: 450, life: 2.7, turnRate: 4, blastRadius: 54 },
-            { cooldown: 0.62, damage: 2.6, projectiles: 5, speed: 470, life: 2.8, turnRate: 4.3, blastRadius: 58 }
+            { cooldown: 1.2, damage: 3, projectiles: 1, speed: 390, life: 2.4, turnRate: 3.1, blastRadius: 42, targetRange: 500 },
+            { cooldown: 1, damage: 2.9, projectiles: 2, speed: 410, life: 2.5, turnRate: 3.4, blastRadius: 46, targetRange: 545 },
+            { cooldown: 0.85, damage: 2.8, projectiles: 3, speed: 430, life: 2.6, turnRate: 3.7, blastRadius: 50, targetRange: 590 },
+            { cooldown: 0.72, damage: 2.7, projectiles: 4, speed: 450, life: 2.7, turnRate: 4, blastRadius: 54, targetRange: 635 },
+            { cooldown: 0.62, damage: 2.6, projectiles: 5, speed: 470, life: 2.8, turnRate: 4.3, blastRadius: 58, targetRange: 680 }
           ]
         },
         massDriver: {
           label: "Mass Driver",
+          unlockStage: 19,
           activation: "whileFiring",
           projectileType: "slug",
           color: "#ffffff",
@@ -1007,31 +1166,34 @@
         },
         drone: {
           label: "Guardian Drone",
+          unlockStage: 6,
           activation: "autonomous",
           projectileType: "droneBolt",
           color: "#78ff9f",
           tiers: [
-            { drones: 1, cooldown: 0.7, damage: 0.75, speed: 650, life: 0.85, orbitRadius: 46 },
-            { drones: 2, cooldown: 0.62, damage: 0.78, speed: 680, life: 0.9, orbitRadius: 54 },
-            { drones: 3, cooldown: 0.54, damage: 0.82, speed: 710, life: 0.95, orbitRadius: 62 },
-            { drones: 4, cooldown: 0.49, damage: 0.86, speed: 740, life: 1, orbitRadius: 70 },
-            { drones: 5, cooldown: 0.44, damage: 0.9, speed: 770, life: 1.05, orbitRadius: 78 }
+            { drones: 1, cooldown: 0.7, damage: 0.75, speed: 650, life: 0.85, orbitRadius: 46, range: 360 },
+            { drones: 2, cooldown: 0.62, damage: 0.78, speed: 680, life: 0.9, orbitRadius: 54, range: 410 },
+            { drones: 3, cooldown: 0.54, damage: 0.82, speed: 710, life: 0.95, orbitRadius: 62, range: 460 },
+            { drones: 4, cooldown: 0.49, damage: 0.86, speed: 740, life: 1, orbitRadius: 70, range: 510 },
+            { drones: 5, cooldown: 0.44, damage: 0.9, speed: 770, life: 1.05, orbitRadius: 78, range: 560 }
           ]
         },
         teslaCoil: {
           label: "Tesla Coil",
+          unlockStage: 9,
           activation: "autonomous",
           color: "#84f7ff",
           tiers: [
-            { cooldown: 4.8, damage: 1.4, chains: 2, range: 520, chainRange: 145 },
-            { cooldown: 4.25, damage: 1.55, chains: 3, range: 560, chainRange: 160 },
-            { cooldown: 3.7, damage: 1.75, chains: 4, range: 610, chainRange: 180 },
-            { cooldown: 3.2, damage: 1.95, chains: 5, range: 665, chainRange: 205 },
-            { cooldown: 2.75, damage: 2.2, chains: 6, range: 720, chainRange: 230 }
+            { cooldown: 4.8, damage: 1.4, chains: 2, range: 360, chainRange: 130 },
+            { cooldown: 4.25, damage: 1.55, chains: 3, range: 420, chainRange: 150 },
+            { cooldown: 3.7, damage: 1.75, chains: 4, range: 480, chainRange: 170 },
+            { cooldown: 3.2, damage: 1.95, chains: 5, range: 540, chainRange: 195 },
+            { cooldown: 2.75, damage: 2.2, chains: 6, range: 600, chainRange: 220 }
           ]
         },
         orbitBlades: {
           label: "Orbit Blades",
+          unlockStage: 11,
           activation: "autonomous",
           color: "#ff7be5",
           tiers: [
@@ -1044,30 +1206,33 @@
         },
         mineLayer: {
           label: "Mine Layer",
+          unlockStage: 14,
           activation: "autonomous",
           color: "#ffb454",
           tiers: [
-            { cooldown: 7, damage: 4, mines: 1, life: 8, triggerRadius: 54, blastRadius: 76 },
-            { cooldown: 6.2, damage: 4.4, mines: 1, life: 9, triggerRadius: 58, blastRadius: 84 },
-            { cooldown: 5.4, damage: 4.8, mines: 2, life: 10, triggerRadius: 62, blastRadius: 92 },
-            { cooldown: 4.7, damage: 5.2, mines: 2, life: 11, triggerRadius: 67, blastRadius: 102 },
-            { cooldown: 4.1, damage: 5.8, mines: 3, life: 12, triggerRadius: 72, blastRadius: 112 }
+            { cooldown: 7, damage: 4, mines: 1, life: 8, triggerRadius: 54, blastRadius: 76, range: 280 },
+            { cooldown: 6.2, damage: 4.4, mines: 1, life: 9, triggerRadius: 58, blastRadius: 84, range: 320 },
+            { cooldown: 5.4, damage: 4.8, mines: 2, life: 10, triggerRadius: 62, blastRadius: 92, range: 360 },
+            { cooldown: 4.7, damage: 5.2, mines: 2, life: 11, triggerRadius: 67, blastRadius: 102, range: 400 },
+            { cooldown: 4.1, damage: 5.8, mines: 3, life: 12, triggerRadius: 72, blastRadius: 112, range: 440 }
           ]
         },
         shieldReactor: {
           label: "Shield Reactor",
+          unlockStage: 9,
           activation: "autonomous",
           color: "#74e9ff",
           tiers: [
-            { cooldown: 14, amount: 12 },
-            { cooldown: 12.5, amount: 15 },
-            { cooldown: 11, amount: 18 },
-            { cooldown: 9.5, amount: 22 },
-            { cooldown: 8, amount: 26 }
+            { cooldown: 14, amount: 6 },
+            { cooldown: 12.5, amount: 8 },
+            { cooldown: 11, amount: 10 },
+            { cooldown: 9.5, amount: 12 },
+            { cooldown: 8, amount: 14 }
           ]
         },
         overclock: {
           label: "Overclock Matrix",
+          unlockStage: 15,
           activation: "passive",
           color: "#ff7a6e",
           tiers: [
@@ -1080,14 +1245,15 @@
         },
         tractorField: {
           label: "Tractor Field",
+          unlockStage: 7,
           activation: "passive",
           color: "#9b8cff",
           tiers: [
-            { range: 150, strength: 180 },
-            { range: 190, strength: 230 },
-            { range: 235, strength: 290 },
-            { range: 290, strength: 370 },
-            { range: 360, strength: 470 }
+            { range: 140, strength: 180 },
+            { range: 180, strength: 230 },
+            { range: 220, strength: 290 },
+            { range: 270, strength: 370 },
+            { range: 320, strength: 470 }
           ]
         }
       }
@@ -1105,28 +1271,39 @@
     },
 
     powerups: {
-      dropChance: 0.48,
-      pityKills: 2,
       temporaryStackLimit: 4,
+      dropBands: [
+        { minStage: 1, dropChance: 0.26, pityKills: 4, moduleWeight: 0, permanentDraftChance: 0, rewardTierCap: 1 },
+        { minStage: 3, dropChance: 0.28, pityKills: 4, moduleWeight: 0, permanentDraftChance: 0.3, rewardTierCap: 2 },
+        { minStage: 4, dropChance: 0.29, pityKills: 4, moduleWeight: 8, permanentDraftChance: 0.35, rewardTierCap: 2 },
+        { minStage: 6, dropChance: 0.31, pityKills: 4, moduleWeight: 12, permanentDraftChance: 0.5, rewardTierCap: 3 },
+        { minStage: 11, dropChance: 0.34, pityKills: 3, moduleWeight: 18, permanentDraftChance: 0.7, rewardTierCap: 4 },
+        { minStage: 16, dropChance: 0.38, pityKills: 3, moduleWeight: 24, permanentDraftChance: 0.9, rewardTierCap: 5 }
+      ],
       shield: {
-        label: "SHIELD +60",
+        label: "SHIELD +30",
+        unlockStage: 1,
         weight: 25,
-        amount: 60,
-        cap: 100
+        amount: 30,
+        cap: 60,
+        drainMultiplier: 1.25
       },
       rapid: {
         label: "OVERDRIVE",
+        unlockStage: 1,
         weight: 26,
         duration: 28,
         cooldownMultiplier: 0.68
       },
       repair: {
         label: "HULL REPAIR",
+        unlockStage: 1,
         weight: 22,
         amount: 34
       },
       triShot: {
         label: "TRI-SHOT",
+        unlockStage: 2,
         weight: 26,
         duration: 28,
         extraProjectiles: 2,
@@ -1134,12 +1311,14 @@
       },
       piercing: {
         label: "PHASE ROUNDS",
+        unlockStage: 4,
         weight: 20,
         duration: 26,
         bonusPierce: 2
       },
       arcBurst: {
         label: "ARC BURST",
+        unlockStage: 6,
         weight: 20,
         duration: 24,
         cooldown: 0.34,
@@ -1152,6 +1331,7 @@
       },
       novaLance: {
         label: "NOVA LANCE",
+        unlockStage: 11,
         weight: 18,
         duration: 30,
         cooldown: 0.78,
@@ -1163,30 +1343,35 @@
       },
       amplifier: {
         label: "DAMAGE AMPLIFIER",
+        unlockStage: 9,
         weight: 24,
         duration: 28,
         damageMultiplier: 1.45
       },
       aegis: {
         label: "AEGIS FIELD",
+        unlockStage: 8,
         weight: 24,
         duration: 28,
         damageReduction: 0.32
       },
       pulseCharge: {
         label: "PULSE CHARGE",
+        unlockStage: 1,
         weight: 18,
         amount: 55
       },
       enigma: {
         label: "ENIGMA",
-        weight: 36,
+        unlockStage: 3,
+        weight: 14,
         choiceCount: 3,
         slowdownSeconds: 0.72,
         resumeInvulnerability: 1
       },
       moduleUpgrade: {
         label: "MODULE UPGRADE",
+        unlockStage: 4,
         weight: 32
       }
     },
@@ -1199,9 +1384,9 @@
       speedScale: speedScale,
       fireRateScale: fireRateScale,
       scoreScale: scoreScale,
-      scaledCooldown: function (baseCooldown, sector) {
+      scaledCooldown: function (baseCooldown, sector, stage) {
         const cooldown = Number(baseCooldown);
-        return Math.max(0.05, (Number.isFinite(cooldown) ? cooldown : 1) / fireRateScale(sector));
+        return Math.max(0.05, (Number.isFinite(cooldown) ? cooldown : 1) / fireRateScale(sector, stage));
       }
     }
   });

@@ -1,10 +1,10 @@
-# Neon Voyage v2026.8.15a — source audit
+# Neon Voyage v2026.8.15b — source audit
 
 - Audited: 2026-08-15
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 147/147 automated source checks**
+- Result: **PASS — 167/167 automated source checks**
 
-Observed with Node v24.19.0 on Linux x64. The harness uses Node built-ins only; Node is not part of the browser game. Phone- and tablet-class evidence below uses simulated viewports and Pointer Events and is not a claim of acceptance on physical touch hardware.
+Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated viewports, Pointer Events, DOM behavior, and Canvas calls. It is not physical-device acceptance.
 
 ## Runtime properties
 
@@ -16,92 +16,57 @@ Observed with Node v24.19.0 on Linux x64. The harness uses Node built-ins only; 
 - Persistent data: separate strict local records for high score/preferences and schema-3 per-stage campaign loadouts
 - License: MIT
 
-## Campaign and finite objectives
+## Campaign and progression
 
 Passed:
 
-- The immutable configuration defines 20 ordered stages. Stages 1–5 form an asteroid/anomaly opening, Stages 6–9 introduce mixed alien fleets, Stage 10 contains the Harrower, Stages 11–15 use evolved asteroid families, Stages 16–19 introduce advanced alien formations, and Stage 20 contains the Leviathan.
-- Boss ownership is config-driven through `bossType`; runtime encounter logic does not depend on hardcoded boss stage IDs. Defeating Stage 20 advances to Sector 2 Stage 1 with bounded difficulty scaling and without visually returning to Earth.
-- Every non-boss stage has finite authored waves. Completion waits for required objectives, optional hazards, descendants, carrier or boss children, pending spawns, hard-cull requeues, and surviving escorts.
-- Earth Orbit still opens with exactly three visible rocks. Across 1,024 fixed seeds at each of six phone, tablet, and desktop viewports—including 568×320, 667×375, 1024×768, and 1280×720—opening threats preserve the configured ship clearance and predicted-contact interval.
-- An additional 10,240 seeded compact openings cover Stages 1–5 at 568×320 and 667×375. Oversized threats adapt only to the safe configured radius floor; an unsafe spawn remains in the finite queue instead of appearing beside the player or being discarded.
-- The original colossal one-to-three-to-six split tree remains exact and bounded. New razor, prismatic, and monolith asteroids also use finite authored split or gate behavior.
-- A deterministic weapon-driven run visits Stages 1–20 in order, resolves mandatory Enigma choices, clears hazards and adds, defeats both bosses with normal player systems, wraps to Sector 2 Stage 1, and remains under every configured entity cap.
-- Stage completion remains deferred during Enigma slowdown or selection. Overlapping pickups cannot mutate an advertised card, and an in-flight boss kill defers its boss-core reward until the selected enhancement has applied.
+- The immutable configuration defines 20 finite stages. Stages 1–5 build asteroid pressure, Stages 6–9 stage familiar alien roles, Stage 10 contains the Harrower, Stages 11–15 introduce evolved anomaly counterplay, Stages 16–19 stage advanced fleets, and Stage 20 contains the Leviathan.
+- Boss ownership remains config-driven. Harrower uses a circular arena; Leviathan uses a responsive rectangular field. Defeating Stage 20 advances to bounded Sector 2 without visually returning to Earth.
+- Non-boss root counts rise within each authored arc: 12/14/16/18, 12/14/16/18, 14/16/18/20, and 14/16/18/20. Titan stages remain finite specialist encounters, and every stage waits for required descendants, optional hazards, carrier children, requeues, and boss escorts.
+- Natural reward pacing uses six stage bands. Drop chance rises 26/28/29/31/34/38 percent; pity occurs after 4/4/4/4/3/3 eligible kills; module-cache weight, permanent-draft chance, unlock catalog, and Mk I–V ceiling increase later in the journey.
+- Only Stages 3, 6, 9, 12, 15, and 18 grant authored milestone modules. Natural drops, Enigma cards, caches, milestones, and boss cores use one bounded eligibility path.
+- Existing schema-3 and migrated legacy loadouts are never clamped or downgraded by the new reward gates. A grandfathered future module remains usable but cannot gain another tier before its authored unlock.
+- A deterministic weapon-driven run visits Stages 1–20 in order, resolves mandatory Enigma choices, defeats both bosses using normal player systems, wraps to Sector 2, and remains within every collection cap.
 
-## Threat and boss verification
-
-Passed:
-
-- All nine asteroid variants remain ballistic hazards and create no ordinary projectile or mine during isolated 60-second simulations. Asteroid pairs separate and bounce without reward or damage farming.
-- Genuine asteroid-to-alien impacts remain reward-free, can resolve an alien exactly once, and cannot resolve or reward a required asteroid.
-- The six alien families retain bounded roles: scout/gunship strafe fire, striker/lancer telegraph charges, bombers place mines, and carriers launch configured children under the alien cap.
-- Harrower and Leviathan instantiate from their own immutable definitions, phase safely, keep their circular arenas visible at legal ship edges, clear hostile ordnance on defeat, and wait for every surviving escort before hyperspace.
-- Boss nodes, beams, volleys, dashes, mines, and children stay within shared collection caps. Stage 10 and Stage 20 transitions preserve the ship's screen-space anchor on narrow and desktop viewports.
-- Asteroids, aliens, the player, and outward dashes remain inside the relevant rectangular battlefield; bosses and the player remain inside the visible circular arena.
-
-## Upgrade and pickup verification
+## Evolved threats and counterplay
 
 Passed:
 
-- Eligible kills use a 48% drop chance and a two-kill pity boundary. The weighted pool includes all support and timed effects, Enigma at weight 36, and permanent module caches at weight 32; pickup creation and lifetime remain capped.
-- Rapid Fire and Tri-Shot last 28 seconds, Piercing Rounds 26, Arc Burst 24, Nova Lance 30, Damage Amplifier 28, and Aegis Field 28. Each timer stacks additively to exactly four base durations and expires independently.
-- Damage Amplifier scales outgoing player damage by 1.45 while active. Aegis Field reduces incoming damage by 32% while active. Both use explicit pickup silhouettes and checkpoint timers.
-- Thirteen permanent modules stack through Mk V. The six added systems are Tesla Coil, Orbit Blades, Mine Layer, Shield Reactor, Overclock Matrix, and Tractor Field.
-- Tesla chaining, orbit contacts, player-owned mine cadence/trigger/blast/lifetime, shield restoration, cooldown overclocking, and pickup attraction are deterministic fixed-step systems with finite values and enforced shared caps.
-- Homing Salvo, Radial Array, Guardian Drones, Tesla Coil, Orbit Blades, Mine Layer, and Shield Reactor operate without requiring primary-fire input. Overclock and Tractor Field apply passively without creating unbounded entities.
-- Enigma eases simulation over 0.72 seconds to a complete pause and deterministically offers exactly three distinct eligible cards. When available, every draft includes a permanent and a timed choice; fully capped builds receive bounded instant support fallbacks.
-- Selection applies only the advertised choice once, persists the resulting checkpoint loadout, resumes with neutral input and one second of protection, and cannot be bypassed by cancel, Pause/Escape, portrait blocking, stale pointers, or held gamepad buttons.
-- Void Pulse remains a finite local defense. It clears enemy rather than player mines and applies the active damage-amplifier multiplier without bypassing configured range or damage bounds.
+- Auric Colossi create an exact bounded 1→3→6 required split tree. Descendants retain objective ownership, configured health, explosive/magnetic variant, and finite state through hard-cull requeues.
+- Magnetic shards remain ballistic while their combined ship pull is aggregated and clamped for acceleration and speed. Explosive shards apply one local death blast; a lethal trade records earned score and high score exactly once before terminating the frame.
+- Coronas remain ballistic and own a deterministic warning/active/cooldown rotating beam plus a local death blast. Pause and hard-cull paths preserve finite hazard phase, timer, and angle.
+- Gunships lock the warned laser line, then sweep it only at the bounded authored angular rate. The damaging line matches the telegraph, uses no projectile allocation, stops later simulation after a lethal hit, and restores its exact angle after requeue.
+- Brood Carriers reduce distant direct damage to 30 percent, become normally vulnerable inside 300 px, and launch only their configured Lancer children. Stable lineage survives repeated hard culls without exceeding the six-child lifetime cap.
+- Leviathan reflection has warning, active, and cooldown phases and exists only while shield nodes survive. It reflects capped direct player bullets that hit the boss body, does not recursively reflect hostile fire, and leaves node hits and other authored module counters distinct.
+- Compact 568×320 and desktop boss simulations keep every living node circle inside its authored arena/field and visible viewport. Boss death still waits for surviving escorts and clears owned hostile ordnance safely.
 
-## Progress, migration, and HUD verification
+## Player power, Enigma, and HUD
 
 Passed:
 
-- Progress keeps the existing `neon-voyage-progress-v1` key and uses strict schema 3: exact current keys, 20 integer-bounded checkpoints, 13 module tiers, seven temporary timers, and a 16,384-byte record limit.
-- Exact legacy schema-2 records retain their historical seven-module/five-timer shape, Stage 1–9 bounds, and original timer ceilings during migration. Valid schema-1 unlock records migrate separately. Unknown keys, out-of-range tiers, oversized records, and malformed shapes fail closed.
-- Checkpoints save only permanent module tiers and remaining temporary-effect time. Continue restores a fresh battlefield; hull, shield, score, position, velocity, clocks, cooldown phases, entities, effects, mines, drones, blades, and pending Enigma state are never serialized.
-- All 20 saturated checkpoints fit within the storage limit. Reboot and Continue restore all 13 modules and all seven timers exactly, while old schema-2 saves preserve their original arsenal and receive safe zero values for new fields.
-- Authored rewards at Stages 2, 4, 5, 6, 8, 9, 11, 12, 14, 15, 17, and 19 target the configured module. A capped target falls back through the bounded generic upgrade path; boss cores at Stages 10 and 20 grant once.
-- The live HUD creates chips only for equipped permanent modules. The previous empty-slot grid is gone. A separate Timed row appears only while effects are active and updates visible whole-second countdowns without a live-region announcement every frame.
-- Autonomous modules carry a text `AUTO` marker; the module strip is a semantic list without duplicate live announcements. Timed chips expose effect names and remaining seconds through accessible labels.
-- Touch HUD rows are pointer-transparent, so module and timer information cannot steal either half of the two-stick control surface. Compact rows remain single-line and overflow horizontally; maximal-build visual density remains a hands-on acceptance item.
-- Continue exposes 20 ordered cards, repeats lock checks in runtime logic, marks the last-played stage, and summarizes permanent/autonomous/timed checkpoint state including total temporary seconds.
+- Thirteen permanent systems stack through Mk V. Seven temporary effects last 24–30 seconds per pickup, stack additively to four base durations, expire independently, and preserve the existing checkpoint schema.
+- Homing Salvo, Radial Array, Guardian Drone, Tesla Coil, Orbit Blades, Mine Layer, Shield Reactor, Overclock Matrix, and Tractor Field obey exact acquisition or influence radii. Autonomous systems remain idle without an in-range target where required.
+- Shield reserve is capped at 60, shield absorption drains at 1.25 points per damage, and Shield Reactor restores only the weaker configured amounts. The HUD is hidden at zero and exposes its exact value and maximum when charged.
+- Enigma deterministically slows combat to a complete pause and offers three distinct eligible cards. Early bands may omit a permanent card; all paths retain bounded temporary/support fallbacks and cannot bypass the mandatory selection.
+- Each Enigma card owns one local decorative Canvas preview driven by the existing animation frame. It adds no asset, random source, listener, or animation loop and remains finite in reduced-effects mode.
+- Desktop HUD rows list equipped systems and active timed countdowns only. Compact touch layouts replace each row with one pointer-transparent accessible summary so status never steals either movement/aim touch half.
+- Late-stage and boss nebula washes are locally rendered, cached on resize, interpolated with the existing scene handoff, and subdued by reduced-effects mode.
 
-## Input, lifecycle, and responsive verification
-
-Passed in automated browser-VM regressions:
-
-- Keyboard/mouse, gamepad, and independent movement and aim/fire touch sticks retain their prior ownership, analog response, capture-loss, malformed-terminal, visibility, page lifecycle, pause, and orientation cleanup guarantees.
-- Touch capability comes from device signals or observed touch, so hybrid fine-pointer tablets retain touch controls. Initial stick contact is neutral, each pointer owns only one stick, and terminal events cannot relatch fire.
-- Collecting Enigma immediately neutralizes keyboard, pointer, touch, and gamepad intent. Its frozen choice survives portrait rotation, visibility loss, page exit, blur, and lifecycle pause without rerolling or hidden selection.
-- Portrait play is blocked behind an inert landscape gate. Returning to landscape preserves the same run or Enigma choice without replaying held input.
-- Source contracts cover 568×320 and 667×375 compact landscapes, a 1024×768 tablet-class viewport, safe-area sizing, readable three-card Enigma layout, 44 px action targets, and pointer-transparent loadout rows.
-- These are simulated viewport and input checks. Physical phone and iPad two-thumb feel, balance, readability, and audio acceptance remain pending.
-
-## Rendering, offline, and repository verification
+## Persistence and finite state
 
 Passed:
 
-- Twenty scene keyframes progress continuously from Earth and Mars through local authored deep-space worlds; the Stage 20 wrap does not reset scenery to Earth.
-- Razor, prismatic, and monolith asteroids; lancer and gunship aliens; the Leviathan; Tesla chains; orbit blades; player mines; reactor/tractor fields; Amplifier; and Aegis have explicit renderer paths and finite silhouettes.
-- Essential friendly and hostile silhouettes remain distinguishable in reduced-effects mode. Decorative glow, launch ornament, shake, and excess particles are suppressed without removing core projectiles or fields.
-- The Content Security Policy denies unspecified sources and blocks runtime connections, frames, objects, fonts, media, workers, forms, and base-URI changes.
-- Runtime source contains no remote URL, network API, telemetry, dynamic code, worker, module loader, package manifest, lockfile, or runtime dependency.
-- All runtime resources are local, relative, valid under the `/Neon-Voyage/` GitHub Pages subpath, and usable through direct `file://` launch. The frozen tree has no symlinks and stays below conservative offline payload limits.
-- Every runtime JavaScript file passes syntax checking; every runtime script and test suite is registered once; local Markdown links resolve; release text is free of conflict markers and whitespace damage.
-- `SHA256SUMS` recursively and exactly covers every frozen release file outside explicit local-output exclusions and verifies each digest.
-- The dependency-free browser VM loads every classic script, constructs the DOM and Canvas surfaces, renders frames and Continue previews, generates real Enigma card buttons, starts a run, and maintains one animation loop.
-- CI retains read-only audit permissions and Pages publishes the unchanged repository root only from `main`, with no install or production build.
+- The existing `neon-voyage-progress-v1` key and strict schema 3 are unchanged: exact 13-module/seven-timer keys, 20 bounded checkpoints, Mk I–V tiers, four-duration ceilings, and a 16,384-byte record limit.
+- Exact schema-2 records retain their historical seven-module/five-timer shape, Stage 1–9 bounds, and historical timer ceilings during migration. Valid schema-1 unlock records migrate separately; malformed, unknown, oversized, and out-of-range records fail closed.
+- Checkpoints contain only permanent module tiers and remaining temporary-effect time. Hull, shield, score, position, velocity, clocks, cooldown phases, entities, effects, mines, drones, blades, hazards, boss state, and Enigma state are never serialized.
+- Extreme high score clamps and reloads as the existing valid 999,999,999 maximum. Storage denial and malformed local records remain safe.
+- The deterministic 20-minute full-build stress run completes 72,000 fixed steps, visits all 20 stages and both bosses, exercises evolved hazards, reflection, every Mk V system, and every four-stack timer, and keeps all state finite and capped. Repeating with the same seed and inputs reproduces the same normalized snapshot.
 
-## Long-run verification
+## Automated evidence boundary
 
-Passed:
+The frozen run registered and passed 167 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (16), mobile input (39), gameplay (66), visuals (12), and stress (2). `SHA256SUMS` exactly covered and verified all 46 release files outside its documented self/exclusion rules.
 
-- A deterministic 20-minute full-build expedition completes 72,000 fixed simulation steps with every Mk V module and every four-stack temporary timer active.
-- The stress path visits all 20 stages and both boss types and observes Tesla chains, orbit blades, player mines, shield restoration, drones, homing/radial fire, and each player projectile source.
-- Ship, camera, score, clocks, timers, and active entities remain finite. Asteroids, aliens, player/enemy projectiles, mines, pickups, effects, floaters, drones, and blades stay within their configured bounds.
-- Repeating the long simulation with the same seed and inputs reproduces the same normalized snapshot and collection peaks.
+The browser VM loads every classic script, constructs the DOM and Canvas surfaces, starts a run, creates real Enigma buttons/previews, projects shield and compact summaries, and keeps one animation loop. Responsive contracts cover 568×320 and 667×375 phone landscapes and a 1024×768 tablet-class viewport. This is automated source and simulated-browser evidence, not a pixel-comparison test or hands-on device play.
 
 ## Reproduce
 
@@ -109,19 +74,11 @@ Passed:
 node tests/run.js
 ```
 
-Expected result for this source snapshot: `147/147 tests passed`.
-
-The suite reproduces dependency-free source, simulation, DOM, Canvas-call, storage, input, responsive-contract, and browser-VM checks. It is not a pixel-comparison test and does not claim a physical-device playthrough.
+Observed result for this frozen source tree: `167/167 tests passed`.
 
 ## Browser and publication boundary
 
-- Prepublication automation includes the complete browser-VM boot and interaction smoke plus deterministic phone/tablet/desktop viewport contracts.
-- The cloud browser cannot reach the workspace-local preview route. No prepublication hands-on cloud-browser play is claimed by this source audit.
-- After protected merge and Pages deployment, release acceptance requires opening the exact live repository-subpath URL, confirming the deployed version, selecting **Play**, exercising a short combat interaction, checking desktop plus phone/tablet-class viewports, and reviewing console errors.
-- Physical phone/iPad acceptance remains separate and pending unless a real device is explicitly observed.
-
-## Repository protection and publication status
-
-- The required pull-request check context remains exactly `Offline audit / audit`; `main` is protected from direct, force, and deletion workflows.
-- This audit records the frozen source candidate for runtime version `v2026.8.15a`. It does not by itself prove a Git tag, GitHub Release, merge, Pages deployment, or live acceptance.
-- Pull-request checks, merge state, immutable tagging, Pages deployment, and the post-deployment live Play observation are external publication gates recorded in GitHub history and the release handoff.
+- No prepublication hands-on browser play is claimed; the cloud browser cannot reach the workspace-local preview route.
+- Physical phone and iPad two-thumb feel, balance, readability, and audio acceptance remain pending.
+- After protected merge and Pages deployment, release acceptance requires opening the exact live repository-subpath URL, confirming the deployed version, selecting **Play**, exercising a short combat interaction, and checking the browser console.
+- This audit does not itself prove a pull-request check, merge, Pages deployment, immutable tag, GitHub Release, or live Play result. Those are external publication gates.
