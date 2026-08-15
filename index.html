@@ -174,7 +174,7 @@
 
         <div class="menu-meta">
           <span>Local record <strong id="menu-high-score">000000</strong></span>
-          <span>Version v2026.8.15b</span>
+          <span>Version v2026.8.15c</span>
         </div>
       </div>
     </section>
@@ -239,7 +239,7 @@
         <section aria-labelledby="alternate-controls-title">
           <h3 id="alternate-controls-title">Gamepad + touch</h3>
           <p>Move with the left stick and aim with the right stick. Fire with the primary face button, dash with the secondary button, and use Void Pulse with the tertiary button.</p>
-          <p>On touch screens, press anywhere on the left half to place the movement stick or the right half to place the aim stick. Drag farther for stronger input; holding the aim stick past its firing threshold also fires.</p>
+          <p>On touch screens, press anywhere on the left half to place the movement stick or the right half to place the aim stick. Each stick follows its finger when dragged; holding the aim stick past its firing threshold also fires. Dash and Pulse appear only when ready.</p>
         </section>
       </div>
     </dialog>
@@ -330,15 +330,13 @@
     <section id="touch-controls" class="touch-controls" aria-label="Touch controls">
       <div id="move-zone" class="stick-zone move-zone" role="group" aria-label="Movement joystick">
         <div class="stick-ring" aria-hidden="true"><div id="move-knob" class="stick-knob"></div></div>
-        <span>Move</span>
       </div>
       <div class="touch-actions">
-        <button id="touch-pulse" class="touch-button pulse-button" type="button">Pulse</button>
-        <button id="touch-dash" class="touch-button dash-button" type="button">Dash</button>
+        <button id="touch-pulse" class="touch-button pulse-button" type="button" disabled aria-hidden="true">Pulse</button>
+        <button id="touch-dash" class="touch-button dash-button" type="button" disabled aria-hidden="true">Dash</button>
       </div>
       <div id="aim-zone" class="stick-zone aim-zone" role="group" aria-label="Aim and fire joystick">
         <div class="stick-ring" aria-hidden="true"><div id="aim-knob" class="stick-knob"></div></div>
-        <span>Aim + fire</span>
       </div>
     </section>
   </main>

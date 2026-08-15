@@ -98,7 +98,10 @@ function makeElement(id, className, tagName) {
       for (const listener of listeners.get(event.type) || []) listener.call(element, event);
       return !event.defaultPrevented;
     },
-    click() { this.dispatchEvent({ type: "click", preventDefault() {} }); },
+    click() {
+      if (this.disabled) return;
+      this.dispatchEvent({ type: "click", detail: 0, pointerType: "", preventDefault() {} });
+    },
     focus() { if (typeof this._focus === "function") this._focus(); },
     blur() { if (typeof this._blur === "function") this._blur(); },
     _capturedPointers: new Set(),

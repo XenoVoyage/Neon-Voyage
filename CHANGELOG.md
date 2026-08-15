@@ -2,6 +2,14 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.15c] — 2026-08-15
+
+### Changed
+
+- Enlarged both mobile sticks and made each base follow its thumb when dragged beyond the control radius. Idle aiming hotspots stay hidden, while Dash and Pulse appear and accept touches only when ready.
+- Balanced seeded mixed-asteroid groups so one large kind cannot dominate by chance, and reduced guaranteed massive-root clustering in the late anomaly waves without changing their finite totals.
+- Opened both command-ship battles to the normal responsive rectangular battlefield and replaced the Harrower's glowing red containment circle with the standard subtle field-edge cues.
+
 ## [v2026.8.15b] — 2026-08-15
 
 ### Added

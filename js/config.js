@@ -89,7 +89,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.15b",
+    version: "v2026.8.15c",
 
     world: {
       fixedStep: 1 / 60,
@@ -104,7 +104,7 @@
     },
 
     mobileControls: {
-      stickRadius: 46,
+      stickRadius: 56,
       moveDeadzone: 0.16,
       moveCurve: 1.45,
       moveMaxOutput: 0.72,
@@ -117,7 +117,6 @@
 
     camera: {
       followSharpness: 8,
-      bossFollowSharpness: 11,
       velocityLookAhead: 0.14,
       maxLookAhead: 145,
       maxShake: 24
@@ -494,9 +493,9 @@
             {
               label: "HEAVY DRIFT",
               required: [
-                { family: "asteroid", kinds: ["auricColossus"], count: 1, sectorStep: 0.15, cap: 2 },
-                { family: "asteroid", kinds: ["monolith"], count: 1, sectorStep: 0.2, cap: 2 },
-                { family: "asteroid", kinds: ["armored"], count: 7, sectorStep: 0.6, cap: 10 }
+                { family: "asteroid", kinds: ["rock", "crystal", "armored"], count: 7, sectorStep: 0.95, cap: 12 },
+                { family: "asteroid", kinds: ["auricColossus"], count: 1, cap: 1 },
+                { family: "asteroid", kinds: ["monolith"], count: 1, cap: 1 }
               ]
             },
             {
@@ -526,8 +525,9 @@
             {
               label: "BROKEN GIANTS",
               required: [
-                { family: "asteroid", kinds: ["monolith"], count: 2, sectorStep: 0.2, cap: 3 },
-                { family: "asteroid", kinds: ["colossal"], count: 1, sectorStep: 0.2, cap: 2 }
+                { family: "asteroid", kinds: ["prismatic"], count: 1, sectorStep: 0.4, cap: 3 },
+                { family: "asteroid", kinds: ["monolith"], count: 1, cap: 1 },
+                { family: "asteroid", kinds: ["colossal"], count: 1, cap: 1 }
               ],
               hazards: [
                 { family: "asteroid", kinds: ["volatile"], count: 5, sectorStep: 0.5, cap: 8 },
@@ -546,20 +546,20 @@
             {
               label: "CORONA VEIL",
               required: [
-                { family: "asteroid", kinds: ["corona"], count: 1, sectorStep: 0.15, cap: 2 },
-                { family: "asteroid", kinds: ["auricColossus"], count: 1, sectorStep: 0.15, cap: 2 },
                 { family: "asteroid", kinds: ["prismatic"], count: 3, sectorStep: 0.45, cap: 5 },
-                { family: "asteroid", kinds: ["razor"], count: 4, sectorStep: 0.55, cap: 7 }
+                { family: "asteroid", kinds: ["razor"], count: 4, sectorStep: 0.55, cap: 7 },
+                { family: "asteroid", kinds: ["corona"], count: 1, sectorStep: 0.15, cap: 2 },
+                { family: "asteroid", kinds: ["auricColossus"], count: 1, sectorStep: 0.15, cap: 2 }
               ]
             },
             {
               label: "ANOMALY HEART",
               required: [
+                { family: "asteroid", kinds: ["prismatic"], count: 3, sectorStep: 0.35, cap: 5 },
+                { family: "asteroid", kinds: ["razor"], count: 1, sectorStep: 0.35, cap: 3 },
                 { family: "asteroid", kinds: ["titan"], count: 1, cap: 1 },
-                { family: "asteroid", kinds: ["auricColossus"], count: 1, sectorStep: 0.15, cap: 2 },
-                { family: "asteroid", kinds: ["monolith"], count: 1, sectorStep: 0.2, cap: 2 },
-                { family: "asteroid", kinds: ["corona"], count: 1, sectorStep: 0.15, cap: 2 },
-                { family: "asteroid", kinds: ["prismatic"], count: 3, sectorStep: 0.35, cap: 5 }
+                { family: "asteroid", kinds: ["auricColossus"], count: 1, cap: 1 },
+                { family: "asteroid", kinds: ["corona"], count: 1, sectorStep: 0.15, cap: 2 }
               ]
             }
           ]
@@ -699,15 +699,6 @@
 
     bossArena: {
       warningSeconds: 3,
-      radiusViewportRatio: 0.44,
-      minRadius: 170,
-      maxRadius: 520,
-      fieldHalfWidthViewportRatio: 0.43,
-      fieldHalfHeightViewportRatio: 0.39,
-      fieldMinHalfWidth: 140,
-      fieldMinHalfHeight: 112,
-      viewportMargin: 12,
-      boundaryPadding: 18,
       entryInvulnerability: 1.2,
       victoryHeal: 20
     },
@@ -970,7 +961,6 @@
     bosses: {
       harrower: {
         label: "HARROWER",
-        arenaShape: "circle",
         radius: 82,
         baseHealth: 500,
         score: 5600,
@@ -1007,7 +997,6 @@
       },
       leviathan: {
         label: "LEVIATHAN",
-        arenaShape: "field",
         radius: 96,
         baseHealth: 980,
         score: 10000,

@@ -47,7 +47,7 @@ function assertCapped(runtime, peaks) {
   for (const hazard of snapshot.stageHazards) {
     for (const key of ["timer", "angle"]) assert.ok(Number.isFinite(hazard[key]), `stageHazard.${key} is not finite`);
   }
-  assert.ok(["circle", "field"].includes(snapshot.arena.shape));
+  assert.equal(snapshot.arena.shape, "field");
   for (const key of ["x", "y", "radius", "halfWidth", "halfHeight", "warning"]) {
     assert.ok(Number.isFinite(snapshot.arena[key]), `arena.${key} is not finite`);
   }
@@ -203,7 +203,7 @@ module.exports = function register(test) {
       assert.ok(run.alienTypes.includes(type), `stress run never exercised ${type}`);
     }
     assert.deepEqual(run.hazardVariants, ["explosive", "magnetic"]);
-    assert.deepEqual(run.arenaShapes, ["circle", "field"]);
+    assert.deepEqual(run.arenaShapes, ["field"]);
     assert.ok(run.reflectionPhases.includes("active"), "stress run never exercised Leviathan reflection");
     assert.ok(run.runtime.game.state.stats.spawned > 100, "stress run did not exercise enough spawning");
     assert.ok(run.peaks.asteroids >= 3, "stress run never produced asteroid pressure");

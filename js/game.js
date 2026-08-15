@@ -126,6 +126,8 @@
     stageGrid: byId("stage-grid"),
     orientationOverlay: byId("orientation-overlay"),
     touchControls: byId("touch-controls"),
+    touchPulse: byId("touch-pulse"),
+    touchDash: byId("touch-dash"),
     moveZone: byId("move-zone"),
     aimZone: byId("aim-zone"),
     moveKnob: byId("move-knob"),
@@ -443,7 +445,7 @@
     effects: [],
     floaters: [],
     boss: null,
-    arena: { active: false, locked: false, warning: 0, shape: "circle", x: 0, y: 0, radius: 320, halfWidth: 0, halfHeight: 0 },
+    arena: { active: false, locked: false, warning: 0, shape: "field", x: 0, y: 0, radius: 320, halfWidth: 0, halfHeight: 0 },
     combatField: { active: false, x: 0, y: 0, halfWidth: 0, halfHeight: 0 },
     sector: 1,
     encounter: 1,
@@ -670,7 +672,7 @@
       active: false,
       locked: false,
       warning: 0,
-      shape: "circle",
+      shape: "field",
       x: 0,
       y: 0,
       radius: 320,
@@ -1026,24 +1028,38 @@
   if (dom.enigmaUpgradeModal) dom.enigmaUpgradeModal.addEventListener("cancel", (event) => {
     event.preventDefault();
   });
-  function bindTouchAction(id, action) {
+  function dashReady(ship) {
+    return Boolean(ship) && ship.dashCooldown <= 0;
+  }
+
+  function pulseReady(ship) {
+    return Boolean(ship) && ship.pulse >= CONFIG.voidPulse.activationThreshold;
+  }
+
+  function bindTouchAction(id, action, available) {
     const button = byId(id);
     if (!button) return;
     let touchActivation = false;
     button.addEventListener("pointerdown", (event) => {
       noteTouchInteraction(event);
-      if (orientationBlocked || state.upgradeDraft.phase !== "idle" || event.pointerType !== "touch") return;
+      if (event.pointerType !== "touch") {
+        touchActivation = false;
+        return;
+      }
+      if (orientationBlocked || state.upgradeDraft.phase !== "idle" || !available()) return;
       touchActivation = true;
       action();
       event.preventDefault();
     }, { passive: false });
     button.addEventListener("click", (event) => {
-      if (orientationBlocked || state.upgradeDraft.phase !== "idle") {
+      const directActivation = event.detail === 0;
+      if (directActivation) touchActivation = false;
+      else if (touchActivation) {
+        touchActivation = false;
         event.preventDefault();
         return;
       }
-      if (touchActivation) {
-        touchActivation = false;
+      if (orientationBlocked || state.upgradeDraft.phase !== "idle" || !available()) {
         event.preventDefault();
         return;
       }
@@ -1052,8 +1068,8 @@
     button.addEventListener("pointercancel", () => { touchActivation = false; });
   }
 
-  bindTouchAction("touch-dash", () => { input.pressed.dash = true; });
-  bindTouchAction("touch-pulse", () => { input.pressed.pulse = true; });
+  bindTouchAction("touch-dash", () => { input.pressed.dash = true; }, () => dashReady(state.ship));
+  bindTouchAction("touch-pulse", () => { input.pressed.pulse = true; }, () => pulseReady(state.ship));
 
   // Browser input handlers only write intent; the fixed-step update consumes that intent.
   function normalizeKey(event) {
@@ -1200,10 +1216,19 @@
   }
 
   function writeTouchStick(stick, clientX, clientY) {
-    const radius = Math.max(24, Number(CONFIG.mobileControls.stickRadius) || 46);
-    const dx = clientX - stick.originX;
-    const dy = clientY - stick.originY;
-    const length = Math.hypot(dx, dy);
+    const radius = Math.max(24, Number(CONFIG.mobileControls.stickRadius) || 56);
+    let dx = clientX - stick.originX;
+    let dy = clientY - stick.originY;
+    let length = Math.hypot(dx, dy);
+    if (length > radius) {
+      const overshoot = length - radius;
+      stick.originX += dx / length * overshoot;
+      stick.originY += dy / length * overshoot;
+      placeTouchStick(stick, stick.originX, stick.originY, canvas.getBoundingClientRect());
+      dx = clientX - stick.originX;
+      dy = clientY - stick.originY;
+      length = Math.hypot(dx, dy);
+    }
     const scale = length > radius ? radius / length : 1;
     const x = dx * scale;
     const y = dy * scale;
@@ -1336,8 +1361,8 @@
 
   global.addEventListener("resize", () => {
     renderer.resize();
-    if (state.arena.active) resizeArena();
     if (state.combatField.active) resizeCombatField();
+    if (state.arena.active) resizeArena();
     updateOrientationState();
   });
   global.addEventListener("orientationchange", updateOrientationState);
@@ -1447,41 +1472,25 @@
   }
 
   // Encounter geometry is viewport-derived, while stage composition remains config-driven.
-  function arenaRadius() {
-    const shortSide = Math.min(renderer.width, renderer.height);
-    const desired = clamp(shortSide * CONFIG.bossArena.radiusViewportRatio, CONFIG.bossArena.minRadius, CONFIG.bossArena.maxRadius);
-    const viewportCap = Math.max(CONFIG.bossArena.boundaryPadding + 8, shortSide * 0.5 - CONFIG.bossArena.viewportMargin);
-    return Math.min(desired, viewportCap);
+  function combatFieldHalfWidth() {
+    return Math.max(CONFIG.combatField.minHalfWidth, renderer.width * CONFIG.combatField.halfWidthViewportRatio);
+  }
+
+  function combatFieldHalfHeight() {
+    return Math.max(CONFIG.combatField.minHalfHeight, renderer.height * CONFIG.combatField.halfHeightViewportRatio);
   }
 
   function resizeArena() {
     const arena = state.arena;
     if (!arena) return;
-    if (arena.shape === "field") {
-      const margin = Math.max(0, Number(CONFIG.bossArena.viewportMargin) || 0);
-      arena.halfWidth = Math.min(
-        Math.max(Number(CONFIG.bossArena.fieldMinHalfWidth) || 180, renderer.width * (Number(CONFIG.bossArena.fieldHalfWidthViewportRatio) || 0.46)),
-        Math.max(CONFIG.bossArena.boundaryPadding + 8, renderer.width * 0.5 - margin)
-      );
-      arena.halfHeight = Math.min(
-        Math.max(Number(CONFIG.bossArena.fieldMinHalfHeight) || 120, renderer.height * (Number(CONFIG.bossArena.fieldHalfHeightViewportRatio) || 0.42)),
-        Math.max(CONFIG.bossArena.boundaryPadding + 8, renderer.height * 0.5 - margin)
-      );
-      arena.radius = Math.hypot(arena.halfWidth, arena.halfHeight);
-      return;
-    }
-    arena.radius = arenaRadius();
-    arena.halfWidth = arena.radius;
-    arena.halfHeight = arena.radius;
+    arena.halfWidth = state.combatField.active ? state.combatField.halfWidth : combatFieldHalfWidth();
+    arena.halfHeight = state.combatField.active ? state.combatField.halfHeight : combatFieldHalfHeight();
+    arena.radius = Math.hypot(arena.halfWidth, arena.halfHeight);
   }
 
   function constrainToArena(entity, padding, bounce) {
     const arena = state.arena;
     if (!arena || !arena.locked) return;
-    if (arena.shape !== "field") {
-      Core.constrainToCircle(entity, arena.x, arena.y, arena.radius - Math.max(0, padding || 0), bounce);
-      return;
-    }
     const inset = Math.max(0, Number(entity.radius) || 0) + Math.max(0, Number(padding) || 0);
     const left = arena.x - Math.max(0, arena.halfWidth - inset);
     const right = arena.x + Math.max(0, arena.halfWidth - inset);
@@ -1506,8 +1515,8 @@
 
   function resizeCombatField() {
     const field = state.combatField;
-    field.halfWidth = Math.max(CONFIG.combatField.minHalfWidth, renderer.width * CONFIG.combatField.halfWidthViewportRatio);
-    field.halfHeight = Math.max(CONFIG.combatField.minHalfHeight, renderer.height * CONFIG.combatField.halfHeightViewportRatio);
+    field.halfWidth = combatFieldHalfWidth();
+    field.halfHeight = combatFieldHalfHeight();
     if (!state.ship || !field.active) return;
     field.halfWidth = Math.max(field.halfWidth, Math.abs(state.ship.x - field.x) + state.ship.radius);
     field.halfHeight = Math.max(field.halfHeight, Math.abs(state.ship.y - field.y) + state.ship.radius);
@@ -1521,8 +1530,8 @@
     field.y = state.camera.y;
     resizeCombatField();
     // A carried hyperspace anchor can be slightly wider than the default
-    // rectangle after leaving the circular boss arena. The shared resize path
-    // grows this field around the camera instead of moving the ship.
+    // rectangle. The shared resize path grows this field around the camera
+    // instead of moving the ship.
     ship.x = clamp(ship.x, field.x - field.halfWidth + ship.radius, field.x + field.halfWidth - ship.radius);
     ship.y = clamp(ship.y, field.y - field.halfHeight + ship.radius, field.y + field.halfHeight - ship.radius);
   }
@@ -1530,8 +1539,7 @@
   function beginEncounter() {
     const spec = CONFIG.sector.encounters[state.encounter - 1];
     const isBoss = Boolean(spec.bossType);
-    if (isBoss) state.combatField.active = false;
-    else openCombatField();
+    openCombatField();
     state.encounterData = {
       spec,
       generation: `${state.sector}:${state.encounter}:${state.runTime.toFixed(2)}`,
@@ -1560,8 +1568,7 @@
       bossRewardGranted: false,
       killsSincePowerup: 0
     };
-    const bossField = isBoss && CONFIG.bosses[spec.bossType] && CONFIG.bosses[spec.bossType].arenaShape === "field";
-    announce(isBoss ? `Alien capital ship — ${bossField ? "combat field" : "arena"} forming` : spec.label, isBoss ? 2.6 : 1.5);
+    announce(isBoss ? "Alien capital ship incoming" : spec.label, isBoss ? 2.6 : 1.5);
     if (isBoss) beginBossWarning();
     else spawnWave(0);
     updateUI(true);
@@ -1576,10 +1583,9 @@
     state.arena.active = true;
     state.arena.locked = false;
     state.arena.warning = CONFIG.bossArena.warningSeconds;
-    const bossDefinition = CONFIG.bosses[state.encounterData.spec.bossType];
-    state.arena.shape = bossDefinition && bossDefinition.arenaShape === "field" ? "field" : "circle";
-    state.arena.x = state.ship.x;
-    state.arena.y = state.ship.y;
+    state.arena.shape = "field";
+    state.arena.x = state.combatField.x;
+    state.arena.y = state.combatField.y;
     resizeArena();
     state.ship.invulnerable = Math.max(state.ship.invulnerable, CONFIG.bossArena.entryInvulnerability);
     audio.bossCue();
@@ -1629,7 +1635,7 @@
 
   function constrainShipToCombatField(ship) {
     const field = state.combatField;
-    if (!field.active || state.arena.active) return;
+    if (!field.active) return;
     const bounce = CONFIG.combatField.boundaryBounce;
     const left = field.x - field.halfWidth + ship.radius;
     const right = field.x + field.halfWidth - ship.radius;
@@ -1716,7 +1722,7 @@
     for (const timer of TEMP_WEAPON_TIMERS) ship[timer] = Math.max(0, ship[timer] - dt);
     ship.pulse = clamp(ship.pulse + dt * CONFIG.voidPulse.rechargePerSecond, 0, 100);
 
-    if ((input.pressed.shift || input.pressed.dash) && ship.dashCooldown <= 0) {
+    if ((input.pressed.shift || input.pressed.dash) && dashReady(ship)) {
       const dashAngle = Math.hypot(move.x, move.y) > 0.1 ? Math.atan2(move.y, move.x) : ship.angle;
       ship.vx = Math.cos(dashAngle) * CONFIG.world.playerDashSpeed;
       ship.vy = Math.sin(dashAngle) * CONFIG.world.playerDashSpeed;
@@ -1728,7 +1734,7 @@
       audio.dash();
     }
 
-    if ((input.pressed.e || input.pressed.pulse) && ship.pulse >= CONFIG.voidPulse.activationThreshold) activatePulse();
+    if ((input.pressed.e || input.pressed.pulse) && pulseReady(ship)) activatePulse();
     if (state.mode !== "playing") return;
 
     if (ship.dashTime <= 0) {
@@ -1748,9 +1754,7 @@
     ship.x += ship.vx * dt;
     ship.y += ship.vy * dt;
     ship.engine = clamp(Math.hypot(move.x, move.y) + (ship.dashTime > 0 ? 0.8 : 0), 0, 1.6);
-    if (state.arena.active && state.arena.locked) {
-      constrainToArena(ship, CONFIG.bossArena.boundaryPadding, 0.1);
-    } else constrainShipToCombatField(ship);
+    constrainShipToCombatField(ship);
     if (!input.pointerActive) {
       state.aimWorld.x = ship.x + Math.cos(ship.angle) * 400;
       state.aimWorld.y = ship.y + Math.sin(ship.angle) * 400;
@@ -2442,14 +2446,30 @@
     return Math.max(0, Math.min(group.cap || group.count, Math.floor(group.count + root * (group.sectorStep || 0))));
   }
 
+  function balancedGroupKinds(kinds, count) {
+    const choices = Array.isArray(kinds) && kinds.length ? kinds : [undefined];
+    const total = Math.max(0, Math.floor(Number(count) || 0));
+    if (!total) return [];
+    const start = Math.floor(rng() * choices.length);
+    const output = Array.from({ length: total }, (_, index) => choices[(start + index) % choices.length]);
+    for (let index = output.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(rng() * (index + 1));
+      const value = output[index];
+      output[index] = output[swapIndex];
+      output[swapIndex] = value;
+    }
+    return output;
+  }
+
   function buildWaveQueue(wave) {
     const queue = [];
     const add = (group, required) => {
       const count = scaledGroupCount(group);
-      for (let index = 0; index < count; index += 1) {
+      const kinds = balancedGroupKinds(group.kinds, count);
+      for (const kind of kinds) {
         queue.push({
           family: group.family,
-          kind: rng.pick(group.kinds),
+          kind,
           required,
           waveIndex: state.encounterData.waveIndex
         });
@@ -3122,6 +3142,46 @@
     audio.alienShot();
   }
 
+  function bossSpawnPosition(boss, preferredAngle) {
+    const arena = state.arena;
+    const padding = bossNodePadding(boss);
+    const rangeX = Math.max(0, arena.halfWidth - boss.radius - padding);
+    const rangeY = Math.max(0, arena.halfHeight - boss.radius - padding);
+    const directionX = Math.cos(preferredAngle);
+    const directionY = Math.sin(preferredAngle);
+    const scaleX = Math.abs(directionX) > 0.0001 ? rangeX / Math.abs(directionX) : Infinity;
+    const scaleY = Math.abs(directionY) > 0.0001 ? rangeY / Math.abs(directionY) : Infinity;
+    const scale = Math.min(scaleX, scaleY);
+    const preferred = {
+      x: arena.x + (Number.isFinite(scale) ? directionX * scale : 0),
+      y: arena.y + (Number.isFinite(scale) ? directionY * scale : 0)
+    };
+    const ship = state.ship;
+    const minimumDistance = ship.radius + boss.radius + CONFIG.combatField.spawnShipClearance;
+    if (distanceSquared(preferred.x, preferred.y, ship.x, ship.y) >= minimumDistance * minimumDistance) return preferred;
+
+    const corners = [
+      { x: rangeX, y: rangeY },
+      { x: -rangeX, y: rangeY },
+      { x: -rangeX, y: -rangeY },
+      { x: rangeX, y: -rangeY }
+    ];
+    const start = Math.floor(((preferredAngle % TAU + TAU) % TAU) / TAU * corners.length);
+    let best = corners[start];
+    let bestDistance = -Infinity;
+    for (let offset = 0; offset < corners.length; offset += 1) {
+      const candidate = corners[(start + offset) % corners.length];
+      const x = arena.x + candidate.x;
+      const y = arena.y + candidate.y;
+      const candidateDistance = distanceSquared(x, y, ship.x, ship.y);
+      if (candidateDistance > bestDistance) {
+        best = candidate;
+        bestDistance = candidateDistance;
+      }
+    }
+    return { x: arena.x + best.x, y: arena.y + best.y };
+  }
+
   function spawnMine(x, y, targetX, targetY, pattern) {
     if (state.mines.length >= CONFIG.caps.mines) return;
     const angle = Math.atan2(targetY - y, targetX - x);
@@ -3146,14 +3206,11 @@
     const definition = CONFIG.bosses[type];
     if (!definition) return null;
     const spawnAngle = rng.range(0, TAU);
-    const spawnDistance = state.arena.shape === "field"
-      ? Math.min(state.arena.halfWidth, state.arena.halfHeight) * 0.52
-      : state.arena.radius * 0.52;
     const health = definition.baseHealth * CONFIG.difficulty.bossHealthScale(state.sector, state.encounter);
     const boss = {
       id: nextEntityId++,
-      x: state.arena.x + Math.cos(spawnAngle) * spawnDistance,
-      y: state.arena.y + Math.sin(spawnAngle) * spawnDistance,
+      x: state.arena.x,
+      y: state.arena.y,
       vx: 0,
       vy: 0,
       radius: definition.radius,
@@ -3192,6 +3249,10 @@
       health: nodeHealth * CONFIG.difficulty.healthScale(state.sector, state.encounter),
       maxHealth: nodeHealth * CONFIG.difficulty.healthScale(state.sector, state.encounter)
     }));
+    const position = bossSpawnPosition(boss, spawnAngle);
+    boss.x = position.x;
+    boss.y = position.y;
+    boss.angle = Math.atan2(state.ship.y - boss.y, state.ship.x - boss.x);
     state.boss = boss;
     state.arena.locked = true;
     constrainToArena(boss, bossNodePadding(boss), 0);
@@ -3488,7 +3549,7 @@
       const desiredRadius = boss.radius + 46 + Math.sin(state.time * 0.8 + node.index) * 9;
       let radiusX = desiredRadius;
       let radiusY = desiredRadius;
-      if (state.arena.locked && state.arena.shape === "field") {
+      if (state.arena.locked) {
         radiusX = Math.min(
           desiredRadius,
           Math.max(0, state.arena.halfWidth - node.radius - Math.abs(boss.x - state.arena.x))
@@ -3497,11 +3558,6 @@
           desiredRadius,
           Math.max(0, state.arena.halfHeight - node.radius - Math.abs(boss.y - state.arena.y))
         );
-      } else if (state.arena.locked) {
-        const bossOffset = Math.hypot(boss.x - state.arena.x, boss.y - state.arena.y);
-        const boundedRadius = Math.max(0, state.arena.radius - node.radius - bossOffset);
-        radiusX = Math.min(desiredRadius, boundedRadius);
-        radiusY = radiusX;
       }
       node.x = boss.x + Math.cos(orbit) * radiusX;
       node.y = boss.y + Math.sin(orbit) * radiusY;
@@ -4615,14 +4671,10 @@
       targetX = ship.x - (state.cinematic.anchorX || 0);
       targetY = ship.y - (state.cinematic.anchorY || 0);
       sharpness = CONFIG.cinematic.cameraSharpness;
-    } else if (state.combatField.active && !state.arena.active) {
+    } else if (state.combatField.active) {
       targetX = state.combatField.x;
       targetY = state.combatField.y;
       sharpness = CONFIG.combatField.cameraSharpness;
-    } else if (state.arena.locked) {
-      targetX = state.arena.x;
-      targetY = state.arena.y;
-      sharpness = CONFIG.camera.bossFollowSharpness;
     }
     const amount = 1 - Math.exp(-sharpness * dt);
     state.camera.x = lerp(state.camera.x, targetX, amount);
@@ -4855,7 +4907,7 @@
     if (!data) return "Stand by";
     if (state.mode === "transition" && state.cinematic.active) return `Transit ${Math.round(state.cinematic.progress * 100)}%`;
     if (data.spec.bossType) {
-      if (state.arena.warning > 0) return `${state.arena.shape === "field" ? "Field" : "Arena"} lock in ${state.arena.warning.toFixed(1)}s`;
+      if (state.arena.warning > 0) return `Capital ship arrives in ${state.arena.warning.toFixed(1)}s`;
       if (data.bossDefeated) return `Clear remaining threats · ${encounterThreatsRemaining()}`;
       if (state.boss) return `Break ${CONFIG.bosses[state.boss.type].label}`;
       return "Signal collapsing";
@@ -4863,6 +4915,19 @@
     const remaining = encounterThreatsRemaining();
     if (data.goalType === "titan") return remaining ? `Destroy all threats · ${remaining}` : "Area clear";
     return `Wave ${data.waveNumber}/${data.waveCount} · ${remaining} threats`;
+  }
+
+  function updateTouchActionUI(button, usable, label) {
+    if (!button) return;
+    if (!usable && global.document.activeElement === button) {
+      if (anyDialogOpen()) button.blur();
+      else canvas.focus({ preventScroll: true });
+    }
+    button.disabled = !usable;
+    button.classList.toggle("is-usable", usable);
+    button.setAttribute("aria-hidden", String(!usable));
+    button.setAttribute("aria-label", usable ? `${label} ready` : `${label} unavailable`);
+    button.tabIndex = usable ? 0 : -1;
   }
 
   function updateUI(force) {
@@ -4899,6 +4964,9 @@
       dom.pulseFill.classList.toggle("is-ready", pulseRatio >= 0.995);
     }
     if (dom.pulseTrack) dom.pulseTrack.setAttribute("aria-valuenow", String(Math.round(pulseRatio * 100)));
+    const touchActionsActive = touchCapable && !orientationBlocked && state.mode === "playing" && state.upgradeDraft.phase === "idle";
+    updateTouchActionUI(dom.touchDash, touchActionsActive && dashReady(state.ship), "Dash");
+    updateTouchActionUI(dom.touchPulse, touchActionsActive && pulseReady(state.ship), "Void Pulse");
     if (dom.objectiveStatus) {
       const nextObjective = objectiveText();
       if (dom.objectiveStatus.textContent !== nextObjective) dom.objectiveStatus.textContent = nextObjective;

@@ -98,7 +98,7 @@ module.exports = function register(test) {
     assert.deepEqual(
       JSON.parse(JSON.stringify(CONFIG.mobileControls)),
       {
-        stickRadius: 46,
+        stickRadius: 56,
         moveDeadzone: 0.16,
         moveCurve: 1.45,
         moveMaxOutput: 0.72,
@@ -385,7 +385,7 @@ module.exports = function register(test) {
     assert.equal(game.input.touchFire, false);
   });
 
-  test("dynamic sticks relocate to arbitrary touches and clamp knob travel to the configured radius", () => {
+  test("floating sticks relocate, follow drag overshoot, and keep knob travel bounded", () => {
     const { browser, game, CONFIG } = bootMobile();
     const canvas = browser.elements.get("game");
     const moveZone = browser.elements.get("move-zone");
@@ -421,6 +421,18 @@ module.exports = function register(test) {
 
     rawPointer(browser, canvas, "pointermove", 11, 103 + CONFIG.mobileControls.stickRadius * 4, 137);
     rawPointer(browser, canvas, "pointermove", 22, 747, 286 - CONFIG.mobileControls.stickRadius * 4);
+    assert.deepEqual(JSON.parse(JSON.stringify(game.mobile.moveOrigin)), {
+      x: 103 + CONFIG.mobileControls.stickRadius * 3,
+      y: 137
+    });
+    assert.deepEqual(JSON.parse(JSON.stringify(game.mobile.aimOrigin)), {
+      x: 747,
+      y: 286 - CONFIG.mobileControls.stickRadius * 3
+    });
+    assert.equal(moveZone.style["--stick-x"], `${93 + CONFIG.mobileControls.stickRadius * 3}px`);
+    assert.equal(moveZone.style["--stick-y"], "117px");
+    assert.equal(aimZone.style["--stick-x"], "737px");
+    assert.equal(aimZone.style["--stick-y"], `${266 - CONFIG.mobileControls.stickRadius * 3}px`);
     assert.ok(game.input.touchMoveX > CONFIG.mobileControls.moveMaxOutput - 0.01 && game.input.touchMoveX <= CONFIG.mobileControls.moveMaxOutput);
     assert.equal(game.input.touchMoveY, 0);
     assert.equal(game.input.touchAimX, 0);
@@ -959,16 +971,52 @@ module.exports = function register(test) {
     pointer(browser, "aim-zone", "pointerup", 44, 640, 250);
   });
 
-  test("touch Dash and Pulse buttons activate gameplay without opening pause", () => {
+  test("touch Dash and Pulse appear only while ready and activate without opening pause", () => {
     const { browser, game, CONFIG } = bootMobile();
     game.start();
     const ship = game.state.ship;
-    browser.elements.get("touch-dash").click();
-    browser.elements.get("touch-pulse").click();
+    const dash = browser.elements.get("touch-dash");
+    const pulse = browser.elements.get("touch-pulse");
+    for (const button of [dash, pulse]) {
+      assert.equal(button.disabled, false, `${button.id} did not become usable at run start`);
+      assert.equal(button.getAttribute("aria-hidden"), "false");
+      assert.equal(button.classList.contains("is-usable"), true);
+    }
+    rawPointer(browser, dash, "pointerdown", 201, 620, 320);
+    rawPointer(browser, pulse, "pointerdown", 202, 620, 260, { isPrimary: false });
     game.step(CONFIG.world.fixedStep);
     assert.equal(game.state.mode, "playing");
     assert.ok(ship.dashCooldown > 0, "Dash button was not consumed by gameplay");
     assert.ok(ship.pulse < 99.5, "Pulse button did not activate Void Pulse");
+    for (const button of [dash, pulse]) {
+      assert.equal(button.disabled, true, `${button.id} remained enabled while unavailable`);
+      assert.equal(button.getAttribute("aria-hidden"), "true");
+      assert.equal(button.classList.contains("is-usable"), false);
+    }
+    dash.click();
+    pulse.click();
+    assert.equal(Boolean(game.input.pressed.dash), false, "unavailable Dash buffered an action");
+    assert.equal(Boolean(game.input.pressed.pulse), false, "unavailable Pulse buffered an action");
+
+    ship.dashCooldown = 0;
+    ship.pulse = CONFIG.voidPulse.activationThreshold;
+    game.state.uiTimer = 0;
+    game.step(CONFIG.world.fixedStep);
+    for (const button of [dash, pulse]) {
+      assert.equal(button.disabled, false, `${button.id} did not reappear when ready`);
+      assert.equal(button.getAttribute("aria-hidden"), "false");
+      assert.equal(button.classList.contains("is-usable"), true);
+    }
+    dash.focus();
+    assert.equal(browser.document.activeElement, dash);
+    rawPointer(browser, dash, "pointerdown", 203, 620, 320, { pointerType: "mouse", isPrimary: true });
+    dash.dispatchEvent({ type: "click", detail: 1, pointerType: "mouse", preventDefault() {} });
+    pulse.click();
+    assert.equal(Boolean(game.input.pressed.dash), true, "stale touch suppression swallowed mouse Dash");
+    assert.equal(Boolean(game.input.pressed.pulse), true, "stale touch suppression swallowed assistive Pulse");
+    game.state.uiTimer = 0;
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(browser.document.activeElement, browser.elements.get("game"), "focus stayed on a hidden action");
   });
 
   test("touch-device blur does not pause, while visibility loss still pauses", () => {
@@ -1449,12 +1497,17 @@ module.exports = function register(test) {
     assert.match(css, /#game-shell\s*\{[^}]*touch-action:\s*manipulation/i, "double-tap zoom is not disabled for the game shell");
     assert.match(css, /#game-shell\s*\{[^}]*overscroll-behavior:\s*none/i, "the fullscreen shell can still hand gestures to page scrolling");
 
-    const zoneWidths = Array.from(css.matchAll(/(?:\.is-touch-capable\s+)?\.stick-zone\s*\{[^{}]*?\bwidth:\s*(\d+)px/g), (match) => Number(match[1]));
+    assert.doesNotMatch(html, /<span>\s*(?:Move|Aim \+ fire)\s*<\/span>/i, "idle touch hotspots remain visible");
+    const ringWidths = Array.from(css.matchAll(/(?:\.is-touch-capable\s+)?\.stick-ring\s*\{[^{}]*?\bwidth:\s*(\d+)px/g), (match) => Number(match[1]));
     const actionOffsets = Array.from(css.matchAll(/(?:\.is-touch-capable\s+)?\.touch-actions\s*\{[^{}]*?\bright:\s*calc\(var\(--safe-right\)\s*\+\s*(\d+)px\)/g), (match) => Number(match[1]));
-    assert.deepEqual(zoneWidths, [132, 116, 110, 106], "touch-zone width contract changed unexpectedly");
+    assert.deepEqual(ringWidths, [124, 112], "floating stick ring sizes changed unexpectedly");
     assert.deepEqual(actionOffsets, [140, 124, 118, 114], "touch-action offset contract changed unexpectedly");
-    for (let index = 0; index < zoneWidths.length; index += 1) {
-      assert.ok(actionOffsets[index] >= zoneWidths[index] + 8, "touch action overlaps the aim zone");
-    }
+    assert.match(css, /\.stick-ring\s*\{[^}]*opacity:\s*0/s, "idle floating sticks remain visible");
+    assert.match(css, /\.stick-zone\.is-engaged\s+\.stick-ring\s*\{[^}]*opacity:\s*1/s);
+    assert.match(css, /\.stick-knob\s*\{[^}]*width:\s*52px/s);
+    assert.match(css, /\.touch-actions\s*\{[^}]*pointer-events:\s*none/s,
+      "touch action slots intercept the aim half while unavailable");
+    assert.match(css, /\.touch-button\.is-usable\s*\{[^}]*pointer-events:\s*auto/s,
+      "ready touch actions are not interactive");
   });
 };

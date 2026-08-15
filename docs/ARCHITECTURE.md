@@ -32,7 +32,7 @@ flowchart LR
 | `js/config.js` | Version, stages, milestone rewards, module tiers, pickup pacing, dimensions, timing, difficulty, caps | Mutable run state |
 | `js/core.js` | Pure reusable deterministic utilities and safe storage primitives | Domain orchestration |
 | `js/audio.js` | Optional synthesized cues and active-node cap | Gameplay decisions |
-| `js/render.js` | Scene keyframes, asset loading, previews, cached late/boss washes, arenas, telegraphs, fields, projectiles, and Canvas drawing | Progression or collision outcomes |
+| `js/render.js` | Scene keyframes, asset loading, previews, cached late/boss washes, field cues, telegraphs, projectiles, and Canvas drawing | Progression or collision outcomes |
 | `js/game.js` | Saved progress, modes, input, gated rewards, Enigma drafting, encounter and threat state machines, combat, progression, UI projection, frame loop | Authored balance values or raster provenance |
 | `tests/` | Deterministic contracts and dependency-free browser simulation | Human game-feel acceptance |
 
@@ -44,7 +44,7 @@ Exact product behavior belongs in [`GAME_DESIGN.md`](GAME_DESIGN.md); exact tuni
 
 Reward eligibility has one runtime path. `progressionStage()` selects the current authored stage and treats later sectors as the final band; `currentDropBand()` selects one of the six frozen configuration bands; `contentUnlocked()` applies stage gates; and `rewardableModuleIds()` intersects the unlocked catalog with the band's tier ceiling. Natural drops, Enigma permanent cards, module caches, milestones, and boss cores use those boundaries rather than maintaining separate hidden catalogs.
 
-Threat counterplay is similarly state-owned and config-driven. Auric descendants retain their explosive/magnetic variant and split generation through requeues. Corona hazards retain cooldown/warning/active timers and beam angle. Gunships own warning/active/cooldown laser state. Brood Carriers retain their living-child lineage across requeues. The configured `bossType` selects Harrower or Leviathan behavior; `arenaShape` selects circular or rectangular containment, and the Leviathan's reflection object remains active only while shield nodes survive.
+Threat counterplay is similarly state-owned and config-driven. Auric descendants retain their explosive/magnetic variant and split generation through requeues. Corona hazards retain cooldown/warning/active timers and beam angle. Gunships own warning/active/cooldown laser state. Brood Carriers retain their living-child lineage across requeues. Mixed-kind wave groups build a seeded balanced bag without changing their authored count or the number of random draws. The configured `bossType` selects Harrower or Leviathan behavior; both reuse the responsive combat-field geometry, and the Leviathan's reflection object remains active only while shield nodes survive.
 
 Two strict local-storage records are intentionally separate:
 
@@ -57,9 +57,9 @@ The storage key remains unchanged. Schema 3 accepts only the exact current modul
 
 Collecting Enigma generates three seeded, non-duplicated eligible choices before slowdown begins. A band may decline to offer a permanent card, so temporary and support choices provide bounded fallbacks. Unscaled draft elapsed time advances by the fixed step, while its smooth time scale multiplies only gameplay simulation. At the `choosing` phase the multiplier is zero, transient controls remain neutral, the modal owns focus, and selection applies exactly one upgrade before restoring input with bounded invulnerability and checkpointing the result. The existing animation frame calls `ND.EnigmaPreview.render` for each decorative card canvas; the preview owns no random source, event listener, or animation loop.
 
-The HUD remains a projection of live state. Shield reserve is hidden at zero and exposes the configured 60-point maximum when charged. Desktop rows expose equipped systems and individual timed countdowns; compact touch CSS displays one accessible summary per row and makes both rows pointer-transparent so they cannot intercept movement or aim starts.
+The HUD remains a projection of live state. Shield reserve is hidden at zero and exposes the configured 60-point maximum when charged. Desktop rows expose equipped systems and individual timed countdowns; compact touch CSS displays one accessible summary per row and makes both rows pointer-transparent so they cannot intercept movement or aim starts. Touch-stick bases move only by drag overshoot while retaining their original pointer-ID role; shared Dash and Pulse readiness predicates gate both simulation input and the accessible touch-button projection.
 
-`js/render.js` builds encounter gradients only on renderer resize. Late-stage intensity derives from encounter progression, boss washes derive from configured `bossType`, and both crossfade with the same scene-handoff weights. Reduced effects use lower static opacity. Tractor arcs read the exact equipped-tier range; arena drawing reads `shape`, `halfWidth`, and `halfHeight`; telegraphs read the runtime warning/active objects; and Leviathan reflection reads the node-dependent shield object defensively.
+`js/render.js` builds encounter gradients only on renderer resize. Late-stage intensity derives from encounter progression, boss washes derive from configured `bossType`, and both crossfade with the same scene-handoff weights. Reduced effects use lower static opacity. Tractor arcs read the exact equipped-tier range; subtle field cues read the shared combat-field bounds; telegraphs read the runtime warning/active objects; and Leviathan reflection reads the node-dependent shield object defensively.
 
 ## Large-file routing
 
@@ -71,7 +71,7 @@ The HUD remains a projection of live state. Shield reserve is hidden at zero and
 | Modes and UI ownership | overlay/dialog helpers, Enigma card/preview/focus flow, run start/restart/menu flow, progress grid, shield readout, equipped-module strip, timed-effect countdowns, and compact summaries |
 | Input lifecycle | keyboard, pointer, touch-stick, gamepad, orientation, visibility cleanup |
 | Encounter lifecycle | combat-field setup, queues, waves, hyperspace, stage advancement |
-| Combat | ship/weapons, passive cadence/ranges, spawns, evolved hazard and alien state machines, configured boss arenas/reflection, collisions, damage, gated pickups, temporary stacking, and bounded module rewards |
+| Combat | ship/weapons, passive cadence/ranges, spawns, evolved hazard and alien state machines, shared boss fields/reflection, collisions, damage, gated pickups, temporary stacking, and bounded module rewards |
 | Bounded cleanup | effects, hard-cull requeue, collection cleanup, camera, origin rebasing |
 | Verification surface | `ND.game`, deterministic debug controls, snapshot, fixed-step `frame` loop |
 
