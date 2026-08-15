@@ -4,11 +4,43 @@ const { assert, vm, readProject, approximately } = require("./_harness");
 const browserSmoke = require("./browser-smoke.test");
 
 function loadRenderer() {
+  return loadVisualRuntime().window.ND.RenderDebug;
+}
+
+function loadVisualRuntime() {
   const browser = browserSmoke.buildBrowser({ now: 1700000000000 });
   for (const script of ["js/config.js", "js/core.js", "js/render.js"]) {
     vm.runInContext(readProject(script), browser.context, { filename: script, timeout: 3000 });
   }
-  return browser.window.ND.RenderDebug;
+  return browser;
+}
+
+function recordingCanvas() {
+  const operations = [];
+  const methods = new Set([
+    "arc", "beginPath", "clearRect", "closePath", "fill", "fillRect", "lineTo", "moveTo",
+    "quadraticCurveTo", "restore", "rotate", "save", "scale", "setLineDash", "setTransform",
+    "stroke", "strokeRect", "translate"
+  ]);
+  const context = new Proxy({}, {
+    get(target, key) {
+      if (methods.has(key)) return (...args) => operations.push([key, ...args]);
+      return target[key];
+    },
+    set(target, key, value) {
+      target[key] = value;
+      operations.push(["set", key, value]);
+      return true;
+    }
+  });
+  const canvas = {
+    width: 0,
+    height: 0,
+    clientWidth: 240,
+    clientHeight: 64,
+    getContext: () => context
+  };
+  return { canvas, operations };
 }
 
 module.exports = function register(test) {
@@ -127,6 +159,53 @@ module.exports = function register(test) {
     assert.equal(debug.sceneFrame(1, 1, NaN).progress, 0);
   });
 
+  test("late-stage and boss nebula washes share the same continuous handoff weights", () => {
+    const renderer = readProject("js/render.js");
+    assert.match(renderer, /const lateStage = clamp\(\(index - 8\)/,
+      "late-stage nebula intensity is not derived from encounter progression");
+    assert.match(renderer, /if \(lateStage > 0 \|\| bossType\) \{[\s\S]*?nebula = this\.ctx\.createRadialGradient/,
+      "late stages and boss scenes do not receive a local nebula wash");
+    assert.match(renderer, /if \(bossType\) \{[\s\S]*?bossNebula = this\.ctx\.createRadialGradient/,
+      "boss scenes lack their distinct nebula layer");
+    assert.match(renderer, /renderWash\(fromStage, 1 - progress\);\s*renderWash\(toStage, progress\);/,
+      "nebula washes no longer crossfade with the authored scene handoff");
+    assert.match(renderer, /if \(wash\.nebula\) \{[\s\S]*?\* alpha;/,
+      "nebula opacity ignores the scene handoff weight");
+    assert.match(renderer, /if \(wash\.bossNebula\) \{[\s\S]*?\* alpha;/,
+      "boss nebula opacity ignores the scene handoff weight");
+  });
+
+  test("Enigma card previews are local canvases with deterministic reduced animation", () => {
+    const runtime = loadVisualRuntime();
+    const preview = runtime.window.ND.EnigmaPreview;
+    assert.ok(preview && typeof preview.render === "function", "Enigma preview renderer is unavailable");
+    const choice = {
+      id: "module:teslaCoil",
+      enhancementId: "teslaCoil",
+      kind: "module",
+      activation: "autonomous",
+      nextTier: 4
+    };
+    const reducedFirst = recordingCanvas();
+    const reducedLater = recordingCanvas();
+    assert.equal(preview.render(reducedFirst.canvas, choice, 1, true), true);
+    assert.equal(preview.render(reducedLater.canvas, choice, 999, true), true);
+    assert.deepEqual(reducedFirst.operations, reducedLater.operations,
+      "reduced-effects previews changed with wall-clock time");
+    assert.deepEqual([reducedFirst.canvas.width, reducedFirst.canvas.height], [240, 64]);
+    assert.ok(reducedFirst.operations.some((operation) => operation[0] === "stroke"),
+      "preview rendered no visible vector action");
+
+    const animatedFirst = recordingCanvas();
+    const animatedLater = recordingCanvas();
+    preview.render(animatedFirst.canvas, choice, 1, false);
+    preview.render(animatedLater.canvas, choice, 2, false);
+    assert.notDeepEqual(animatedFirst.operations, animatedLater.operations,
+      "normal previews lost their restrained animation");
+    assert.equal(preview.render(null, choice, 0, false), false);
+    assert.equal(preview.render({ getContext: () => null }, choice, 0, false), false);
+  });
+
   test("screen anchor reports exact desktop and mobile ship placement", () => {
     const debug = loadRenderer();
     const state = { ship: { x: 84, y: -45 }, camera: { x: -16, y: 15 } };
@@ -221,7 +300,7 @@ module.exports = function register(test) {
     assert.equal(debug.asteroidCrackStage(asteroid), 0, "invalid damage state produced cracks");
   });
 
-  test("touch landscape HUD keeps loadout chips visible without blocking either control half", () => {
+  test("touch landscape HUD replaces chip spam with one pointer-transparent summary per row", () => {
     const css = readProject("styles.css");
     const marker = "@media (orientation: landscape) and (max-height: 820px)";
     const start = css.indexOf(marker);
@@ -248,11 +327,18 @@ module.exports = function register(test) {
     }
     const loadoutDeclarations = rule(".is-touch-capable .module-strip,\n  .is-touch-capable .active-effects-list");
     assert.match(loadoutDeclarations, /flex-wrap:\s*nowrap/);
-    assert.match(loadoutDeclarations, /overflow-x:\s*auto/);
+    assert.match(loadoutDeclarations, /justify-content:\s*center/);
+    assert.match(loadoutDeclarations, /overflow-x:\s*hidden/);
     assert.match(loadoutDeclarations, /overflow-y:\s*hidden/);
     assert.match(loadoutDeclarations, /pointer-events:\s*none/);
-    assert.doesNotMatch(loadoutDeclarations, /touch-action:\s*pan-x/);
-    assert.doesNotMatch(loadoutDeclarations, /(?:width|height):\s*1px|clip:\s*rect/, "owned loadout chips were visually clipped");
+    const hiddenChips = rule(".is-touch-capable .module-slot,\n  .is-touch-capable .active-effect-chip");
+    assert.match(hiddenChips, /display:\s*none/);
+    const visibleSummaries = rule(".is-touch-capable .module-compact-summary,\n  .is-touch-capable .active-effect-compact-summary");
+    assert.match(visibleSummaries, /display:\s*inline-flex/);
+    const baseSummary = css.match(/\.module-compact-summary,\s*\.active-effect-compact-summary\s*\{([^}]*)\}/s);
+    assert.ok(baseSummary, "desktop compact-summary base rule is missing");
+    assert.match(baseSummary[1], /display:\s*none/);
+    assert.doesNotMatch(loadoutDeclarations, /(?:width|height):\s*1px|clip:\s*rect/, "owned summary rows were visually clipped");
     for (const selector of [".is-touch-capable .hud-button", ".is-touch-capable .touch-button"]) {
       const declarations = rule(selector);
       const width = declarations.match(/(?:min-)?width:\s*(\d+)px/);
@@ -297,6 +383,9 @@ module.exports = function register(test) {
     assert.doesNotMatch(compact, /grid-template-columns:\s*1fr/, "short landscape collapsed the three choices vertically");
     assert.match(compact, /\.upgrade-card-title\s*\{[^}]*font-size:\s*0\.76rem/s);
     assert.match(compact, /\.upgrade-card-description\s*\{[^}]*font-size:\s*0\.6rem/s);
+    assert.match(compact, /\.upgrade-card-preview-frame\s*\{[^}]*height:\s*clamp\(36px,\s*8vh,\s*44px\)/s);
+    assert.match(css, /\.upgrade-card-preview\s*\{[^}]*pointer-events:\s*none/s,
+      "decorative previews can intercept card input");
     assert.match(renderer, /enigma:\s*"#c584ff"/);
     assert.match(renderer, /enigma:\s*"\?"/);
     assert.match(renderer, /drawTimeFracture\(state\)/);
@@ -306,6 +395,9 @@ module.exports = function register(test) {
     assert.match(renderer, /state\.ship\s*&&\s*state\.ship\.orbitBlades/);
     assert.match(renderer, /mine\.owner\s*===\s*"player"/);
     assert.match(renderer, /boss\.type\s*===\s*"leviathan"/);
+    assert.match(renderer, /const fieldShape = state\.arena\.shape === "field"/);
+    assert.match(renderer, /if \(fieldShape\) \{\s*ctx\.rect\(/,
+      "Leviathan field arena is not rendered as a field boundary");
     assert.match(renderer, /amplifier:\s*"#ffb45f"/);
     assert.match(renderer, /aegis:\s*"#7bdcff"/);
   });

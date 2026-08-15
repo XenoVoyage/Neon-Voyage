@@ -62,6 +62,7 @@ function makeElement(id, className, tagName) {
   const attributes = new Map();
   const isCanvas = id === "game" || String(tagName || "").toLowerCase() === "canvas";
   const context = isCanvas ? makeCanvasContext() : null;
+  let textContent = "";
   const element = {
     id,
     nodeType: 1,
@@ -70,7 +71,14 @@ function makeElement(id, className, tagName) {
     classList: makeClassList(className),
     style: { setProperty(name, value) { this[name] = value; }, removeProperty(name) { delete this[name]; } },
     dataset: {},
-    textContent: "",
+    children: [],
+    parentElement: null,
+    get textContent() { return textContent; },
+    set textContent(value) {
+      textContent = String(value == null ? "" : value);
+      for (const child of this.children) child.parentElement = null;
+      this.children.length = 0;
+    },
     innerHTML: "",
     value: "",
     disabled: false,
@@ -122,9 +130,40 @@ function makeElement(id, className, tagName) {
       if (name === "inert") this.inert = false;
     },
     hasAttribute(name) { return attributes.has(name); },
-    querySelector() { return null; },
-    querySelectorAll() { return []; },
-    appendChild(child) { return child; },
+    querySelector(selector) { return this.querySelectorAll(selector)[0] || null; },
+    querySelectorAll(selector) {
+      const matches = [];
+      const match = (candidate) => {
+        if (!candidate || candidate.nodeType !== 1) return false;
+        if (selector.startsWith(".")) {
+          return String(candidate.className || "").split(/\s+/).includes(selector.slice(1));
+        }
+        if (selector.startsWith("#")) return candidate.id === selector.slice(1);
+        return candidate.tagName === selector.toUpperCase();
+      };
+      const visit = (parent) => {
+        for (const child of parent.children || []) {
+          if (match(child)) matches.push(child);
+          visit(child);
+        }
+      };
+      visit(this);
+      return matches;
+    },
+    appendChild(child) {
+      if (child.parentElement && child.parentElement !== this && Array.isArray(child.parentElement.children)) {
+        const previousIndex = child.parentElement.children.indexOf(child);
+        if (previousIndex >= 0) child.parentElement.children.splice(previousIndex, 1);
+      }
+      child.parentElement = this;
+      this.children.push(child);
+      return child;
+    },
+    replaceChildren(...children) {
+      for (const child of this.children) child.parentElement = null;
+      this.children.length = 0;
+      for (const child of children) this.appendChild(child);
+    },
     remove() {},
     showModal() { this.open = true; },
     close() { this.open = false; },
@@ -409,6 +448,81 @@ function register(test) {
       !browser.elements.get("hud").classList.contains("is-hidden"),
       "HUD did not become visible after starting"
     );
+  });
+
+  test("generated Enigma cards own one unfocusable local preview canvas each", () => {
+    const browser = buildBrowser({ now: 1700000000200 });
+    for (const script of ["js/config.js", "js/core.js", "js/audio.js", "js/render.js", "js/game.js"]) {
+      vm.runInContext(readProject(script), browser.context, { filename: script, timeout: 3000 });
+    }
+    browser.document.readyState = "interactive";
+    browser.emit(browser.document, "DOMContentLoaded");
+    const game = browser.window.ND.game;
+    game.start();
+    game.setStage(16, 1);
+    game.setSeed(3817);
+    assert.equal(game.applyPickup(game.spawnPickup(0, 0, "enigma")), true);
+    const fixedStep = browser.window.ND.CONFIG.world.fixedStep;
+    const limit = Math.ceil(browser.window.ND.CONFIG.powerups.enigma.slowdownSeconds / fixedStep) + 2;
+    for (let frame = 0; frame < limit && game.snapshot().enigma.phase !== "choosing"; frame += 1) game.step(fixedStep);
+    assert.equal(game.snapshot().enigma.phase, "choosing");
+
+    const cards = browser.createdElements.filter((element) => /(^|\s)upgrade-card(\s|$)/.test(element.className));
+    assert.equal(cards.length, 3);
+    for (const card of cards) {
+      const frames = card.querySelectorAll(".upgrade-card-preview-frame");
+      const previews = card.querySelectorAll(".upgrade-card-preview");
+      assert.equal(frames.length, 1, "card did not own exactly one preview frame");
+      assert.equal(previews.length, 1, "card did not own exactly one preview canvas");
+      assert.equal(frames[0].getAttribute("aria-hidden"), "true");
+      assert.equal(previews[0].tagName, "CANVAS");
+      assert.equal(previews[0].getAttribute("aria-hidden"), "true");
+      assert.equal(previews[0].getAttribute("tabindex"), null, "decorative preview entered the tab order");
+      assert.ok(card.getAttribute("aria-label")?.includes(game.snapshot().enigma.choices[Number(card.dataset.choiceIndex)].title));
+    }
+    assert.equal(browser.document.activeElement, cards[0], "card focus did not remain on the actionable button");
+    browser.pumpFrames(3);
+    assert.equal(browser.document.activeElement, cards[0], "preview rendering stole card focus");
+  });
+
+  test("touch landscape loadouts expose one compact accessible summary for modules and timed effects", () => {
+    const browser = buildBrowser({ now: 1700000000300, maxTouchPoints: 5 });
+    browser.window.innerWidth = 568;
+    browser.window.innerHeight = 320;
+    for (const script of ["js/config.js", "js/core.js", "js/audio.js", "js/render.js", "js/game.js"]) {
+      vm.runInContext(readProject(script), browser.context, { filename: script, timeout: 3000 });
+    }
+    browser.document.readyState = "interactive";
+    browser.emit(browser.document, "DOMContentLoaded");
+    const game = browser.window.ND.game;
+    game.start();
+    game.setStage(16, 1);
+    for (const id of Object.keys(game.state.ship.modules)) game.state.ship.modules[id] = 0;
+    game.state.ship.modules.pulse = 5;
+    game.state.ship.modules.homingSalvo = 4;
+    game.state.ship.modules.teslaCoil = 3;
+    game.state.moduleSignature = "";
+    for (const kind of ["rapid", "amplifier", "aegis"]) game.applyPickup(game.spawnPickup(0, 0, kind));
+    for (let frame = 0; frame < 10; frame += 1) game.step(browser.window.ND.CONFIG.world.fixedStep);
+
+    const moduleStrip = browser.elements.get("module-strip");
+    const effectList = browser.elements.get("active-effects-list");
+    const moduleSummaries = moduleStrip.querySelectorAll(".module-compact-summary");
+    const effectSummaries = effectList.querySelectorAll(".active-effect-compact-summary");
+    assert.equal(moduleSummaries.length, 1);
+    assert.equal(effectSummaries.length, 1);
+    assert.equal(moduleSummaries[0].textContent, "3 SYSTEMS · 2 AUTO");
+    assert.equal(effectSummaries[0].textContent, "3 EFFECTS · 84s");
+    assert.match(moduleSummaries[0].getAttribute("aria-label"), /3 permanent systems\./);
+    for (const label of ["Pulse Repeater", "Homing Salvo", "Tesla Coil"]) {
+      assert.ok(moduleSummaries[0].getAttribute("aria-label").includes(label), `compact modules omitted ${label}`);
+    }
+    assert.match(effectSummaries[0].getAttribute("aria-label"), /3 timed effects\./);
+    for (const label of ["OVERDRIVE", "DAMAGE AMPLIFIER", "AEGIS FIELD"]) {
+      assert.ok(effectSummaries[0].getAttribute("aria-label").includes(label), `compact effects omitted ${label}`);
+    }
+    assert.equal(moduleStrip.querySelectorAll(".module-slot").length, 3, "desktop module detail was not retained");
+    assert.equal(effectList.querySelectorAll(".active-effect-chip").length, 3, "desktop effect detail was not retained");
   });
 }
 

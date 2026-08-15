@@ -2,6 +2,19 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.15b] — 2026-08-15
+
+### Added
+
+- Added Auric Colossus split trees with explosive and magnetic shards, rotating-beam Coronas, laser Gunships, armored Brood Carriers, and the Leviathan's node-dependent projectile reflection.
+- Added compact animated Enigma previews, a visible 60-point shield reserve, exact passive-range cues, touch HUD summary chips, and restrained late-stage and boss nebula washes.
+
+### Changed
+
+- Rebalanced rewards into six stage-gated bands: drop chance now rises from 26% to 38%, pity shortens from four kills to three in the late journey, and permanent catalogs plus tier ceilings open progressively through Mk V.
+- Concentrated guaranteed module milestones at Stages 3, 6, 9, 12, 15, and 18; increased authored stage pressure and introduced advanced alien roles in sequence.
+- Kept the Harrower in a circular arena while giving the Leviathan a responsive rectangular command field.
+
 ## [v2026.8.15a] — 2026-08-15
 
 ### Added

@@ -1,6 +1,6 @@
 # Neon Voyage
 
-[![Version v2026.8.15a](https://img.shields.io/badge/version-v2026.8.15a-63f7f0)](CHANGELOG.md)
+[![Version v2026.8.15b](https://img.shields.io/badge/version-v2026.8.15b-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
@@ -32,11 +32,13 @@ Neon Voyage is a fast, fixed-screen space shooter about leaving Earth, crossing 
 | Void Pulse | `E` | Tertiary / Pulse |
 | Pause | `P` or `Esc` | Menu / Pause |
 
-On phones and tablets, play in landscape and touch either half of the battlefield to place its movement or aim stick.
+On phones and tablets, play in landscape and touch either half of the battlefield to place its movement or aim stick. Compact touch layouts condense owned systems and active timers into readable summary chips so the controls stay clear.
 
 ## The voyage
 
-Clear each battlefield, stack long-lasting temporary weapons, and grow 13 permanent modules through Mk V. Frequent **Enigma** signals slow combat to a halt and offer three enhancements, while milestone clears add systems such as guided rockets, chain lightning, orbit blades, mines, shield recovery, weapon overclocking, and pickup attraction. Defeat the Harrower at Stage 10, survive a second frontier, and confront the Leviathan at Stage 20. **New Game** begins again at Earth; **Continue** shows the loadout at each earned stage and restores the selected checkpoint's saved weapons.
+Clear each battlefield, stack long-lasting temporary weapons, and grow a stage-gated catalog of 13 permanent modules through Mk V. Reward chances and tier limits rise as the voyage becomes more dangerous. **Enigma** signals slow combat to a halt and offer three compact animated enhancement cards, while six milestone clears guarantee key systems.
+
+Auric Colossi split into explosive and magnetic shards, Coronas sweep the field with rotating beams, and advanced alien gunships and Brood Carriers demand new positioning. Defeat the Harrower in its circular Stage 10 arena, survive the evolved frontier, and confront the reflecting Leviathan inside a rectangular field at Stage 20. **New Game** begins again at Earth; **Continue** restores the selected checkpoint's saved weapons to a fresh battlefield.
 
 ![The Neon Voyage ship confronting the Harrower at the journey's midpoint.](docs/assets/neon-voyage-command-arena.webp)
 

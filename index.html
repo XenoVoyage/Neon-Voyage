@@ -109,7 +109,22 @@
       <div class="meter-block">
         <div class="meter-label">
           <span>Hull</span>
-          <span id="hull-value">100%</span>
+          <span class="system-values">
+            <span
+              id="shield-readout"
+              class="shield-readout is-hidden"
+              role="progressbar"
+              aria-label="Shield reserve"
+              aria-valuemin="0"
+              aria-valuemax="60"
+              aria-valuenow="0"
+              aria-valuetext="0 shield points"
+            >
+              <span aria-hidden="true">SHD</span>
+              <strong id="shield-value" aria-hidden="true">0</strong>
+            </span>
+            <span id="hull-value">100%</span>
+          </span>
         </div>
         <div class="meter-track" role="progressbar" aria-label="Hull integrity" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
           <div id="hull-fill" class="meter-fill hull-fill"></div>
@@ -161,7 +176,7 @@
 
         <div class="menu-meta">
           <span>Local record <strong id="menu-high-score">000000</strong></span>
-          <span>Version v2026.8.15a</span>
+          <span>Version v2026.8.15b</span>
         </div>
       </div>
     </section>
