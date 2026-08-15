@@ -64,7 +64,7 @@ Passed:
 
 ## Automated evidence boundary
 
-The frozen run registered and passed 167 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (16), mobile input (39), gameplay (66), visuals (12), and stress (2). `SHA256SUMS` exactly covered and verified all 46 release files outside its documented self/exclusion rules.
+The frozen run registered and passed 167 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (16), mobile input (39), gameplay (66), visuals (12), and stress (2). `SHA256SUMS` exactly covered and verified all 47 release files outside its documented self/exclusion rules.
 
 The browser VM loads every classic script, constructs the DOM and Canvas surfaces, starts a run, creates real Enigma buttons/previews, projects shield and compact summaries, and keeps one animation loop. Responsive contracts cover 568×320 and 667×375 phone landscapes and a 1024×768 tablet-class viewport. This is automated source and simulated-browser evidence, not a pixel-comparison test or hands-on device play.
 

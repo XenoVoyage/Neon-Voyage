@@ -22,7 +22,7 @@ Node.js 22 is the minimum verification baseline because both GitHub workflows ru
 | `visuals.test.js` | Twenty-scene continuity, cached late/boss washes, deterministic Enigma micro-previews, hyperspace/projectile/field contracts, damage presentation, and compact responsive summary/dialog rules |
 | `stress.test.js` | Long deterministic full-build simulation, hazard and reflection phase exercise, staged alien coverage, reproducibility, finite state, all passive systems, and enforced caps |
 
-The harness exercises the stable `ND.game`, `ND.StagePreview`, `ND.EnigmaPreview`, and `ND.RenderDebug` test contracts exposed by the classic-script runtime. It installs no package and performs no network request.
+The generic and browser harnesses exercise the stable `ND.game`, `ND.StagePreview`, `ND.EnigmaPreview`, and `ND.RenderDebug` test contracts exposed by the classic-script runtime. They install no package and perform no network request.
 
 ## Final candidate checks
 
@@ -56,4 +56,4 @@ Use only the rows affected by the change, plus the release row for a public runt
 
 ## Evidence boundary
 
-Automated browser tests use simulated viewports, Pointer Events, and Canvas calls. They establish deterministic behavior and regression coverage, not human acceptance of balance, difficulty, visual quality, audio, responsiveness, or physical phone/tablet feel. The frozen `v2026.8.15b` source tree passes `167/167` checks and its exact checksum manifest; [`AUDIT.md`](../AUDIT.md) records that automated evidence. Live-browser, deployment, and physical-device evidence remain separate and pending. Each public release still requires the browser-smoke and live-Play gates defined in `AGENTS.md`.
+Automated browser tests use simulated viewports, Pointer Events, and Canvas calls. They establish deterministic behavior and regression coverage, not human acceptance of balance, difficulty, visual quality, audio, responsiveness, or physical phone/tablet feel. [`AUDIT.md`](../AUDIT.md) records the frozen source evidence and exact results for the current checkpoint. Published-browser and physical-device evidence remain separate. Each public release still requires the browser-smoke and live-Play gates defined in `AGENTS.md`.

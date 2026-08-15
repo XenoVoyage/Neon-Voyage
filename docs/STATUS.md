@@ -6,15 +6,15 @@ This document is the current-state handoff. It records project maturity and open
 
 | Area | Status |
 | --- | --- |
-| Runtime | Source-complete 20-stage browser game candidate |
-| Current runtime version | `v2026.8.15b` source candidate |
+| Runtime | Deployed 20-stage browser game |
+| Current runtime version | `v2026.8.15b` on `main` and GitHub Pages |
 | Hosting | Direct `file://` launch and GitHub Pages repository subpath |
 | Dependencies and build | No runtime dependencies and no build step |
 | Saved data | Local high score, preferences, 20 unlocked stages, and bounded stacking checkpoint loadouts |
-| Candidate verification | `167/167` frozen-source checks and checksum pass; deployed browser and publication evidence pending |
-| Product work | Progressive rewards, staged threat novelty, evolved hazards, boss counterplay, and compact presentation are implemented in source |
+| Verification | `167/167` frozen-source checks and checksum pass; post-merge audit and Pages deployment succeeded for `353feeff` |
+| Product work | Progressive rewards, staged threat novelty, evolved hazards, boss counterplay, and compact presentation are implemented and deployed |
 
-Runtime source, tests, documentation, audit, and checksum are frozen for candidate review. [`AUDIT.md`](../AUDIT.md) owns the exact automated evidence; merge, deployment, and live-browser results remain separate publication gates.
+Pull request [#9](https://github.com/XenoVoyage/Neon-Voyage/pull/9) is merged on `main` at commit [`353feeff`](https://github.com/XenoVoyage/Neon-Voyage/commit/353feeff3356623a478946446890d8d83666b96c). The post-merge Offline audit and Pages deployment succeeded for that exact commit, and the live Pages site serves `v2026.8.15b`. [`AUDIT.md`](../AUDIT.md) remains the owner of the frozen automated source evidence; GitHub records provide the separate merge and deployment evidence.
 
 ## Implemented product
 
@@ -37,18 +37,17 @@ See [`GAME_DESIGN.md`](GAME_DESIGN.md) for intended experience and [`ARCHITECTUR
 ## Evidence and acceptance
 
 - [`AUDIT.md`](../AUDIT.md) records `167/167` checks on the frozen source tree, including browser-VM boot, simulated responsive/input contracts, the complete weapon-driven Stage 1–20 journey, deterministic long-run stress, and exact checksum coverage.
-- No preview/deployed browser, physical-device, merge, deployment, tag, or GitHub Release evidence is recorded yet for `v2026.8.15b`.
-- Workspace-local browser limitations do not count as live acceptance; hands-on play must use an allowed preview or the deployed Pages build.
+- Pull request #9, the post-merge Offline audit, and the Pages deployment succeeded for `353feeff`; the deployed site serves the expected runtime version.
 - Simulated viewports and Pointer Events are not physical-device acceptance.
 - Compact 568×320, 667×375, and iPad-class automated layout coverage must be reported separately from hands-on phone and iPad results. Physical-device acceptance remains pending.
-- A public runtime release still needs the protected pull-request checks and post-deployment live Play check described in [`AGENTS.md`](../AGENTS.md).
+- No remote immutable Git tag or GitHub Release exists for `v2026.8.15b`.
 
 ## Publication status
 
-`v2026.8.15b` is a source-candidate label. No merge, deployment, immutable tag, GitHub Release, or live verification for that label is recorded here. A changelog heading, Pages deployment, or version badge does not by itself create a release.
+`v2026.8.15b` is the deployed runtime version from `main` commit `353feeff`. It is not a published release under this repository's definition because no matching immutable tag exists remotely. A local tag, changelog heading, Pages deployment, or version badge does not by itself create that release.
 
 Creating or backfilling a tag is an explicit publication action. Do not do it during ordinary documentation maintenance, and never move a published tag.
 
 ## Next task boundary
 
-Publish the frozen candidate through the protected pull-request workflow, then separately record deployed browser play, Pages, live version, console cleanliness, and physical phone/iPad acceptance where actually observed.
+Publishing a formal release requires an explicit owner decision to create the matching immutable remote tag. Physical phone and iPad acceptance remains a separate unverified boundary.

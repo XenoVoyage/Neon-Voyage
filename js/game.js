@@ -81,7 +81,6 @@
     bossHealthFill: byId("boss-health-fill"),
     bossHealthValue: byId("boss-health-value"),
     objectiveHud: byId("objective-hud"),
-    objectiveLabel: byId("objective-label"),
     objectiveStatus: byId("objective-status"),
     meters: byId("meters"),
     hullValue: byId("hull-value"),
@@ -112,8 +111,6 @@
     finalBosses: byId("final-bosses"),
     newRecord: byId("new-record"),
     soundButton: byId("sound-button"),
-    motionButton: byId("motion-button"),
-    fullscreenButton: byId("fullscreen-button"),
     pauseButton: byId("pause-button"),
     settingsSoundButton: byId("settings-sound-button"),
     settingsEffectsButton: byId("settings-effects-button"),
@@ -123,7 +120,6 @@
     stageSelectModal: byId("stage-select-modal"),
     newGameModal: byId("new-game-modal"),
     newGameCancelButton: byId("new-game-cancel-button"),
-    newGameConfirmButton: byId("new-game-confirm-button"),
     enigmaUpgradeModal: byId("enigma-upgrade-modal"),
     enigmaUpgradeGrid: byId("enigma-upgrade-grid"),
     enigmaUpgradeStatus: byId("enigma-upgrade-status"),
@@ -485,16 +481,9 @@
   }
 
   function currentDropBand() {
-    const bands = Array.isArray(CONFIG.powerups.dropBands) ? CONFIG.powerups.dropBands : [];
+    const bands = CONFIG.powerups.dropBands;
     const stage = progressionStage();
-    let selected = bands[0] || {
-      minStage: 1,
-      dropChance: Number(CONFIG.powerups.dropChance) || 0,
-      pityKills: Math.max(1, Math.floor(Number(CONFIG.powerups.pityKills) || 1)),
-      moduleWeight: Number(CONFIG.powerups.moduleUpgrade.weight) || 0,
-      permanentDraftChance: 1,
-      rewardTierCap: CONFIG.weapons.maxModuleTier
-    };
+    let selected = bands[0];
     for (const band of bands) {
       if (stage >= band.minStage) selected = band;
       else break;
@@ -1028,9 +1017,7 @@
   bindButton("new-game-confirm-button", confirmNewCampaign);
   bindButton("sound-button", toggleSound);
   bindButton("settings-sound-button", toggleSound);
-  bindButton("motion-button", toggleEffects);
   bindButton("settings-effects-button", toggleEffects);
-  bindButton("fullscreen-button", toggleFullscreen);
   bindButton("settings-fullscreen-button", toggleFullscreen);
   if (dom.newGameModal) dom.newGameModal.addEventListener("cancel", (event) => {
     event.preventDefault();
@@ -1551,7 +1538,7 @@
       timer: 0,
       complete: false,
       guaranteedGranted: false,
-      goalType: spec.goal ? spec.goal.type : spec.completion,
+      goalType: spec.goal.type,
       goalTarget: isBoss ? 1 : spec.waves.length,
       goalProgress: 0,
       waveIndex: isBoss ? -1 : 0,
@@ -1636,8 +1623,7 @@
   }
 
   function shouldFire() {
-    const touchFire = touchSticks.aim.activeId !== null &&
-      Math.hypot(input.touchAimX, input.touchAimY) > CONFIG.mobileControls.aimFireThreshold;
+    const touchFire = touchSticks.aim.activeId !== null && input.touchFire;
     return Boolean(input.keys.space || input.pointerFire || touchFire || input.gamepadFire);
   }
 
@@ -4774,15 +4760,11 @@
     if (dom.moduleConsole) dom.moduleConsole.classList.toggle("is-hidden", equipped.length === 0);
     let autonomousCount = 0;
     const accessibleModules = [];
-    for (let index = 0; index < equipped.length; index += 1) {
-      const id = equipped[index];
+    for (const id of equipped) {
       const tier = state.ship.modules[id] || 0;
       const slot = global.document.createElement("div");
       slot.className = "module-slot is-equipped";
       slot.setAttribute("role", "listitem");
-      const number = global.document.createElement("span");
-      number.className = "module-index";
-      number.textContent = String(index + 1).padStart(2, "0");
       const name = global.document.createElement("span");
       name.className = "module-name";
       const definition = CONFIG.weapons.modules[id];
@@ -4803,7 +4785,6 @@
         "aria-label",
         `${definition.label}, ${autonomous ? "autonomous, " : ""}Mark ${roman(tier)}`
       );
-      slot.appendChild(number);
       slot.appendChild(name);
       slot.appendChild(rank);
       dom.moduleStrip.appendChild(slot);
@@ -4957,21 +4938,12 @@
       dom.settingsSoundButton.setAttribute("aria-label", settings.sound ? "Turn sound off" : "Turn sound on");
     }
     const effectsText = settings.reducedEffects ? "Reduced" : "Full";
-    if (dom.motionButton) {
-      dom.motionButton.textContent = `FX ${effectsText}`;
-      dom.motionButton.setAttribute("aria-pressed", String(settings.reducedEffects));
-      dom.motionButton.setAttribute("aria-label", settings.reducedEffects ? "Use full visual effects" : "Use reduced visual effects");
-    }
     if (dom.settingsEffectsButton) {
       dom.settingsEffectsButton.textContent = effectsText;
       dom.settingsEffectsButton.setAttribute("aria-pressed", String(!settings.reducedEffects));
       dom.settingsEffectsButton.setAttribute("aria-label", settings.reducedEffects ? "Use full visual effects" : "Use reduced visual effects");
     }
     const fullscreen = Boolean(global.document.fullscreenElement);
-    if (dom.fullscreenButton) {
-      dom.fullscreenButton.textContent = fullscreen ? "Window" : "Screen";
-      dom.fullscreenButton.setAttribute("aria-label", fullscreen ? "Exit fullscreen" : "Enter fullscreen");
-    }
     if (dom.settingsFullscreenButton) {
       dom.settingsFullscreenButton.textContent = fullscreen ? "Exit" : "Enter";
       dom.settingsFullscreenButton.setAttribute("aria-label", fullscreen ? "Exit fullscreen" : "Enter fullscreen");

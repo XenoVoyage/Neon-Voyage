@@ -1,17 +1,15 @@
 "use strict";
 
-const { assert, vm, readProject, approximately } = require("./_harness");
-const browserSmoke = require("./browser-smoke.test");
-
-const SCRIPTS = ["js/config.js", "js/core.js", "js/audio.js", "js/render.js", "js/game.js"];
+const { assert, approximately } = require("./_harness");
+const { buildBrowser, loadRuntimeScripts } = require("./_browser-harness");
 
 function boot(seed, viewport) {
-  const browser = browserSmoke.buildBrowser({ now: 1700000000000 + (seed || 0) });
+  const browser = buildBrowser({ now: 1700000000000 + (seed || 0) });
   if (viewport) {
     browser.window.innerWidth = viewport.width;
     browser.window.innerHeight = viewport.height;
   }
-  for (const script of SCRIPTS) vm.runInContext(readProject(script), browser.context, { filename: script, timeout: 3000 });
+  loadRuntimeScripts(browser);
   browser.document.readyState = "interactive";
   browser.emit(browser.document, "DOMContentLoaded");
   const game = browser.window.ND.game;
@@ -1569,6 +1567,7 @@ module.exports = function register(test) {
   test("module upgrade is permanent for the run and remains bounded", () => {
     const { game, CONFIG } = boot(681);
     const state = game.state;
+    const moduleCount = Object.keys(CONFIG.weapons.modules).length;
     game.setStage(19, 1);
     clearEntities(state);
     freezeDirector(state);
@@ -1582,11 +1581,11 @@ module.exports = function register(test) {
     runSteps(game, 30, CONFIG.world.fixedStep);
     assert.equal(state.ship.modules[selected], (before[selected] || 0) + 1, "permanent run upgrade expired over time");
 
-    for (let index = 0; index < CONFIG.weapons.maxInstalledModules * CONFIG.weapons.maxModuleTier; index += 1) {
+    for (let index = 0; index < moduleCount * CONFIG.weapons.maxModuleTier; index += 1) {
       state.pickups.length = 0;
       game.applyPickup(game.spawnPickup(0, 0, "moduleUpgrade"));
     }
-    assert.equal(Object.keys(state.ship.modules).length, CONFIG.weapons.maxInstalledModules, "normal upgrades did not reach every module slot");
+    assert.equal(Object.keys(state.ship.modules).length, moduleCount, "normal upgrades did not reach every module slot");
     for (const id of Object.keys(CONFIG.weapons.modules)) {
       assert.equal(state.ship.modules[id], CONFIG.weapons.maxModuleTier, `${id} did not reach its bounded tier cap`);
     }
@@ -3071,5 +3070,3 @@ function distanceSquaredForTest(first, second) {
 }
 
 module.exports.boot = boot;
-module.exports.clearEntities = clearEntities;
-module.exports.freezeDirector = freezeDirector;

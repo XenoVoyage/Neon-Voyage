@@ -107,7 +107,7 @@ The ordinary shield pickup restores 30 points to a visible 60-point reserve. Shi
 
 Every Enigma draft contains three distinct eligible cards, but a permanent card is not guaranteed. Depending on the active band, cards can install or raise an unlocked permanent module, add an available duration stack, or immediately restore hull, shields, or Void Pulse. When a category is locked or already full, the draft draws from remaining bounded fallbacks rather than offering an unusable upgrade.
 
-Campaign progress is local and intentionally narrow. Each earned stage stores only bounded permanent module tiers and remaining stacked temporary-weapon time. Continue cards summarize installed modules, autonomous systems, and timed enhancements; selecting one restores that loadout into a fresh Sector 1 battlefield. It does not restore score, hull, position, cooldown phase, enemies, Enigma choices, or a paused fight. `v2026.8.15b` does not change the schema-3 storage shape, 20-checkpoint limit, exact schema-2/schema-1 migrations, or 16,384-byte bound. New Game confirms before replacing campaign checkpoints and keeps the local high score and preferences.
+Campaign progress is local and intentionally narrow. Each earned stage stores only bounded permanent module tiers and remaining stacked temporary-weapon time. Continue cards summarize installed modules, autonomous systems, and timed enhancements; selecting one restores that loadout into a fresh Sector 1 battlefield. It does not restore score, hull, position, cooldown phase, enemies, Enigma choices, or a paused fight. New Game confirms before replacing campaign checkpoints and keeps the local high score and preferences.
 
 ## Presentation
 

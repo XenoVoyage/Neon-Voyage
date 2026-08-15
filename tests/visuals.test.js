@@ -1,14 +1,14 @@
 "use strict";
 
 const { assert, vm, readProject, approximately } = require("./_harness");
-const browserSmoke = require("./browser-smoke.test");
+const { buildBrowser } = require("./_browser-harness");
 
 function loadRenderer() {
   return loadVisualRuntime().window.ND.RenderDebug;
 }
 
 function loadVisualRuntime() {
-  const browser = browserSmoke.buildBrowser({ now: 1700000000000 });
+  const browser = buildBrowser({ now: 1700000000000 });
   for (const script of ["js/config.js", "js/core.js", "js/render.js"]) {
     vm.runInContext(readProject(script), browser.context, { filename: script, timeout: 3000 });
   }

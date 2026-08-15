@@ -1,16 +1,14 @@
 "use strict";
 
-const { assert, vm, readProject, approximately } = require("./_harness");
-const browserSmoke = require("./browser-smoke.test");
-
-const SCRIPTS = ["js/config.js", "js/core.js", "js/audio.js", "js/render.js", "js/game.js"];
+const { assert, readProject, approximately } = require("./_harness");
+const { buildBrowser, loadRuntimeScripts } = require("./_browser-harness");
 
 function bootMobile(options) {
   const settings = Object.assign({ width: 844, height: 390, maxTouchPoints: 5 }, options || {});
-  const browser = browserSmoke.buildBrowser(settings);
+  const browser = buildBrowser(settings);
   browser.window.innerWidth = settings.width;
   browser.window.innerHeight = settings.height;
-  for (const script of SCRIPTS) vm.runInContext(readProject(script), browser.context, { filename: script, timeout: 3000 });
+  loadRuntimeScripts(browser);
   browser.document.readyState = "interactive";
   browser.emit(browser.document, "DOMContentLoaded");
   const game = browser.window.ND.game;
@@ -22,7 +20,7 @@ function pointer(browser, elementId, type, pointerId, clientX, clientY) {
   const isStick = elementId === "move-zone" || elementId === "aim-zone";
   if (!isStick) return rawPointer(browser, browser.elements.get(elementId), type, pointerId, clientX, clientY);
 
-  const sessions = browser._legacyStickPointers || (browser._legacyStickPointers = new Map());
+  const sessions = browser._stickPointerSessions || (browser._stickPointerSessions = new Map());
   const zone = browser.elements.get(elementId);
   const canvas = browser.elements.get("game");
   if (type === "pointerdown") {
@@ -1265,8 +1263,8 @@ module.exports = function register(test) {
       "start-button", "restart-button", "restart-pause-button", "resume-button",
       "pause-button", "pause-menu-button", "menu-button", "controls-button",
       "pause-controls-button", "settings-button", "pause-settings-button",
-      "sound-button", "settings-sound-button", "motion-button", "settings-effects-button",
-      "fullscreen-button", "settings-fullscreen-button", "touch-dash", "touch-pulse"
+      "sound-button", "settings-sound-button", "settings-effects-button", "settings-fullscreen-button",
+      "touch-dash", "touch-pulse"
     ];
 
     assert.equal(game.mobile.orientationBlocked, true);
@@ -1295,10 +1293,12 @@ module.exports = function register(test) {
     browser.elements.get("settings-close-button").click();
     browser.elements.get("sound-button").click();
     assert.equal(game.state.settings.sound, !initialSound, "landscape Sound remained blocked");
-    browser.elements.get("motion-button").click();
+    browser.elements.get("settings-button").click();
+    browser.elements.get("settings-effects-button").click();
     assert.equal(game.state.settings.reducedEffects, !initialEffects, "landscape FX remained blocked");
-    browser.elements.get("fullscreen-button").click();
+    browser.elements.get("settings-fullscreen-button").click();
     assert.equal(browser.document.fullscreenElement, browser.document.documentElement, "landscape fullscreen remained blocked");
+    browser.elements.get("settings-close-button").click();
     browser.elements.get("start-button").click();
     assert.equal(game.state.mode, "playing", "landscape Play remained blocked");
     assert.ok(game.state.ship, "landscape Play did not create a run");
@@ -1326,8 +1326,8 @@ module.exports = function register(test) {
       "start-button", "restart-button", "restart-pause-button", "resume-button",
       "pause-button", "pause-menu-button", "menu-button", "controls-button",
       "pause-controls-button", "settings-button", "pause-settings-button",
-      "sound-button", "settings-sound-button", "motion-button", "settings-effects-button",
-      "fullscreen-button", "settings-fullscreen-button", "touch-dash", "touch-pulse"
+      "sound-button", "settings-sound-button", "settings-effects-button", "settings-fullscreen-button",
+      "touch-dash", "touch-pulse"
     ]) {
       browser.elements.get(id).click();
       assert.equal(game.state.mode, "playing", `${id} changed mode through the portrait gate`);

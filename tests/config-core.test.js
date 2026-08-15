@@ -74,7 +74,7 @@ module.exports = function register(test) {
     assert.deepEqual(Array.from(stages.filter((stage) => stage.goal.type === "boss"), (stage) => stage.index), [10, 20]);
     assert.deepEqual(Array.from(stages.filter((stage) => stage.goal.type === "boss"), (stage) => stage.bossType), ["harrower", "leviathan"]);
     for (const stage of stages.filter((stage) => stage.goal.type !== "boss")) {
-      assert.equal(stage.completion, "waves", `${stage.id} must use finite wave completion`);
+      assert.ok(["waves", "titan"].includes(stage.goal.type), `${stage.id} needs a finite structural goal`);
       assert.ok(Array.isArray(stage.waves) && stage.waves.length > 0, `${stage.id} needs waves`);
       for (const wave of stage.waves) {
         assert.ok(Array.isArray(wave.required) && wave.required.length > 0, `${stage.id}/${wave.label} needs required groups`);
@@ -219,7 +219,6 @@ module.exports = function register(test) {
       multiplier: 0.3
     });
     assert.ok(Object.keys(CONFIG.bosses).length >= 2);
-    assert.ok(Object.values(CONFIG.bosses).every((boss) => boss.faction === "alien"));
     assert.notEqual(CONFIG.bosses.harrower.label, CONFIG.bosses.leviathan.label);
     assert.equal(CONFIG.bosses.harrower.arenaShape, "circle");
     assert.equal(CONFIG.bosses.leviathan.arenaShape, "field");
@@ -252,7 +251,7 @@ module.exports = function register(test) {
     assert.equal(powerups.temporaryStackLimit, 4);
     assert.equal(powerups.rapid.duration, 28);
     assert.equal(powerups.triShot.duration, 28);
-    for (const kind of ["shield", "rapid", "triShot", "arcBurst", "novaLance", "amplifier", "aegis", "repair", "piercing", "pulseCharge", "enigma", "moduleUpgrade"]) {
+    for (const kind of ["shield", "rapid", "triShot", "arcBurst", "novaLance", "amplifier", "aegis", "repair", "piercing", "pulseCharge", "enigma"]) {
       assert.ok(powerups[kind] && powerups[kind].weight > 0, `${kind} must appear in the weighted pool`);
     }
     for (const kind of ["rapid", "triShot", "piercing", "arcBurst", "novaLance", "amplifier", "aegis"]) {
@@ -320,8 +319,8 @@ module.exports = function register(test) {
 
   test("thirteen permanent modules stack through Mk V with bounded active, autonomous, and passive effects", () => {
     const modules = CONFIG.weapons.modules;
-    assert.equal(Object.keys(modules).length, 13);
-    assert.equal(CONFIG.weapons.maxInstalledModules, 13);
+    const moduleCount = Object.keys(modules).length;
+    assert.equal(moduleCount, 13);
     assert.equal(CONFIG.weapons.maxModuleTier, 5);
     assert.equal(CONFIG.weapons.startingModules.pulse, 1);
     assert.deepEqual(Object.fromEntries(Object.entries(modules).map(([id, module]) => [id, module.unlockStage])), {

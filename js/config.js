@@ -188,7 +188,6 @@
           index: 1,
           id: "earthOrbit",
           label: "LEAVE EARTH ORBIT",
-          completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
@@ -215,7 +214,6 @@
           index: 2,
           id: "innerBelt",
           label: "CROSS THE INNER BELT",
-          completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
@@ -245,7 +243,6 @@
           index: 3,
           id: "deepDrift",
           label: "ENTER THE DEEP DRIFT",
-          completion: "waves",
           goal: { type: "waves" },
           guaranteedReward: { type: "moduleUpgrade", module: "homingSalvo", tiers: 1 },
           waves: [
@@ -273,7 +270,6 @@
           index: 4,
           id: "shatteredFrontier",
           label: "CROSS THE SHATTERED FRONTIER",
-          completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
@@ -298,7 +294,6 @@
           index: 5,
           id: "titanGate",
           label: "SHATTER THE TITAN GATE",
-          completion: "waves",
           goal: { type: "titan" },
           waves: [
             {
@@ -317,7 +312,6 @@
           index: 6,
           id: "firstContact",
           label: "SURVIVE FIRST CONTACT",
-          completion: "waves",
           goal: { type: "waves" },
           guaranteedReward: { type: "moduleUpgrade", module: "drone", tiers: 1 },
           waves: [
@@ -345,7 +339,6 @@
           index: 7,
           id: "strikeWing",
           label: "BREAK THE STRIKE WING",
-          completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
@@ -374,7 +367,6 @@
           index: 8,
           id: "raidFleet",
           label: "BREAK THE RAID FLEET",
-          completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
@@ -405,7 +397,6 @@
           index: 9,
           id: "commandScreen",
           label: "BREAK THE COMMAND SCREEN",
-          completion: "waves",
           goal: { type: "waves" },
           guaranteedReward: { type: "moduleUpgrade", module: "shieldReactor", tiers: 1 },
           waves: [
@@ -439,7 +430,6 @@
           index: 10,
           id: "bossHarrower",
           label: "CAPITAL SHIP DETECTED",
-          completion: "bossDefeated",
           goal: { type: "boss" },
           bossType: "harrower"
         },
@@ -447,7 +437,6 @@
           index: 11,
           id: "ionGraveyard",
           label: "ENTER THE ION GRAVEYARD",
-          completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
@@ -473,7 +462,6 @@
           index: 12,
           id: "prismRift",
           label: "CROSS THE PRISM RIFT",
-          completion: "waves",
           goal: { type: "waves" },
           guaranteedReward: { type: "moduleUpgrade", module: "prism", tiers: 1 },
           waves: [
@@ -501,7 +489,6 @@
           index: 13,
           id: "gravityScar",
           label: "DESCEND THE GRAVITY SCAR",
-          completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
@@ -526,7 +513,6 @@
           index: 14,
           id: "fracturedHalo",
           label: "BREACH THE FRACTURED HALO",
-          completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
@@ -554,7 +540,6 @@
           index: 15,
           id: "anomalyCrown",
           label: "SHATTER THE ANOMALY CROWN",
-          completion: "waves",
           goal: { type: "waves" },
           guaranteedReward: { type: "moduleUpgrade", module: "overclock", tiers: 1 },
           waves: [
@@ -583,7 +568,6 @@
           index: 16,
           id: "vanguardSwarm",
           label: "SCATTER THE VANGUARD SWARM",
-          completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
@@ -612,7 +596,6 @@
           index: 17,
           id: "nullPhalanx",
           label: "BREAK THE NULL PHALANX",
-          completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
@@ -642,7 +625,6 @@
           index: 18,
           id: "siegeChoir",
           label: "SILENCE THE SIEGE CHOIR",
-          completion: "waves",
           goal: { type: "waves" },
           guaranteedReward: { type: "moduleUpgrade", module: "seeker", tiers: 1 },
           waves: [
@@ -675,7 +657,6 @@
           index: 19,
           id: "sovereignGuard",
           label: "BREAK THE SOVEREIGN GUARD",
-          completion: "waves",
           goal: { type: "waves" },
           waves: [
             {
@@ -710,7 +691,6 @@
           index: 20,
           id: "bossLeviathan",
           label: "LEVIATHAN SIGNAL DETECTED",
-          completion: "bossDefeated",
           goal: { type: "boss" },
           bossType: "leviathan"
         }
@@ -990,7 +970,6 @@
     bosses: {
       harrower: {
         label: "HARROWER",
-        faction: "alien",
         arenaShape: "circle",
         radius: 82,
         baseHealth: 500,
@@ -1028,7 +1007,6 @@
       },
       leviathan: {
         label: "LEVIATHAN",
-        faction: "alien",
         arenaShape: "field",
         radius: 96,
         baseHealth: 980,
@@ -1077,7 +1055,6 @@
 
     weapons: {
       maxModuleTier: 5,
-      maxInstalledModules: 13,
       startingModules: { pulse: 1 },
       modules: {
         pulse: {
@@ -1370,9 +1347,7 @@
         resumeInvulnerability: 1
       },
       moduleUpgrade: {
-        label: "MODULE UPGRADE",
-        unlockStage: 4,
-        weight: 32
+        unlockStage: 4
       }
     },
 
