@@ -30,7 +30,7 @@ function clearEntities(state) {
 
 function freezeDirector(state) {
   const data = state.encounterData;
-  if (!data || data.spec.id === "boss") return;
+  if (!data || data.spec.bossType) return;
   data.pendingSpawns.length = 0;
   data.requeue.length = 0;
   data.waveSpawned = true;
@@ -95,8 +95,9 @@ function advanceToWave(game, waveNumber, fixedStep) {
 
 module.exports = function register(test) {
   test("every asteroid variant stays ballistic and produces no attacks for sixty seconds", () => {
-    for (const kind of ["rock", "crystal", "volatile", "armored", "colossal", "titan"]) {
-      const { game, CONFIG } = boot(100 + kind.length);
+    const runtime = boot(100);
+    for (const [kindIndex, kind] of Object.keys(runtime.CONFIG.asteroids).entries()) {
+      const { game, CONFIG } = boot(100 + kindIndex);
       const state = game.state;
       game.setStage(1, 1);
       clearEntities(state);
@@ -489,17 +490,24 @@ module.exports = function register(test) {
 
   test("stage APIs expose ordered finite goals and a required survivor prevents premature wave clear", () => {
     const { game, CONFIG } = boot(401);
-    const expected = ["waves", "waves", "waves", "waves", "titan", "waves", "waves", "waves", "boss"];
+    const expected = [
+      "waves", "waves", "waves", "waves", "titan",
+      "waves", "waves", "waves", "waves", "boss",
+      "waves", "waves", "waves", "waves", "waves",
+      "waves", "waves", "waves", "waves", "boss"
+    ];
     expected.forEach((goal, index) => {
       const snapshot = game.setStage(index + 1, 1);
       assert.equal(snapshot.encounter, index + 1);
       assert.equal(snapshot.objective.type, goal);
       assert.equal(snapshot.objective.progress, 0);
       assert.equal(snapshot.objective.complete, false);
-      if (index < 8) {
+      if (goal !== "boss") {
         assert.equal(snapshot.objective.waveNumber, 1);
         assert.equal(snapshot.objective.waveCount, CONFIG.sector.encounters[index].waves.length);
         assert.ok(snapshot.objective.waveRequiredTotal > 0);
+      } else {
+        assert.equal(CONFIG.sector.encounters[index].bossType, index === 9 ? "harrower" : "leviathan");
       }
     });
     game.setStage(1, 1);
@@ -941,7 +949,7 @@ module.exports = function register(test) {
     assert.equal(state.ship.arcBurstTimer, 0);
     assert.ok(state.ship.novaLanceTimer > 0, "refreshing Nova incorrectly refreshed Arc");
     state.playerBullets.length = 0;
-    runSteps(game, 0.5, CONFIG.world.fixedStep);
+    runSteps(game, CONFIG.powerups.novaLance.cooldown + CONFIG.world.fixedStep * 2, CONFIG.world.fixedStep);
     assert.ok(!state.playerBullets.some((bullet) => bullet.kind === "arc"), "expired Arc Burst kept firing");
     assert.ok(state.playerBullets.some((bullet) => bullet.kind === "lance"), "active Nova Lance stopped firing");
   });
@@ -956,7 +964,9 @@ module.exports = function register(test) {
       triShot: "triShotTimer",
       piercing: "piercingTimer",
       arcBurst: "arcBurstTimer",
-      novaLance: "novaLanceTimer"
+      novaLance: "novaLanceTimer",
+      amplifier: "amplifierTimer",
+      aegis: "aegisTimer"
     };
     for (const [kind, timer] of Object.entries(timers)) {
       for (let stack = 0; stack < CONFIG.powerups.temporaryStackLimit + 2; stack += 1) {
@@ -1081,6 +1091,308 @@ module.exports = function register(test) {
       assert.ok(state.playerBullets.length <= CONFIG.caps.playerProjectiles);
       assert.ok(state.ship.drones.length <= CONFIG.caps.drones);
     });
+  });
+
+  test("Tesla Coil chains a bounded target count on its deterministic cooldown", () => {
+    const { game, CONFIG } = boot(694);
+    const state = game.state;
+    clearEntities(state);
+    freezeDirector(state);
+    state.ship.modules.teslaCoil = 5;
+    state.ship.weaponTimers.teslaCoil = 0;
+    const values = CONFIG.weapons.modules.teslaCoil.tiers[4];
+    const targets = Array.from({ length: values.chains + 1 }, (_, index) => game.spawnAsteroid("crystal", {
+      x: state.ship.x + 120 + index * 90,
+      y: state.ship.y,
+      speed: 0,
+      radius: 12,
+      health: 100,
+      required: false,
+      threatCost: 0,
+      noDrops: true
+    }));
+
+    game.step(CONFIG.world.fixedStep);
+    targets.slice(0, values.chains).forEach((target, index) => {
+      approximately(target.health, 100 - values.damage, 1e-9, `Tesla target ${index + 1}`);
+    });
+    assert.equal(targets.at(-1).health, 100, "Tesla exceeded its authored chain bound");
+    assert.equal(state.effects.filter((effect) => effect.type === "chain").length, values.chains);
+    approximately(state.ship.weaponTimers.teslaCoil, values.cooldown, 1e-12, "Tesla cooldown");
+
+    const afterFirstChain = targets.map((target) => target.health);
+    while (state.ship.weaponTimers.teslaCoil > CONFIG.world.fixedStep * 1.01) {
+      game.step(CONFIG.world.fixedStep);
+      assert.deepEqual(targets.map((target) => target.health), afterFirstChain, "Tesla fired before its cooldown elapsed");
+    }
+    for (let frame = 0; frame < 3 && targets[0].health === afterFirstChain[0]; frame += 1) {
+      game.step(CONFIG.world.fixedStep);
+    }
+    targets.slice(0, values.chains).forEach((target, index) => {
+      approximately(target.health, 100 - values.damage * 2, 1e-8, `Tesla repeat target ${index + 1}`);
+    });
+    assert.equal(targets.at(-1).health, 100, "Tesla repeat exceeded its chain bound");
+
+    state.asteroids.length = 0;
+    state.effects.length = 0;
+    state.ship.weaponTimers.teslaCoil = 0;
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.ship.weaponTimers.teslaCoil, 0, "targetless Tesla consumed its cooldown");
+  });
+
+  test("Orbit Blades respect their bounded count and per-blade contact cooldown", () => {
+    const { game, CONFIG } = boot(695);
+    const state = game.state;
+    clearEntities(state);
+    freezeDirector(state);
+    state.ship.modules.orbitBlades = 1;
+    const values = CONFIG.weapons.modules.orbitBlades.tiers[0];
+    const angularSpeed = 1.75 + 0.09;
+    const target = game.spawnAsteroid("crystal", {
+      x: 0,
+      y: 0,
+      speed: 0,
+      radius: 8,
+      health: 100,
+      required: false,
+      threatCost: 0,
+      noDrops: true
+    });
+    const alignTargetWithNextBladeFrame = () => {
+      const angle = (state.time + CONFIG.world.fixedStep) * angularSpeed;
+      target.x = state.ship.x + Math.cos(angle) * values.orbitRadius;
+      target.y = state.ship.y + Math.sin(angle) * values.orbitRadius;
+      target.vx = 0;
+      target.vy = 0;
+    };
+
+    alignTargetWithNextBladeFrame();
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.ship.orbitBlades.length, values.blades);
+    approximately(target.health, 100 - values.damage, 1e-9, "first blade contact");
+    const healthAfterFirstContact = target.health;
+    while (state.ship.orbitBlades[0].cooldown > CONFIG.world.fixedStep * 1.01) {
+      alignTargetWithNextBladeFrame();
+      game.step(CONFIG.world.fixedStep);
+      assert.equal(target.health, healthAfterFirstContact, "Orbit Blade damaged on every frame instead of honoring cooldown");
+    }
+    alignTargetWithNextBladeFrame();
+    game.step(CONFIG.world.fixedStep);
+    approximately(target.health, 100 - values.damage * 2, 1e-8, "second blade contact");
+
+    state.ship.modules.orbitBlades = CONFIG.weapons.maxModuleTier;
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.ship.orbitBlades.length, CONFIG.weapons.modules.orbitBlades.tiers[4].blades);
+    assert.ok(state.ship.orbitBlades.length <= 12, "Orbit Blades exceeded the runtime hard bound");
+  });
+
+  test("Mine Layer obeys cadence, trigger, blast, lifetime, and the shared mine cap", () => {
+    const { game, CONFIG } = boot(697);
+    const state = game.state;
+    clearEntities(state);
+    freezeDirector(state);
+    state.ship.modules.mineLayer = 1;
+    state.ship.weaponTimers.mineLayer = 0;
+    const values = CONFIG.weapons.modules.mineLayer.tiers[0];
+
+    game.step(CONFIG.world.fixedStep);
+    const mine = state.mines.find((entry) => entry.owner === "player");
+    assert.ok(mine, "Mine Layer did not place its authored player mine");
+    assert.equal(mine.sourceModule, "mineLayer");
+    approximately(state.ship.weaponTimers.mineLayer, values.cooldown, 1e-12, "Mine Layer cooldown");
+    const direct = game.spawnAsteroid("crystal", {
+      x: mine.x,
+      y: mine.y,
+      speed: 0,
+      radius: 8,
+      health: 100,
+      required: false,
+      threatCost: 0,
+      noDrops: true
+    });
+    const splash = game.spawnAsteroid("crystal", {
+      x: mine.x + values.blastRadius * 0.85,
+      y: mine.y,
+      speed: 0,
+      radius: 8,
+      health: 100,
+      required: false,
+      threatCost: 0,
+      noDrops: true
+    });
+    game.step(CONFIG.world.fixedStep);
+    approximately(direct.health, 100 - values.damage, 1e-9, "mine direct damage");
+    approximately(splash.health, 100 - values.damage, 1e-9, "mine blast damage");
+    assert.equal(state.mines.filter((entry) => entry.owner === "player").length, 0, "detonated player mine survived cleanup");
+
+    clearEntities(state);
+    state.ship.modules.mineLayer = CONFIG.weapons.maxModuleTier;
+    state.ship.weaponTimers.mineLayer = 0;
+    for (let index = 0; index < CONFIG.caps.mines; index += 1) {
+      state.mines.push({
+        id: 880000 + index,
+        owner: "player",
+        sourceModule: "fixture",
+        x: state.ship.x,
+        y: state.ship.y + 100,
+        vx: 0,
+        vy: 0,
+        radius: 1,
+        life: 100,
+        maxLife: 100,
+        triggerRadius: 0,
+        blastRadius: 1,
+        damage: 0,
+        phase: 0,
+        armed: true,
+        dead: false
+      });
+    }
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.mines.length, CONFIG.caps.mines);
+    assert.equal(state.ship.weaponTimers.mineLayer, 0, "a capped Mine Layer consumed its cooldown without spawning");
+    state.mines.pop();
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.mines.length, CONFIG.caps.mines, "Mine Layer failed to fill the one available capped slot");
+    const cappedSpawn = state.mines.find((entry) => entry.sourceModule === "mineLayer");
+    assert.ok(cappedSpawn, "Mine Layer did not use the available shared-cap slot");
+    assert.ok(state.ship.weaponTimers.mineLayer > 0);
+
+    state.mines.length = 1;
+    state.mines[0] = cappedSpawn;
+    state.ship.modules.mineLayer = 0;
+    cappedSpawn.life = CONFIG.world.fixedStep * 0.5;
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.mines.length, 0, "expired player mine did not detonate and clean up");
+  });
+
+  test("Shield Reactor restores only missing shields and waits for its cooldown", () => {
+    const { game, CONFIG } = boot(698);
+    const state = game.state;
+    clearEntities(state);
+    freezeDirector(state);
+    state.ship.modules.shieldReactor = 1;
+    state.ship.weaponTimers.shieldReactor = 0;
+    const values = CONFIG.weapons.modules.shieldReactor.tiers[0];
+
+    state.ship.shield = CONFIG.powerups.shield.cap;
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.ship.shield, CONFIG.powerups.shield.cap);
+    assert.equal(state.ship.weaponTimers.shieldReactor, 0, "full shields consumed the reactor cooldown");
+
+    state.ship.shield = 20;
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.ship.shield, 20 + values.amount);
+    approximately(state.ship.weaponTimers.shieldReactor, values.cooldown, 1e-12, "Shield Reactor cooldown");
+    state.ship.shield = 5;
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.ship.shield, 5, "Shield Reactor fired again before its cooldown");
+    state.ship.weaponTimers.shieldReactor = CONFIG.world.fixedStep * 0.5;
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.ship.shield, 5 + values.amount, "Shield Reactor did not fire when its cooldown elapsed");
+
+    state.ship.shield = CONFIG.powerups.shield.cap - 1;
+    state.ship.weaponTimers.shieldReactor = 0;
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.ship.shield, CONFIG.powerups.shield.cap, "Shield Reactor exceeded the shared shield cap");
+  });
+
+  test("Overclock permanently shortens authored player firing cadence", () => {
+    function firingRun(seed, overclockTier) {
+      const runtime = boot(seed);
+      const { game, CONFIG } = runtime;
+      const state = game.state;
+      clearEntities(state);
+      freezeDirector(state);
+      for (const id of Object.keys(state.ship.modules)) state.ship.modules[id] = 0;
+      state.ship.modules.pulse = 1;
+      state.ship.modules.overclock = overclockTier;
+      state.ship.weaponTimers.pulse = 0;
+      game.input.keys.space = true;
+      game.step(CONFIG.world.fixedStep);
+      const expectedMultiplier = overclockTier ? CONFIG.weapons.modules.overclock.tiers[overclockTier - 1].cooldownMultiplier : 1;
+      approximately(
+        state.ship.weaponTimers.pulse,
+        CONFIG.weapons.modules.pulse.tiers[0].cooldown * expectedMultiplier,
+        1e-12,
+        "initial overclock cooldown"
+      );
+      runSteps(game, 0.7, CONFIG.world.fixedStep);
+      return state.playerBullets.filter((bullet) => bullet.sourceModule === "pulse").length;
+    }
+
+    const normalShots = firingRun(699, 0);
+    const overclockedShots = firingRun(699, 5);
+    assert.ok(overclockedShots > normalShots, `${overclockedShots} overclocked shots did not exceed ${normalShots} normal shots`);
+  });
+
+  test("Tractor Field pulls only nearby pickups and keeps their velocity bounded", () => {
+    const { game, CONFIG } = boot(700);
+    const state = game.state;
+    clearEntities(state);
+    freezeDirector(state);
+    state.ship.modules.tractorField = 5;
+    const values = CONFIG.weapons.modules.tractorField.tiers[4];
+    const nearby = game.spawnPickup(state.ship.x + values.range * 0.8, state.ship.y, "shield");
+    const distant = game.spawnPickup(state.ship.x + values.range + 20, state.ship.y, "repair");
+    nearby.vx = nearby.vy = distant.vx = distant.vy = 0;
+    const nearbyX = nearby.x;
+    const distantX = distant.x;
+
+    game.step(CONFIG.world.fixedStep);
+    assert.ok(nearby.vx < 0 && nearby.x < nearbyX, "Tractor Field did not pull a nearby pickup toward the ship");
+    assert.equal(distant.vx, 0, "Tractor Field pulled a pickup outside its authored range");
+    assert.equal(distant.x, distantX);
+    assert.ok(Math.hypot(nearby.vx, nearby.vy) <= 560, "Tractor Field exceeded its velocity hard bound");
+  });
+
+  test("Damage Amplifier scales outgoing fire while Aegis reduces incoming damage", () => {
+    const amplified = boot(702);
+    const amplifiedState = amplified.game.state;
+    clearEntities(amplifiedState);
+    freezeDirector(amplifiedState);
+    amplified.game.applyPickup(amplified.game.spawnPickup(0, 0, "amplifier"));
+    assert.equal(amplifiedState.ship.amplifierTimer, amplified.CONFIG.powerups.amplifier.duration);
+    amplified.game.input.keys.space = true;
+    amplified.game.step(amplified.CONFIG.world.fixedStep);
+    const bullet = amplifiedState.playerBullets.find((entry) => entry.sourceModule === "pulse");
+    assert.ok(bullet, "amplified primary weapon did not fire");
+    approximately(
+      bullet.damage,
+      amplified.CONFIG.weapons.modules.pulse.tiers[0].damage * amplified.CONFIG.powerups.amplifier.damageMultiplier,
+      1e-12,
+      "amplified outgoing damage"
+    );
+
+    const protectedRun = boot(703);
+    const protectedState = protectedRun.game.state;
+    clearEntities(protectedState);
+    freezeDirector(protectedState);
+    protectedRun.game.applyPickup(protectedRun.game.spawnPickup(0, 0, "aegis"));
+    assert.equal(protectedState.ship.aegisTimer, protectedRun.CONFIG.powerups.aegis.duration);
+    protectedState.ship.invulnerable = 0;
+    protectedState.ship.shield = 0;
+    protectedState.enemyBullets.push({
+      id: 990703,
+      x: protectedState.ship.x,
+      y: protectedState.ship.y,
+      px: protectedState.ship.x,
+      py: protectedState.ship.y,
+      vx: 0,
+      vy: 0,
+      radius: 3,
+      damage: 50,
+      life: 1,
+      maxLife: 1,
+      dead: false
+    });
+    protectedRun.game.step(protectedRun.CONFIG.world.fixedStep);
+    approximately(
+      protectedState.ship.hull,
+      100 - 50 * (1 - protectedRun.CONFIG.powerups.aegis.damageReduction),
+      1e-9,
+      "Aegis incoming damage"
+    );
   });
 
   test("Enigma deterministically slows into a frozen three-card draft and applies one advertised choice", () => {
@@ -1223,9 +1535,9 @@ module.exports = function register(test) {
   test("Enigma defers an in-flight boss-core reward until its advertised tier is applied", () => {
     const { game, CONFIG } = boot(2396);
     const state = game.state;
-    game.setStage(9, 1);
+    game.setStage(10, 1);
     runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
-    assert.ok(state.boss, "Harrower did not enter the arena");
+    assert.equal(state.boss && state.boss.type, "harrower", "Harrower did not enter the Stage 10 arena");
     clearEntities(state);
     for (const id of Object.keys(state.ship.modules)) state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
     state.ship.modules.homingSalvo = 0;
@@ -1285,7 +1597,7 @@ module.exports = function register(test) {
       freezeDirector(game.state);
       if (capBuild) {
         for (const id of Object.keys(game.state.ship.modules)) game.state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
-        for (const kind of ["rapid", "triShot", "piercing", "arcBurst", "novaLance"]) {
+        for (const kind of ["rapid", "triShot", "piercing", "arcBurst", "novaLance", "amplifier", "aegis"]) {
           const timer = `${kind}Timer`;
           game.state.ship[timer] = CONFIG.powerups[kind].duration * CONFIG.powerups.temporaryStackLimit;
         }
@@ -1430,7 +1742,10 @@ module.exports = function register(test) {
       if (pickup) kinds.add(pickup.kind);
       state.pickups.length = 0;
     }
-    for (const kind of ["shield", "rapid", "triShot", "arcBurst", "novaLance", "repair", "piercing", "pulseCharge", "enigma"]) {
+    for (const kind of [
+      "shield", "rapid", "triShot", "arcBurst", "novaLance", "amplifier", "aegis",
+      "repair", "piercing", "pulseCharge", "enigma", "module"
+    ]) {
       assert.ok(kinds.has(kind), `weighted sample never produced ${kind}`);
     }
     assert.ok(CONFIG.powerups.moduleUpgrade.weight > 0, "rare module upgrade is absent from the configured pool");
@@ -1445,15 +1760,20 @@ module.exports = function register(test) {
     assert.equal(state.encounterData.killsSincePowerup, 0);
   });
 
-  test("requested combat and repair pickups receive only the bounded weight increase", () => {
+  test("combat, Enigma, and permanent upgrades use the frequent bounded pickup cadence", () => {
     const { CONFIG } = boot(711);
-    assert.equal(CONFIG.powerups.rapid.weight, 24);
-    assert.equal(CONFIG.powerups.triShot.weight, 22);
-    assert.equal(CONFIG.powerups.repair.weight, 20);
-    assert.equal(CONFIG.powerups.enigma.weight, 12);
-    assert.equal(CONFIG.powerups.moduleUpgrade.weight, 7);
-    assert.equal(CONFIG.powerups.dropChance, 0.26);
-    assert.equal(CONFIG.powerups.pityKills, 4);
+    assert.equal(CONFIG.powerups.rapid.weight, 26);
+    assert.equal(CONFIG.powerups.triShot.weight, 26);
+    assert.equal(CONFIG.powerups.repair.weight, 22);
+    assert.equal(CONFIG.powerups.amplifier.weight, 24);
+    assert.equal(CONFIG.powerups.aegis.weight, 24);
+    assert.equal(CONFIG.powerups.enigma.weight, 36);
+    assert.equal(CONFIG.powerups.moduleUpgrade.weight, 32);
+    assert.equal(CONFIG.powerups.dropChance, 0.48);
+    assert.equal(CONFIG.powerups.pityKills, 2);
+    for (const kind of ["rapid", "triShot", "piercing", "arcBurst", "novaLance", "amplifier", "aegis"]) {
+      assert.ok(CONFIG.powerups[kind].duration >= 24, `${kind} did not receive a meaningfully longer duration`);
+    }
   });
 
   test("all four player bounds and outward dashes stay inside normal stages", () => {
@@ -1539,7 +1859,7 @@ module.exports = function register(test) {
   test("locked boss arena contains extreme positions and dash velocity", () => {
     const { game, CONFIG } = boot(901);
     const state = game.state;
-    game.setStage(9, 1);
+    game.setStage(10, 1);
     state.arena.active = true;
     state.arena.locked = true;
     state.arena.warning = 0;
@@ -1555,29 +1875,31 @@ module.exports = function register(test) {
     assert.ok(state.ship.vx * dx + state.ship.vy * dy <= 1e-7, "boss boundary kept outward velocity");
   });
 
-  test("defeating Harrower waits for every surviving arena escort before hyperspace", () => {
-    const { game, CONFIG } = boot(875);
-    const state = game.state;
-    game.setStage(9, 1);
-    runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
-    assert.ok(state.boss, "Harrower did not enter the arena");
-    const escort = game.spawnAlien("scout", {
-      x: state.ship.x + 120,
-      y: state.ship.y,
-      health: 30,
-      required: false,
-      generation: state.encounterData.generation,
-      noDrops: true
-    });
-    game.damageBoss(state.boss.maxHealth * 10);
-    assert.equal(state.encounterData.bossDefeated, true);
-    assert.equal(state.encounterData.complete, false, "boss death ignored its surviving escort");
-    assert.equal(state.mode, "playing");
-    assert.ok(escort && !escort.dead);
-    game.killThreat(escort, "player");
-    game.step(CONFIG.world.fixedStep);
-    assert.equal(state.encounterData.complete, true);
-    assert.equal(state.mode, "transition", "clean boss arena did not enter hyperspace");
+  test("both authored bosses wait for every surviving arena escort before hyperspace", () => {
+    for (const [stage, bossType] of [[10, "harrower"], [20, "leviathan"]]) {
+      const { game, CONFIG } = boot(875 + stage);
+      const state = game.state;
+      game.setStage(stage, 1);
+      runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
+      assert.equal(state.boss && state.boss.type, bossType, `${bossType} did not enter its authored arena`);
+      const escort = game.spawnAlien(stage === 20 ? "lancer" : "scout", {
+        x: state.ship.x + 120,
+        y: state.ship.y,
+        health: 30,
+        required: false,
+        generation: state.encounterData.generation,
+        noDrops: true
+      });
+      game.damageBoss(state.boss.maxHealth * 10);
+      assert.equal(state.encounterData.bossDefeated, true);
+      assert.equal(state.encounterData.complete, false, `${bossType} death ignored its surviving escort`);
+      assert.equal(state.mode, "playing");
+      assert.ok(escort && !escort.dead);
+      game.killThreat(escort, "player");
+      game.step(CONFIG.world.fixedStep);
+      assert.equal(state.encounterData.complete, true);
+      assert.equal(state.mode, "transition", `clean ${bossType} arena did not enter hyperspace`);
+    }
   });
 
   test("boss camera keeps the authored arena circle fully visible from every legal ship edge", () => {
@@ -1592,7 +1914,7 @@ module.exports = function register(test) {
     for (const [layoutIndex, layout] of layouts.entries()) {
       const { browser, game, CONFIG } = boot(951 + layoutIndex, layout);
       const state = game.state;
-      game.setStage(9, 1);
+      game.setStage(10, 1);
       clearEntities(state);
       freezeDirector(state);
       state.arena.active = true;
@@ -1635,12 +1957,12 @@ module.exports = function register(test) {
       for (const [edgeIndex, [edgeX, edgeY]] of edges.entries()) {
         const { browser, game, CONFIG } = boot(980 + layoutIndex * 10 + edgeIndex, layout);
         const state = game.state;
-        game.setStage(9, 1);
+        game.setStage(20, 1);
         clearEntities(state);
         state.arena.warning = CONFIG.world.fixedStep * 0.5;
         state.ship.invulnerable = 1e9;
         game.step(CONFIG.world.fixedStep);
-        assert.ok(state.boss, `${layout.label} boss did not spawn`);
+        assert.equal(state.boss && state.boss.type, "leviathan", `${layout.label} Leviathan did not spawn`);
 
         const legalRadius = Math.max(0, state.arena.radius - CONFIG.bossArena.boundaryPadding - state.ship.radius);
         state.ship.x = state.arena.x + edgeX * legalRadius;
@@ -1654,7 +1976,7 @@ module.exports = function register(test) {
 
         game.damageBoss(state.boss.maxHealth * 10);
         assert.equal(state.mode, "transition", `${context} did not enter hyperspace`);
-        assert.equal(state.cinematic.fromEncounter, 9);
+        assert.equal(state.cinematic.fromEncounter, 20);
         assert.equal(state.cinematic.toEncounter, 1);
         assert.equal(state.cinematic.fromSector, 1);
         assert.equal(state.cinematic.toSector, 2);
@@ -1686,10 +2008,23 @@ module.exports = function register(test) {
     }
   });
 
-  test("deterministic weapon fire traverses all nine stages through the alien boss within caps", () => {
+  test("deterministic full-build weapon fire traverses all twenty stages, both bosses, and the sector wrap within caps", () => {
     const { game, CONFIG } = boot(918273, { width: 1280, height: 720 });
     const state = game.state;
     const visited = new Set([state.encounter]);
+    const bossTypes = new Set();
+    for (const id of Object.keys(state.ship.modules)) state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
+    for (const [kind, timer] of Object.entries({
+      rapid: "rapidTimer",
+      triShot: "triShotTimer",
+      piercing: "piercingTimer",
+      arcBurst: "arcBurstTimer",
+      novaLance: "novaLanceTimer",
+      amplifier: "amplifierTimer",
+      aegis: "aegisTimer"
+    })) {
+      state.ship[timer] = CONFIG.powerups[kind].duration * CONFIG.powerups.temporaryStackLimit;
+    }
     const capByCollection = {
       asteroids: CONFIG.caps.asteroids,
       aliens: CONFIG.caps.aliens,
@@ -1700,12 +2035,13 @@ module.exports = function register(test) {
       effects: CONFIG.caps.particles,
       floaters: CONFIG.caps.floaters
     };
-    const limit = Math.ceil(360 / CONFIG.world.fixedStep);
+    const limit = Math.ceil(720 / CONFIG.world.fixedStep);
     for (let frame = 0; frame < limit && !(state.sector === 2 && state.encounter === 1); frame += 1) {
       if (state.upgradeDraft.phase === "choosing") {
         assert.equal(game.chooseEnhancement(0), true, "full journey stalled at an Enigma choice");
       }
       state.ship.invulnerable = 1e9;
+      if (state.boss) bossTypes.add(state.boss.type);
       let target = state.boss && (state.boss.nodes.find((node) => node.health > 0) || state.boss);
       const data = state.encounterData;
       if (!target && data) {
@@ -1726,14 +2062,18 @@ module.exports = function register(test) {
       for (const pickup of state.pickups.slice()) if (!pickup.dead) game.applyPickup(pickup);
       game.step(CONFIG.world.fixedStep);
       visited.add(state.encounter);
+      if (state.boss) bossTypes.add(state.boss.type);
       for (const [name, cap] of Object.entries(capByCollection)) {
         assert.ok(state[name].length <= cap, `${name} exceeded ${cap} during full journey`);
       }
+      assert.ok(state.ship.drones.length <= CONFIG.caps.drones, "drones exceeded their cap during full journey");
+      assert.ok(state.ship.orbitBlades.length <= 12, "Orbit Blades exceeded their runtime bound during full journey");
     }
-    assert.equal(state.sector, 2, "weapon-driven journey did not wrap after Stage 9");
+    assert.equal(state.sector, 2, "weapon-driven journey did not wrap after Stage 20");
     assert.equal(state.encounter, 1);
-    assert.deepEqual(Array.from(visited).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    assert.equal(state.bossesDefeated, 1, "alien boss was not defeated by weapon fire");
+    assert.deepEqual(Array.from(visited).sort((a, b) => a - b), Array.from({ length: 20 }, (_, index) => index + 1));
+    assert.deepEqual(Array.from(bossTypes).sort(), ["harrower", "leviathan"]);
+    assert.equal(state.bossesDefeated, 2, "both authored bosses were not defeated by weapon fire");
   });
 };
 

@@ -1,6 +1,6 @@
 # Neon Voyage
 
-[![Version v2026.8.15](https://img.shields.io/badge/version-v2026.8.15-63f7f0)](CHANGELOG.md)
+[![Version v2026.8.15a](https://img.shields.io/badge/version-v2026.8.15a-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
@@ -16,7 +16,7 @@ Neon Voyage is a fast, fixed-screen space shooter about leaving Earth, crossing 
 | Detail | Summary |
 | --- | --- |
 | Genre | 2D space arcade shooter |
-| Journey | Nine stages, from Earth Orbit to the Harrower command ship |
+| Journey | Twenty stages, with command-ship battles at Stages 10 and 20 |
 | Play with | Keyboard and mouse, gamepad, or touch controls |
 | Progress | Local stage checkpoints with saved, stacking weapon loadouts |
 | Built with | HTML, CSS, JavaScript, and Canvas |
@@ -36,9 +36,9 @@ On phones and tablets, play in landscape and touch either half of the battlefiel
 
 ## The voyage
 
-Clear each battlefield, stack temporary weapons, and grow permanent modules through Mk V. Rare **Enigma** signals slow combat to a halt and offer three enhancements, while milestone clears add guided rockets, radial volleys, and guardian drones to the voyage. **New Game** begins again at Earth; **Continue** shows the loadout at each earned stage and restores the selected checkpoint's saved weapons.
+Clear each battlefield, stack long-lasting temporary weapons, and grow 13 permanent modules through Mk V. Frequent **Enigma** signals slow combat to a halt and offer three enhancements, while milestone clears add systems such as guided rockets, chain lightning, orbit blades, mines, shield recovery, weapon overclocking, and pickup attraction. Defeat the Harrower at Stage 10, survive a second frontier, and confront the Leviathan at Stage 20. **New Game** begins again at Earth; **Continue** shows the loadout at each earned stage and restores the selected checkpoint's saved weapons.
 
-![The Neon Voyage ship confronting the Harrower in the command arena.](docs/assets/neon-voyage-command-arena.webp)
+![The Neon Voyage ship confronting the Harrower at the journey's midpoint.](docs/assets/neon-voyage-command-arena.webp)
 
 ## Run locally
 

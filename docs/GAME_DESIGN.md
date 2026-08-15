@@ -21,7 +21,7 @@ Neon Voyage is a focused space-arcade expedition that begins above a familiar Ea
 3. Break asteroids, defeat spacecraft, stack field pickups, and choose among Enigma enhancements.
 4. Clear every encounter-owned threat.
 5. Travel through hyperspace to the next authored stage.
-6. Defeat the Harrower, continue into a harder sector, or return later through an earned checkpoint.
+6. Defeat the Harrower at Stage 10, break through the evolved frontier, defeat the Leviathan at Stage 20, then continue into a harder sector or return later through an earned checkpoint.
 
 ## Journey
 
@@ -31,13 +31,24 @@ Neon Voyage is a focused space-arcade expedition that begins above a familiar Ea
 | 2 | Inner Belt | Introduce crystal, volatile, and armored hazards | Homing Salvo tier |
 | 3 | Deep Drift | Increase mixed asteroid pressure as familiar space recedes | — |
 | 4 | Shattered Frontier | Introduce colossal asteroids and bounded split trees | Radial Array tier |
-| 5 | Titan Gate | Break the Titan while controlling its surrounding hazards | — |
+| 5 | Titan Gate | Break the Titan while controlling its surrounding hazards | Tractor Field tier |
 | 6 | First Contact | Meet alien scouts without removing the physical asteroid field | Guardian Drone tier |
 | 7 | Strike Wing | Fight faster interceptors and bombers | — |
-| 8 | Raid Fleet | Break carrier-supported alien formations | Radial Array tier |
-| 9 | Command Arena | Defeat the Harrower and every surviving escort | Boss-core upgrade or capped overflow |
+| 8 | Raid Fleet | Break carrier-supported alien formations | Tesla Coil tier |
+| 9 | Command Screen | Break the capital ship's final pickets and carriers | Shield Reactor tier |
+| 10 | Harrower Arena | Defeat the Harrower and every surviving escort | Boss-core upgrade or capped overflow |
+| 11 | Ion Graveyard | Enter the evolved anomaly arc against charged razor fields | Orbit Blades tier |
+| 12 | Prism Rift | Cross refracting prismatic and volatile formations | Prism Fan tier |
+| 13 | Gravity Scar | Control dense monoliths inside a collapsing field | — |
+| 14 | Fractured Halo | Survive splinter swarms and broken giants | Mine Layer tier |
+| 15 | Anomaly Crown | Shatter an evolved Titan and its anomaly court | Overclock Matrix tier |
+| 16 | Vanguard Swarm | Meet advanced lancer and gunship formations | — |
+| 17 | Null Phalanx | Break coordinated lancers, gunships, and legacy strike craft | Seeker Rack tier |
+| 18 | Siege Choir | Silence gunship, bomber, and carrier attack rhythms | — |
+| 19 | Sovereign Guard | Clear the Leviathan's heaviest mixed fleet screen | Mass Driver tier |
+| 20 | Leviathan Arena | Defeat the Leviathan and every surviving escort | Boss-core upgrade or capped overflow |
 
-Ordinary alien spacecraft do not appear before Stage 6. A milestone targets its authored module unless that system is already at Mk V, in which case the bounded upgrade rules redirect the reward. Later sectors repeat the journey with bounded difficulty scaling and deep-space scenery rather than returning visually to Earth.
+Stages 1–5 form an accessible asteroid-and-anomaly opening; ordinary alien spacecraft do not appear before Stage 6. Stages 6–9 form the first mixed alien arc, Stage 10 is the first command-ship battle, Stages 11–15 escalate through evolved anomalies, and Stages 16–19 introduce advanced alien formations before the Stage 20 boss. A milestone targets its authored module unless that system is already at Mk V, in which case the bounded upgrade rules redirect the reward. Later sectors repeat the complete journey with bounded difficulty scaling and deep-space scenery rather than returning visually to Earth.
 
 ## Player systems
 
@@ -51,15 +62,15 @@ Collecting an Enigma signal first neutralizes held input and eases the fixed-ste
 
 Asteroids are physical ballistic hazards. They separate and bounce when they hit one another instead of causing mutual destruction. Large authored asteroids can show progressive cracks and split through explicit finite generations. An asteroid can destroy an alien through a genuine approaching impact, but environmental destruction grants no player reward.
 
-Alien families have distinct roles: scouts strafe and fire, strikers telegraph charges, bombers place mines, and carriers launch a bounded number of configured children. The Harrower combines movement phases, beams, volleys, mines, and escorts inside a contained command arena.
+Alien families have distinct roles: scouts strafe and fire, strikers telegraph charges, bombers place mines, carriers launch a bounded number of configured children, lancers coordinate aggressive attack lines, and gunships add heavier fleet pressure. Razor, prismatic, and monolith asteroids extend the physical hazard language in the second arc. The Harrower and Leviathan use distinct configured phase sets, silhouettes, attacks, and escorts inside contained command arenas.
 
 A wave is complete only when all of its configured spawns are exhausted and the field is clean. Required objectives, optional hazards, fragments, carrier children, escorts, pending spawns, and hard-cull requeues all belong to that rule. Hyperspace never begins over a living encounter threat.
 
 ## Weapons and progression
 
-Field pickups can repair or shield the ship, recharge Void Pulse, or temporarily enable faster, wider, piercing, arc, or lance fire. Each temporary effect has an independent finite timer; another matching pickup adds one full duration up to four base durations.
+Field pickups can repair or shield the ship, recharge Void Pulse, or temporarily enable faster, wider, piercing, arc, lance, amplified-damage, or damage-resistant play. Drops are intentionally common: each eligible defeat has a 48% chance and a two-kill dry spell triggers the bounded pity path. Each of the seven temporary effects lasts 24–30 seconds per pickup and owns an independent finite timer; another matching pickup adds one full duration up to four base durations.
 
-Permanent modules are rare upgrades bounded at Mk V. Firing modules add repeaters, spread, seekers, or heavy shots; autonomous modules periodically add homing salvos, rotating radial bursts, or guardian drones without taking over the player's aim. Authored stage milestones, Enigma cards, module caches, and boss cores all feed the same tier bounds. All owned modules cooperate within the shared projectile, drone, audio, and effect caps.
+Thirteen permanent modules are bounded at Mk V. Firing modules add repeaters, spread, seekers, or heavy shots. Autonomous systems add homing salvos, rotating radial bursts, guardian drones, chained Tesla strikes, orbiting blades, defensive mines, or shield recovery without taking over the player's aim. Overclock Matrix accelerates the equipped arsenal and Tractor Field draws nearby pickups toward the ship. Authored stage milestones, Enigma cards, common module caches, and boss cores all feed the same tier bounds. All owned modules cooperate within shared projectile, mine, drone, audio, and effect caps.
 
 Every Enigma draft contains three distinct eligible cards. Cards can install or raise a permanent module, add a duration stack to a temporary weapon, or immediately restore hull, shields, or Void Pulse. When a category is already full, the draft draws from the remaining bounded choices rather than offering an unusable upgrade.
 
@@ -69,7 +80,7 @@ Campaign progress is local and intentionally narrow. Each earned stage stores on
 
 The voyage begins with recognizable Earth and Mars imagery, then moves through distinctive authored worlds. Planets should feel cinematic and believable, never like translucent interface rings or repeated procedural bands. Craft, threats, projectiles, pickups, and effects remain crisp Canvas shapes with strong silhouettes and a restrained cyan, magenta, violet, gold, and deep-space palette.
 
-The HUD prioritizes immediate survival information. Autonomous modules carry an `AUTO` marker, guided rockets and rotating radial shots retain distinct silhouettes, and permanent/timed labels make upgrade consequences explicit. The Enigma chooser uses three wide cards when space permits, compacts for short landscape screens, and becomes a single column in narrow portrait layouts. Dialog focus, full card labels, central announcements, keyboard shortcuts, and gamepad navigation preserve the same decision across input methods.
+The HUD prioritizes immediate survival information. Its compact permanent strip lists only equipped modules with their current Mk tier and activation marker; it never reserves large boxes for empty slots. A separate active-effects row appears only while temporary enhancements are running and gives each one a visible countdown. Guided rockets, radial shots, Tesla arcs, orbit blades, player mines, shield pulses, and the two new timed effects retain distinct restrained silhouettes. The Enigma chooser uses three wide cards when space permits, compacts for short landscape screens, and becomes a single column in narrow portrait layouts. Dialog focus, full card labels, central announcements, keyboard shortcuts, and gamepad navigation preserve the same decision across input methods.
 
 Compact landscape layouts reduce secondary text while preserving accessible names and touch targets. Reduced-effects mode lowers Enigma ornament, shake, flashes, particles, and hyperspace intensity without changing upgrade choices or projectile readability.
 

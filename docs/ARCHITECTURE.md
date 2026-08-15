@@ -40,16 +40,16 @@ Exact product behavior belongs in [`GAME_DESIGN.md`](GAME_DESIGN.md); exact tuni
 
 ## State and persistence
 
-`js/game.js` owns one plain-object live state. Entity collections are mutated only through the fixed-step path and cleaned against the caps in `CONFIG.caps`. Encounter queues carry required, optional, descendant, and hard-cull-requeued threats until the field is truly clear. `state.upgradeDraft` owns the finite `idle` → `slowing` → `choosing` Enigma sequence, its deterministic choices, focus index, and time scale.
+`js/game.js` owns one plain-object live state. Entity collections are mutated only through the fixed-step path and cleaned against the caps in `CONFIG.caps`. Encounter queues carry required, optional, descendant, and hard-cull-requeued threats until the field is truly clear. The configured `bossType` selects Harrower or Leviathan behavior without tying boss logic to a hardcoded stage number. Permanent-module cadence, orbit contacts, player mines, shield recovery, pickup attraction, and temporary-effect timers all advance only through the same fixed-step path. `state.upgradeDraft` owns the finite `idle` → `slowing` → `choosing` Enigma sequence, its deterministic choices, focus index, and time scale.
 
 Two strict local-storage records are intentionally separate:
 
 | Key | Contents | Compatibility rule |
 | --- | --- | --- |
 | `neon-voyage-v1` | High score and sound/effects preferences | Keep the key and strict validation |
-| `neon-voyage-progress-v1` | Schema-2 unlocked stages, Mk V module tiers, and up to four base durations per saved temporary weapon | Preserve schema-1 migration or add a tested migration |
+| `neon-voyage-progress-v1` | Schema-3 unlocked stages, 20 bounded checkpoints, 13 Mk V module tiers, and up to four base durations for each of seven saved temporary effects | Preserve tested exact-shape migrations from schema 2 and schema 1 |
 
-The schema and storage key remain unchanged: older bounded schema-2 tiers and timers are valid subsets of the expanded limits. Live hull, score, position, clocks, cooldown phase, entities, generated Enigma cards, and paused battles are never saved as campaign checkpoints.
+The storage key remains unchanged. Schema 3 accepts only the exact current module and timer keys, Stage 1–20 bounds, Mk I–V tiers, four-duration timer ceilings, and a 16,384-byte record limit. A valid schema-2 record retains its exact legacy seven-module/five-timer shape and Stage 1–9 bounds during migration; valid schema-1 unlock progress is migrated separately. New keys are filled with safe zero values, while malformed, unknown, oversized, or out-of-range records are rejected rather than partially trusted. Live hull, score, position, clocks, cooldown phase, entities, generated Enigma cards, and paused battles are never saved as campaign checkpoints.
 
 Collecting Enigma generates three seeded, non-duplicated eligible choices before slowdown begins. Unscaled draft elapsed time advances by the fixed step, while its smooth time scale multiplies only gameplay simulation. At the `choosing` phase the multiplier is zero, transient controls remain neutral, the modal owns focus, and selection applies exactly one upgrade before restoring input with bounded invulnerability and checkpointing the result.
 
@@ -59,11 +59,11 @@ Collecting Enigma generates three seeded, non-duplicated eligible choices before
 
 | Responsibility | Main functions or state |
 | --- | --- |
-| Save compatibility | `validSave`, checkpoint/progress validators, `saveLocal`, `saveProgress` |
-| Modes and UI ownership | overlay/dialog helpers, Enigma card/focus flow, run start/restart/menu flow, progress grid and loadout summaries |
+| Save compatibility | `validSave`, strict schema-3 checkpoint/progress validators, schema-2/schema-1 migration, `saveLocal`, `saveProgress` |
+| Modes and UI ownership | overlay/dialog helpers, Enigma card/focus flow, run start/restart/menu flow, progress grid, equipped-module strip, timed-effect countdowns, and loadout summaries |
 | Input lifecycle | keyboard, pointer, touch-stick, gamepad, orientation, visibility cleanup |
 | Encounter lifecycle | combat-field setup, queues, waves, hyperspace, stage advancement |
-| Combat | ship/weapons, passive cadence, spawns, threats, bosses, collisions, damage, pickups, temporary stacking and module rewards |
+| Combat | ship/weapons, passive cadence, spawns, threats, configured bosses, collisions, damage, pickups, temporary stacking and module rewards |
 | Bounded cleanup | effects, hard-cull requeue, collection cleanup, camera, origin rebasing |
 | Verification surface | `ND.game`, deterministic debug controls, snapshot, fixed-step `frame` loop |
 
@@ -83,6 +83,6 @@ See [`SECURITY.md`](../SECURITY.md) for reporting scope.
 - `ND.Core` exposes pure utility contracts.
 - `ND.RenderDebug` exposes scene, cinematic, anchor, damage, and asset-source contracts.
 - `ND.StagePreview.render` exposes deterministic checkpoint-card rendering.
-- `ND.game` exposes the intentional deterministic simulation surface used by tests, including the Enigma snapshot and controlled enhancement selection.
+- `ND.game` exposes the intentional deterministic simulation surface used by tests, including both configured bosses, the Stage 1–20 journey, passive-system state, the Enigma snapshot, and controlled enhancement selection.
 
 These are test seams, not a public third-party API. Preserve them when tests or compatibility rely on them; do not expand them merely to avoid testing behavior through its real owner.

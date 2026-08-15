@@ -12,18 +12,29 @@
   const distanceSquared = Core.distanceSquared;
   const STORAGE_KEY = "neon-voyage-v1";
   const PROGRESS_STORAGE_KEY = "neon-voyage-progress-v1";
-  const PROGRESS_STORAGE_LIMIT = 4096;
+  const PROGRESS_STORAGE_LIMIT = 16384;
   const TOUCH_INPUT_EPSILON = 0.0001;
-  const MODULE_ORDER = Object.keys(CONFIG.weapons.modules).slice(0, CONFIG.weapons.maxInstalledModules);
-  const TEMP_WEAPON_TIMERS = ["rapidTimer", "triShotTimer", "piercingTimer", "arcBurstTimer", "novaLanceTimer"];
-  const TEMPORARY_UPGRADE_ORDER = ["rapid", "triShot", "piercing", "arcBurst", "novaLance"];
+  const LEGACY_MODULE_ORDER = ["pulse", "homingSalvo", "radialArray", "prism", "seeker", "massDriver", "drone"];
+  const LEGACY_TEMP_WEAPON_TIMERS = ["rapidTimer", "triShotTimer", "piercingTimer", "arcBurstTimer", "novaLanceTimer"];
+  const LEGACY_TEMP_WEAPON_LIMITS = Object.freeze({
+    rapidTimer: 40,
+    triShotTimer: 40,
+    piercingTimer: 40,
+    arcBurstTimer: 36,
+    novaLanceTimer: 48
+  });
+  const MODULE_ORDER = Object.keys(CONFIG.weapons.modules);
+  const TEMPORARY_UPGRADE_ORDER = ["rapid", "triShot", "piercing", "arcBurst", "novaLance", "amplifier", "aegis"];
   const TEMPORARY_TIMER_BY_KIND = {
     rapid: "rapidTimer",
     triShot: "triShotTimer",
     piercing: "piercingTimer",
     arcBurst: "arcBurstTimer",
-    novaLance: "novaLanceTimer"
+    novaLance: "novaLanceTimer",
+    amplifier: "amplifierTimer",
+    aegis: "aegisTimer"
   };
+  const TEMP_WEAPON_TIMERS = TEMPORARY_UPGRADE_ORDER.map((kind) => TEMPORARY_TIMER_BY_KIND[kind]);
   const TEMPORARY_KIND_BY_TIMER = Object.freeze(Object.fromEntries(
     Object.entries(TEMPORARY_TIMER_BY_KIND).map(([kind, timer]) => [timer, kind])
   ));
@@ -34,17 +45,20 @@
     prism: "Adds a wider prism fan whenever the primary weapon fires.",
     seeker: "Adds guided missiles whenever the primary weapon fires.",
     massDriver: "Adds a heavy piercing rail shot to the firing stream.",
-    drone: "Adds an orbiting guardian that finds and fires on threats."
+    drone: "Adds an orbiting guardian that finds and fires on threats.",
+    teslaCoil: "Chains periodic lightning through a bounded line of nearby threats.",
+    orbitBlades: "Adds rotating blades that repeatedly cut threats around the ship.",
+    mineLayer: "Periodically leaves player mines that detonate near approaching threats.",
+    shieldReactor: "Periodically restores a bounded reserve of defensive shields.",
+    overclock: "Permanently shortens weapon cooldowns for a faster firing cadence.",
+    tractorField: "Pulls nearby field pickups toward the ship for easier collection."
   };
   const SUPPORT_UPGRADE_ORDER = ["repair", "shield", "pulseCharge"];
   const temporaryStackLimit = Math.max(1, Math.floor(CONFIG.powerups.temporaryStackLimit || 1));
-  const TEMP_WEAPON_LIMITS = {
-    rapidTimer: CONFIG.powerups.rapid.duration * temporaryStackLimit,
-    triShotTimer: CONFIG.powerups.triShot.duration * temporaryStackLimit,
-    piercingTimer: CONFIG.powerups.piercing.duration * temporaryStackLimit,
-    arcBurstTimer: CONFIG.powerups.arcBurst.duration * temporaryStackLimit,
-    novaLanceTimer: CONFIG.powerups.novaLance.duration * temporaryStackLimit
-  };
+  const TEMP_WEAPON_LIMITS = Object.freeze(Object.fromEntries(TEMPORARY_UPGRADE_ORDER.map((kind) => [
+    TEMPORARY_TIMER_BY_KIND[kind],
+    CONFIG.powerups[kind].duration * temporaryStackLimit
+  ])));
   const THREAT_ARRAYS = ["asteroids", "aliens"];
 
   const byId = (id) => global.document.getElementById(id);
@@ -76,7 +90,10 @@
     pulseValue: byId("pulse-value"),
     pulseFill: byId("pulse-fill"),
     pulseTrack: byId("pulse-fill") && byId("pulse-fill").parentElement,
+    moduleConsole: byId("module-console"),
     moduleStrip: byId("module-strip"),
+    activeEffects: byId("active-effects"),
+    activeEffectsList: byId("active-effects-list"),
     powerupStatus: byId("powerup-status"),
     announcement: byId("announcement"),
     menuOverlay: byId("menu-overlay"),
@@ -159,16 +176,40 @@
     return { modules: { ...fallback.modules }, timers: { ...fallback.timers } };
   }
 
-  function validLegacyProgress(value) {
-    const maximum = CONFIG.sector.encountersPerSector;
+  function validSchemaOneProgress(value) {
+    const maximum = Math.min(9, CONFIG.sector.encountersPerSector);
     return exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage"]) && value.schema === 1 &&
       Number.isInteger(value.maxUnlockedStage) && value.maxUnlockedStage >= 1 && value.maxUnlockedStage <= maximum &&
       Number.isInteger(value.lastPlayedStage) && value.lastPlayedStage >= 1 && value.lastPlayedStage <= value.maxUnlockedStage;
   }
 
+  function validSchemaTwoCheckpoint(value) {
+    if (!exactKeys(value, ["modules", "timers"]) || !exactKeys(value.modules, LEGACY_MODULE_ORDER) ||
+        !exactKeys(value.timers, LEGACY_TEMP_WEAPON_TIMERS)) return false;
+    for (const id of LEGACY_MODULE_ORDER) {
+      const tier = value.modules[id];
+      const minimum = CONFIG.weapons.startingModules[id] || 0;
+      if (!Number.isInteger(tier) || tier < minimum || tier > CONFIG.weapons.maxModuleTier) return false;
+    }
+    for (const timer of LEGACY_TEMP_WEAPON_TIMERS) {
+      const remaining = value.timers[timer];
+      if (!Number.isFinite(remaining) || remaining < 0 || remaining > LEGACY_TEMP_WEAPON_LIMITS[timer]) return false;
+    }
+    return true;
+  }
+
+  function validSchemaTwoProgress(value) {
+    const legacyMaximum = Math.min(9, CONFIG.sector.encountersPerSector);
+    if (!exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage", "checkpoints"]) || value.schema !== 2 ||
+        !Number.isInteger(value.maxUnlockedStage) || value.maxUnlockedStage < 1 || value.maxUnlockedStage > legacyMaximum ||
+        !Number.isInteger(value.lastPlayedStage) || value.lastPlayedStage < 1 || value.lastPlayedStage > value.maxUnlockedStage) return false;
+    const stageKeys = Array.from({ length: value.maxUnlockedStage }, (_, index) => String(index + 1));
+    return exactKeys(value.checkpoints, stageKeys) && Object.values(value.checkpoints).every(validSchemaTwoCheckpoint);
+  }
+
   function validProgress(value) {
     const maximum = CONFIG.sector.encountersPerSector;
-    if (!exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage", "checkpoints"]) || value.schema !== 2 ||
+    if (!exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage", "checkpoints"]) || value.schema !== 3 ||
         !Number.isInteger(value.maxUnlockedStage) || value.maxUnlockedStage < 1 || value.maxUnlockedStage > maximum ||
         !Number.isInteger(value.lastPlayedStage) || value.lastPlayedStage < 1 || value.lastPlayedStage > value.maxUnlockedStage) return false;
     const stageKeys = Array.from({ length: value.maxUnlockedStage }, (_, index) => String(index + 1));
@@ -181,13 +222,26 @@
     const last = clamp(Math.floor(Number(lastPlayedStage) || 1), 1, unlocked);
     const checkpoints = {};
     for (let stage = 1; stage <= unlocked; stage += 1) checkpoints[String(stage)] = baseCheckpoint();
-    return { schema: 2, maxUnlockedStage: unlocked, lastPlayedStage: last, checkpoints };
+    return { schema: 3, maxUnlockedStage: unlocked, lastPlayedStage: last, checkpoints };
   }
 
   function copyProgress(value) {
     const copy = newProgress(value.maxUnlockedStage, value.lastPlayedStage);
     for (const key of Object.keys(copy.checkpoints)) copy.checkpoints[key] = cloneCheckpoint(value.checkpoints[key]);
     return copy;
+  }
+
+  function migrateProgress(value) {
+    if (validProgress(value)) return copyProgress(value);
+    const migrated = newProgress(value?.maxUnlockedStage, value?.lastPlayedStage);
+    if (!validSchemaTwoProgress(value)) return migrated;
+    for (const key of Object.keys(value.checkpoints)) {
+      const checkpoint = migrated.checkpoints[key];
+      const legacy = value.checkpoints[key];
+      for (const id of LEGACY_MODULE_ORDER) checkpoint.modules[id] = legacy.modules[id];
+      for (const timer of LEGACY_TEMP_WEAPON_TIMERS) checkpoint.timers[timer] = legacy.timers[timer];
+    }
+    return migrated;
   }
 
   const saved = Core.safeReadJSON(null, STORAGE_KEY, {
@@ -199,11 +253,9 @@
     reducedEffects: saved.settings.reducedEffects
   };
   const savedProgress = Core.safeReadJSON(null, PROGRESS_STORAGE_KEY, null, (value) =>
-    validProgress(value) || validLegacyProgress(value), PROGRESS_STORAGE_LIMIT);
-  const progress = savedProgress && savedProgress.schema === 2
-    ? copyProgress(savedProgress)
-    : newProgress(savedProgress?.maxUnlockedStage, savedProgress?.lastPlayedStage);
-  if (savedProgress && savedProgress.schema === 1) {
+    validProgress(value) || validSchemaTwoProgress(value) || validSchemaOneProgress(value), PROGRESS_STORAGE_LIMIT);
+  const progress = migrateProgress(savedProgress);
+  if (savedProgress && savedProgress.schema !== 3) {
     Core.safeWriteJSON(null, PROGRESS_STORAGE_KEY, progress, validProgress, PROGRESS_STORAGE_LIMIT);
   }
   let highScore = Math.floor(saved.highScore);
@@ -563,15 +615,12 @@
       dashTime: 0,
       dashCooldown: 0,
       pulse: 100,
-      rapidTimer: loadout.timers.rapidTimer,
-      triShotTimer: loadout.timers.triShotTimer,
-      piercingTimer: loadout.timers.piercingTimer,
-      arcBurstTimer: loadout.timers.arcBurstTimer,
-      novaLanceTimer: loadout.timers.novaLanceTimer,
       modules: { ...loadout.modules },
       weaponTimers: Object.create(null),
-      drones: []
+      drones: [],
+      orbitBlades: []
     };
+    for (const timer of TEMP_WEAPON_TIMERS) ship[timer] = loadout.timers[timer];
     state.time = 0;
     state.runTime = 0;
     state.camera.x = 0;
@@ -602,6 +651,8 @@
     gameoverInitialShake = 0;
     gameoverInitialFlash = 0;
     state.powerupTextTimer = 0;
+    state.moduleSignature = "";
+    state.activeEffectSignature = "";
     if (dom.powerupStatus) dom.powerupStatus.textContent = "";
     state.stats = { culled: 0, spawned: 0, kills: 0 };
     hideAnnouncement();
@@ -1386,7 +1437,7 @@
 
   function beginEncounter() {
     const spec = CONFIG.sector.encounters[state.encounter - 1];
-    const isBoss = spec.id === "boss";
+    const isBoss = Boolean(spec.bossType);
     if (isBoss) state.combatField.active = false;
     else openCombatField();
     state.encounterData = {
@@ -1506,6 +1557,48 @@
     }
   }
 
+  function moduleTierValues(ship, moduleId) {
+    const tier = ship && ship.modules[moduleId] || 0;
+    const definition = CONFIG.weapons.modules[moduleId];
+    return tier > 0 && definition ? definition.tiers[tier - 1] : null;
+  }
+
+  function overclockCooldownMultiplier(ship) {
+    const values = moduleTierValues(ship, "overclock");
+    return values ? clamp(Number(values.cooldownMultiplier) || 1, 0.2, 1) : 1;
+  }
+
+  function amplifiedDamage(amount) {
+    const multiplier = state.ship && state.ship.amplifierTimer > 0 ?
+      Math.max(1, Number(CONFIG.powerups.amplifier.damageMultiplier) || 1) : 1;
+    return Math.max(0, Number(amount) || 0) * multiplier;
+  }
+
+  function updateTractorField(dt) {
+    const ship = state.ship;
+    const values = moduleTierValues(ship, "tractorField");
+    if (!values) return;
+    const range = Math.max(0, Number(values.range) || 0);
+    const strength = Math.max(0, Number(values.strength) || 0);
+    const rangeSquared = range * range;
+    for (const pickup of state.pickups) {
+      if (pickup.dead) continue;
+      const dx = ship.x - pickup.x;
+      const dy = ship.y - pickup.y;
+      const squared = dx * dx + dy * dy;
+      if (squared <= 0.0001 || squared > rangeSquared) continue;
+      const distance = Math.sqrt(squared);
+      const acceleration = strength * (1 - distance / Math.max(1, range) * 0.45);
+      pickup.vx += dx / distance * acceleration * dt;
+      pickup.vy += dy / distance * acceleration * dt;
+      const speed = Math.hypot(pickup.vx, pickup.vy);
+      if (speed > 560) {
+        pickup.vx = pickup.vx / speed * 560;
+        pickup.vy = pickup.vy / speed * 560;
+      }
+    }
+  }
+
   // Simulation systems below run only from the fixed-step update path.
   function updateShip(dt) {
     const ship = state.ship;
@@ -1526,11 +1619,7 @@
     ship.invulnerable = Math.max(0, ship.invulnerable - dt);
     ship.dashCooldown = Math.max(0, ship.dashCooldown - dt);
     ship.dashTime = Math.max(0, ship.dashTime - dt);
-    ship.rapidTimer = Math.max(0, ship.rapidTimer - dt);
-    ship.triShotTimer = Math.max(0, ship.triShotTimer - dt);
-    ship.piercingTimer = Math.max(0, ship.piercingTimer - dt);
-    ship.arcBurstTimer = Math.max(0, ship.arcBurstTimer - dt);
-    ship.novaLanceTimer = Math.max(0, ship.novaLanceTimer - dt);
+    for (const timer of TEMP_WEAPON_TIMERS) ship[timer] = Math.max(0, ship[timer] - dt);
     ship.pulse = clamp(ship.pulse + dt * CONFIG.voidPulse.rechargePerSecond, 0, 100);
 
     if ((input.pressed.shift || input.pressed.dash) && ship.dashCooldown <= 0) {
@@ -1575,13 +1664,15 @@
     if (shouldFire()) fireModules(dt);
     else tickWeaponTimers(dt);
     updateDrones(dt);
+    updateOrbitBlades(dt);
     updatePassiveModules(dt);
+    updateTractorField(dt);
   }
 
   function tickWeaponTimers(dt) {
     const timers = state.ship.weaponTimers;
     for (const id of MODULE_ORDER) {
-      if (CONFIG.weapons.modules[id].activation !== "autonomous") {
+      if (CONFIG.weapons.modules[id].activation === "whileFiring") {
         timers[id] = Math.max(0, (timers[id] || 0) - dt);
       }
     }
@@ -1590,14 +1681,15 @@
   function fireModules(dt) {
     const ship = state.ship;
     const rapid = ship.rapidTimer > 0 ? CONFIG.powerups.rapid.cooldownMultiplier : 1;
+    const overclock = overclockCooldownMultiplier(ship);
     for (const id of MODULE_ORDER) {
       const tier = ship.modules[id] || 0;
       const definition = CONFIG.weapons.modules[id];
-      if (!tier || definition.activation === "autonomous") continue;
+      if (!tier || definition.activation !== "whileFiring") continue;
       ship.weaponTimers[id] = Math.max(0, (ship.weaponTimers[id] || 0) - dt);
       if (ship.weaponTimers[id] > 0) continue;
       const values = definition.tiers[tier - 1];
-      ship.weaponTimers[id] = values.cooldown * rapid;
+      ship.weaponTimers[id] = values.cooldown * rapid * overclock;
       const baseCount = values.projectiles || 1;
       const count = ship.triShotTimer > 0 ? Math.max(3, baseCount + CONFIG.powerups.triShot.extraProjectiles) : baseCount;
       const spreadWidth = ship.triShotTimer > 0 ? Math.max(values.spread || 0, CONFIG.powerups.triShot.minimumSpread) : (values.spread || 0);
@@ -1612,11 +1704,12 @@
 
   function fireTemporaryWeapons(dt) {
     const ship = state.ship;
+    const overclock = overclockCooldownMultiplier(ship);
     if (ship.arcBurstTimer > 0) {
       ship.weaponTimers.arcBurst = Math.max(0, (ship.weaponTimers.arcBurst || 0) - dt);
       if (ship.weaponTimers.arcBurst <= 0) {
         const values = CONFIG.powerups.arcBurst;
-        ship.weaponTimers.arcBurst = values.cooldown;
+        ship.weaponTimers.arcBurst = values.cooldown * overclock;
         for (let index = 0; index < values.projectiles; index += 1) {
           const offset = values.projectiles === 1 ? 0 : (index / (values.projectiles - 1) - 0.5) * values.spread;
           spawnTemporaryBullet("arc", ship.angle + offset, values);
@@ -1628,7 +1721,7 @@
       ship.weaponTimers.novaLance = Math.max(0, (ship.weaponTimers.novaLance || 0) - dt);
       if (ship.weaponTimers.novaLance <= 0) {
         const values = CONFIG.powerups.novaLance;
-        ship.weaponTimers.novaLance = values.cooldown;
+        ship.weaponTimers.novaLance = values.cooldown * overclock;
         spawnTemporaryBullet("lance", ship.angle, values);
         audio.shoot("rail");
       }
@@ -1645,7 +1738,7 @@
       vx: Math.cos(angle) * values.speed,
       vy: Math.sin(angle) * values.speed,
       radius: kind === "lance" ? 4 : 3,
-      damage: values.damage,
+      damage: amplifiedDamage(values.damage),
       life: values.life,
       maxLife: values.life,
       kind,
@@ -1670,7 +1763,7 @@
       vx: Math.cos(angle) * values.speed,
       vy: Math.sin(angle) * values.speed,
       radius: kind === "missile" ? 4 : kind === "rail" ? 3.5 : 2.5,
-      damage: values.damage,
+      damage: amplifiedDamage(values.damage),
       life: values.life,
       maxLife: values.life,
       kind,
@@ -1704,13 +1797,185 @@
       if (target) {
         drone.angle = Math.atan2(target.y - drone.y, target.x - drone.x);
         if (drone.cooldown <= 0) {
-          drone.cooldown = values.cooldown;
+          drone.cooldown = values.cooldown * overclockCooldownMultiplier(ship);
           spawnPlayerBullet("drone", drone.x, drone.y, drone.angle, values);
         }
       } else {
         drone.angle = orbit + Math.PI / 2;
       }
     }
+  }
+
+  function hitPlayerTarget(target, amount, cause) {
+    if (!target || target.dead) return false;
+    if (target === state.boss) damageBoss(amount);
+    else damageThreat(target, amount, null, cause || "player");
+    return true;
+  }
+
+  function updateOrbitBlades(dt) {
+    const ship = state.ship;
+    const tier = ship.modules.orbitBlades || 0;
+    const values = moduleTierValues(ship, "orbitBlades");
+    const desired = values ? Math.min(12, Math.max(0, Math.floor(values.blades))) : 0;
+    while (ship.orbitBlades.length < desired) {
+      const index = ship.orbitBlades.length;
+      ship.orbitBlades.push({ x: ship.x, y: ship.y, angle: 0, radius: 9, cooldown: index * 0.04 });
+    }
+    if (ship.orbitBlades.length > desired) ship.orbitBlades.length = desired;
+    if (!values || !desired) return;
+    const angularSpeed = 1.75 + tier * 0.09;
+    const contactDamage = amplifiedDamage(values.damage);
+    for (let index = 0; index < ship.orbitBlades.length; index += 1) {
+      const blade = ship.orbitBlades[index];
+      blade.angle = state.time * angularSpeed + index / desired * TAU;
+      blade.x = ship.x + Math.cos(blade.angle) * values.orbitRadius;
+      blade.y = ship.y + Math.sin(blade.angle) * values.orbitRadius;
+      blade.cooldown = Math.max(0, blade.cooldown - dt);
+      if (blade.cooldown > 0) continue;
+      let target = null;
+      for (const asteroid of state.asteroids) {
+        if (!asteroid.dead && Core.circlesOverlap(blade.x, blade.y, blade.radius, asteroid.x, asteroid.y, asteroid.radius)) {
+          target = asteroid;
+          break;
+        }
+      }
+      if (!target) {
+        for (const alien of state.aliens) {
+          if (!alien.dead && Core.circlesOverlap(blade.x, blade.y, blade.radius, alien.x, alien.y, alien.radius)) {
+            target = alien;
+            break;
+          }
+        }
+      }
+      if (!target && state.boss && Core.circlesOverlap(
+        blade.x, blade.y, blade.radius, state.boss.x, state.boss.y, state.boss.radius
+      )) target = state.boss;
+      if (!target) continue;
+      hitPlayerTarget(target, contactDamage, "orbitBlade");
+      blade.cooldown = Math.max(CONFIG.world.fixedStep, values.hitCooldown);
+      burst(blade.x, blade.y, CONFIG.weapons.modules.orbitBlades.color, settings.reducedEffects ? 1 : 3, 0.45);
+    }
+  }
+
+  function nearestUnchainedTarget(x, y, range, hitIds) {
+    let best = null;
+    let bestSquared = range * range;
+    const consider = (target) => {
+      if (!target || target.dead || hitIds.has(target.id)) return;
+      const squared = distanceSquared(x, y, target.x, target.y);
+      if (squared < bestSquared) {
+        best = target;
+        bestSquared = squared;
+      }
+    };
+    for (const asteroid of state.asteroids) consider(asteroid);
+    for (const alien of state.aliens) consider(alien);
+    consider(state.boss);
+    return best;
+  }
+
+  function addChainEffect(x, y, targetX, targetY, color) {
+    const cap = settings.reducedEffects ? CONFIG.caps.reducedParticles : CONFIG.caps.particles;
+    if (state.effects.length >= cap) return;
+    state.effects.push({
+      x, y, targetX, targetY,
+      vx: 0,
+      vy: 0,
+      type: "chain",
+      layer: "front",
+      radius: 0,
+      color,
+      life: settings.reducedEffects ? 0.1 : 0.16,
+      maxLife: settings.reducedEffects ? 0.1 : 0.16,
+      size: 1,
+      dead: false
+    });
+  }
+
+  function fireTeslaCoil(values) {
+    const ship = state.ship;
+    const hitIds = new Set();
+    let x = ship.x;
+    let y = ship.y;
+    let range = values.range;
+    let hits = 0;
+    const maximumHits = Math.min(12, Math.max(1, Math.floor(values.chains || 1)));
+    for (let index = 0; index < maximumHits; index += 1) {
+      const target = nearestUnchainedTarget(x, y, range, hitIds);
+      if (!target) break;
+      addChainEffect(x, y, target.x, target.y, CONFIG.weapons.modules.teslaCoil.color);
+      hitIds.add(target.id);
+      x = target.x;
+      y = target.y;
+      range = values.chainRange;
+      hitPlayerTarget(target, amplifiedDamage(values.damage), "teslaCoil");
+      hits += 1;
+    }
+    if (hits) audio.shoot("plasma");
+    return hits;
+  }
+
+  function spawnPlayerMine(values, index, count) {
+    if (state.mines.length >= CONFIG.caps.mines) return null;
+    const ship = state.ship;
+    const angle = ship.angle + Math.PI + (index - (count - 1) * 0.5) * 0.42;
+    const x = ship.x + Math.cos(angle) * 25;
+    const y = ship.y + Math.sin(angle) * 25;
+    const mine = {
+      id: nextEntityId++,
+      owner: "player",
+      sourceModule: "mineLayer",
+      x, y,
+      vx: ship.vx * 0.28 + Math.cos(angle) * 46,
+      vy: ship.vy * 0.28 + Math.sin(angle) * 46,
+      radius: 11,
+      life: values.life,
+      maxLife: values.life,
+      triggerRadius: values.triggerRadius,
+      blastRadius: values.blastRadius,
+      damage: amplifiedDamage(values.damage),
+      phase: index / Math.max(1, count) * TAU,
+      armed: true,
+      dead: false
+    };
+    state.mines.push(mine);
+    return mine;
+  }
+
+  function updateTeslaCoil(dt) {
+    const ship = state.ship;
+    const values = moduleTierValues(ship, "teslaCoil");
+    if (!values) return;
+    ship.weaponTimers.teslaCoil = Math.max(0, (ship.weaponTimers.teslaCoil || 0) - dt);
+    if (ship.weaponTimers.teslaCoil > 0) return;
+    if (!fireTeslaCoil(values)) return;
+    ship.weaponTimers.teslaCoil = values.cooldown * overclockCooldownMultiplier(ship);
+  }
+
+  function updateMineLayer(dt) {
+    const ship = state.ship;
+    const values = moduleTierValues(ship, "mineLayer");
+    if (!values) return;
+    ship.weaponTimers.mineLayer = Math.max(0, (ship.weaponTimers.mineLayer || 0) - dt);
+    if (ship.weaponTimers.mineLayer > 0) return;
+    const count = Math.min(4, Math.max(1, Math.floor(values.mines || 1)));
+    let spawned = 0;
+    for (let index = 0; index < count; index += 1) if (spawnPlayerMine(values, index, count)) spawned += 1;
+    if (!spawned) return;
+    ship.weaponTimers.mineLayer = values.cooldown * overclockCooldownMultiplier(ship);
+    if (!settings.reducedEffects) addRing(ship.x, ship.y, CONFIG.weapons.modules.mineLayer.color, 4, 0.24, 32);
+  }
+
+  function updateShieldReactor(dt) {
+    const ship = state.ship;
+    const values = moduleTierValues(ship, "shieldReactor");
+    if (!values) return;
+    ship.weaponTimers.shieldReactor = Math.max(0, (ship.weaponTimers.shieldReactor || 0) - dt);
+    if (ship.weaponTimers.shieldReactor > 0 || ship.shield >= CONFIG.powerups.shield.cap) return;
+    ship.shield = Math.min(CONFIG.powerups.shield.cap, ship.shield + values.amount);
+    ship.weaponTimers.shieldReactor = values.cooldown;
+    addRing(ship.x, ship.y, CONFIG.weapons.modules.shieldReactor.color, 5, 0.34, 48);
   }
 
   function updatePassiveModules(dt) {
@@ -1724,7 +1989,7 @@
       if (ship.weaponTimers[id] > 0) continue;
       const target = nearestTarget(ship.x, ship.y, values.range);
       if (!target) continue;
-      ship.weaponTimers[id] = values.cooldown;
+      ship.weaponTimers[id] = values.cooldown * overclockCooldownMultiplier(ship);
       let spawned = 0;
       if (id === "homingSalvo") {
         const targetAngle = Math.atan2(target.y - ship.y, target.x - ship.x);
@@ -1744,6 +2009,9 @@
       }
       if (spawned && !settings.reducedEffects) addRing(ship.x, ship.y, definition.color, 5, 0.26, id === "homingSalvo" ? 34 : 46);
     }
+    updateTeslaCoil(dt);
+    updateMineLayer(dt);
+    updateShieldReactor(dt);
   }
 
   function activatePulse() {
@@ -1759,16 +2027,16 @@
     }
     if (values.clearMines) {
       for (const mine of state.mines) {
-        if (distanceSquared(ship.x, ship.y, mine.x, mine.y) <= radiusSquared) mine.dead = true;
+        if (mine.owner !== "player" && distanceSquared(ship.x, ship.y, mine.x, mine.y) <= radiusSquared) mine.dead = true;
       }
     }
     for (const asteroid of state.asteroids) {
-      if (distanceSquared(ship.x, ship.y, asteroid.x, asteroid.y) <= radiusSquared) damageThreat(asteroid, values.asteroidDamage, null);
+      if (distanceSquared(ship.x, ship.y, asteroid.x, asteroid.y) <= radiusSquared) damageThreat(asteroid, amplifiedDamage(values.asteroidDamage), null);
     }
     for (const alien of state.aliens) {
-      if (distanceSquared(ship.x, ship.y, alien.x, alien.y) <= radiusSquared) damageThreat(alien, values.alienDamage, null);
+      if (distanceSquared(ship.x, ship.y, alien.x, alien.y) <= radiusSquared) damageThreat(alien, amplifiedDamage(values.alienDamage), null);
     }
-    if (state.boss && distanceSquared(ship.x, ship.y, state.boss.x, state.boss.y) <= radiusSquared) damageBoss(values.bossDamage);
+    if (state.boss && distanceSquared(ship.x, ship.y, state.boss.x, state.boss.y) <= radiusSquared) damageBoss(amplifiedDamage(values.bossDamage));
     addRing(ship.x, ship.y, "#ff58df", 8, 0.75, radius);
     burst(ship.x, ship.y, "#81fbff", settings.reducedEffects ? 18 : 42, 1.8);
     state.shake = Math.max(state.shake, 12);
@@ -2127,7 +2395,7 @@
     const data = state.encounterData;
     if (!data) return;
     data.timer += dt;
-    if (data.spec.id === "boss") {
+    if (data.spec.bossType) {
       updateBossEncounter(dt);
       return;
     }
@@ -2158,7 +2426,10 @@
     state.pickups.length = 0;
     state.effects.length = 0;
     state.floaters.length = 0;
-    if (state.ship) state.ship.drones.length = 0;
+    if (state.ship) {
+      state.ship.drones.length = 0;
+      state.ship.orbitBlades.length = 0;
+    }
   }
 
   function startCinematic(message) {
@@ -2239,7 +2510,7 @@
     }
     if (campaignProgressEligible && state.sector === 1) unlockNextStage(state.encounter);
     state.score += Math.round(300 * state.sector * CONFIG.difficulty.scoreScale(state.sector));
-    const baseMessage = message || (data.spec.id === "titanGate" ? "Titan shattered" : "Stage clear");
+    const baseMessage = message || (data.goalType === "titan" ? "Titan shattered" : "Stage clear");
     startCinematic(rewardResult ? `${baseMessage} · ${rewardResult.summary}` : baseMessage);
   }
 
@@ -2363,6 +2634,7 @@
     const ship = state.ship;
     for (const alien of state.aliens) {
       if (alien.dead) continue;
+      const definition = CONFIG.aliens[alien.type];
       alien.cooldown -= dt;
       alien.stateTimer -= dt;
       const dx = ship.x - alien.x;
@@ -2370,31 +2642,33 @@
       const distance = Math.hypot(dx, dy) || 1;
       alien.aimAngle = Math.atan2(dy, dx);
 
-      if (alien.type === "scout") {
-        const radial = distance > 285 ? 1 : distance < 155 ? -0.8 : 0;
-        steerAlien(alien, dx / distance * radial + -dy / distance * alien.orbitDirection * 0.9, dy / distance * radial + dx / distance * alien.orbitDirection * 0.9, dt);
+      if (alien.type === "scout" || alien.type === "gunship") {
+        const gunship = alien.type === "gunship";
+        const radial = distance > (gunship ? 390 : 285) ? 1 : distance < (gunship ? 250 : 155) ? -0.8 : 0;
+        steerAlien(alien, dx / distance * radial + -dy / distance * alien.orbitDirection * (gunship ? 0.62 : 0.9), dy / distance * radial + dx / distance * alien.orbitDirection * (gunship ? 0.62 : 0.9), dt);
         if (alien.cooldown <= 0 && distance < 720) {
-          alien.cooldown = CONFIG.difficulty.scaledCooldown(CONFIG.aliens.scout.baseCooldown, state.sector);
-          const lead = leadPoint(alien.x, alien.y, CONFIG.aliens.scout.pattern.projectileSpeed);
-          fireEnemyAt(alien.x, alien.y, lead.x, lead.y, CONFIG.aliens.scout.pattern.projectileSpeed, CONFIG.aliens.scout.pattern.damage, 1, 0, "#63f7c8");
+          alien.cooldown = CONFIG.difficulty.scaledCooldown(definition.baseCooldown, state.sector);
+          const lead = leadPoint(alien.x, alien.y, definition.pattern.projectileSpeed);
+          fireEnemyAt(alien.x, alien.y, lead.x, lead.y, definition.pattern.projectileSpeed, definition.pattern.damage,
+            definition.pattern.projectiles || 1, definition.pattern.spread || 0, gunship ? "#ff79bd" : "#63f7c8");
         }
-      } else if (alien.type === "striker") {
+      } else if (alien.type === "striker" || alien.type === "lancer") {
         if (alien.state === "telegraph") {
           alien.vx *= Math.exp(-7 * dt);
           alien.vy *= Math.exp(-7 * dt);
           if (alien.stateTimer <= 0) {
             alien.state = "charge";
-            alien.stateTimer = CONFIG.aliens.striker.pattern.duration;
-            const lead = leadPoint(alien.x, alien.y, alien.speed * CONFIG.aliens.striker.pattern.speedMultiplier);
+            alien.stateTimer = definition.pattern.duration;
+            const lead = leadPoint(alien.x, alien.y, alien.speed * definition.pattern.speedMultiplier);
             const chargeAngle = Math.atan2(lead.y - alien.y, lead.x - alien.x);
-            alien.vx = Math.cos(chargeAngle) * alien.speed * CONFIG.aliens.striker.pattern.speedMultiplier;
-            alien.vy = Math.sin(chargeAngle) * alien.speed * CONFIG.aliens.striker.pattern.speedMultiplier;
+            alien.vx = Math.cos(chargeAngle) * alien.speed * definition.pattern.speedMultiplier;
+            alien.vy = Math.sin(chargeAngle) * alien.speed * definition.pattern.speedMultiplier;
           }
         } else if (alien.state === "charge") {
           if (alien.stateTimer <= 0) {
             alien.state = "recover";
             alien.stateTimer = 0.7;
-            alien.cooldown = CONFIG.difficulty.scaledCooldown(CONFIG.aliens.striker.baseCooldown, state.sector);
+            alien.cooldown = CONFIG.difficulty.scaledCooldown(definition.baseCooldown, state.sector);
           }
         } else if (alien.state === "recover") {
           alien.vx *= Math.exp(-3 * dt);
@@ -2404,7 +2678,7 @@
           steerAlien(alien, dx, dy, dt, distance > 360 ? 1 : 0.55);
           if (alien.cooldown <= 0 && distance < 620) {
             alien.state = "telegraph";
-            alien.stateTimer = CONFIG.aliens.striker.pattern.warning;
+            alien.stateTimer = definition.pattern.warning;
           }
         }
       } else if (alien.type === "bomber") {
@@ -2558,6 +2832,7 @@
     const angle = Math.atan2(targetY - y, targetX - x);
     state.mines.push({
       id: nextEntityId++,
+      owner: "enemy",
       x, y,
       vx: Math.cos(angle) * 115,
       vy: Math.sin(angle) * 115,
@@ -2572,8 +2847,9 @@
   }
 
   function spawnBoss() {
-    const type = "harrower";
+    const type = state.encounterData && state.encounterData.spec.bossType;
     const definition = CONFIG.bosses[type];
+    if (!definition) return null;
     const spawnAngle = rng.range(0, TAU);
     const spawnDistance = state.arena.radius * 0.52;
     const health = definition.baseHealth * CONFIG.difficulty.bossHealthScale(state.sector);
@@ -2602,13 +2878,15 @@
       nodes: null,
       dead: false
     };
-    boss.nodes = Array.from({ length: 3 }, (_, index) => ({
+    const nodeCount = Math.min(8, Math.max(0, Math.floor(definition.nodeCount || 3)));
+    const nodeHealth = Math.max(1, Number(definition.nodeHealth) || 16);
+    boss.nodes = Array.from({ length: nodeCount }, (_, index) => ({
       index,
       x: boss.x,
       y: boss.y,
       radius: 13,
-      health: 16 * CONFIG.difficulty.healthScale(state.sector),
-      maxHealth: 16 * CONFIG.difficulty.healthScale(state.sector)
+      health: nodeHealth * CONFIG.difficulty.healthScale(state.sector),
+      maxHealth: nodeHealth * CONFIG.difficulty.healthScale(state.sector)
     }));
     state.boss = boss;
     state.arena.locked = true;
@@ -2629,7 +2907,8 @@
     if (state.encounterData.bossDefeated) {
       const rewardResult = state.upgradeDraft.phase === "idle" ? grantBossCoreReward() : null;
       if (encounterThreatsRemaining() === 0 && !state.encounterData.complete) {
-        finishEncounter(`${CONFIG.bosses.harrower.label} defeated${rewardResult ? ` · ${rewardResult.summary}` : ""}`);
+        const definition = CONFIG.bosses[state.encounterData.spec.bossType];
+        finishEncounter(`${definition.label} defeated${rewardResult ? ` · ${rewardResult.summary}` : ""}`);
       } else if (rewardResult) {
         announce(`Capital ship down · ${rewardResult.summary} · clear the escorts`, 2);
       }
@@ -2693,7 +2972,7 @@
     boss.actionTimer -= dt;
     updateBossAction(boss, dt);
     moveBoss(boss, dt);
-    updateHarrower(boss);
+    updateBossAttacks(boss);
     if (boss.nodes) updateBossNodes(boss);
   }
 
@@ -2790,60 +3069,69 @@
     if (loud) audio.explode(true);
   }
 
-  function updateHarrower(boss) {
-    const phase = boss.phase;
-    const attacks = CONFIG.bosses.harrower.phases[phase].attacks;
+  function performBossAttack(boss, attack) {
+    if (!attack) return;
+    const color = boss.type === "leviathan" ? "#b77cff" : "#ff59d2";
+    if (attack.type === "sweepingBeam") {
+      boss.action = "beamWarning";
+      boss.actionConfig = attack;
+      boss.actionTimer = attack.warning;
+      const lead = leadPoint(boss.x, boss.y, 950);
+      boss.actionAngle = Math.atan2(lead.y - boss.y, lead.x - boss.x);
+    } else if (attack.type === "crossVolley") {
+      fireEnemyAt(boss.x, boss.y, state.ship.x, state.ship.y, attack.speed, attack.damage, attack.projectiles, attack.spread, color);
+    } else if (attack.type === "dashVolley") {
+      fireEnemyAt(boss.x, boss.y, state.ship.x, state.ship.y, attack.speed, attack.damage, attack.projectiles, attack.spread, color);
+      const dashAngle = Math.atan2(state.ship.y - boss.y, state.ship.x - boss.x);
+      const dashSpeed = attack.dashSpeed * CONFIG.difficulty.speedScale(state.sector);
+      boss.vx = Math.cos(dashAngle) * dashSpeed;
+      boss.vy = Math.sin(dashAngle) * dashSpeed;
+      boss.action = "dash";
+      boss.actionConfig = attack;
+      boss.actionTimer = attack.dashDuration;
+    } else if (attack.type === "droneLaunch") {
+      const livingChildren = state.aliens.filter((alien) => alien.parent === boss && !alien.dead).length;
+      const count = Math.min(
+        Math.max(0, attack.count || 0),
+        Math.max(0, (attack.maxChildren || attack.count || 0) - livingChildren),
+        Math.max(0, CONFIG.caps.aliens - state.aliens.length)
+      );
+      for (let index = 0; index < count; index += 1) {
+        const offset = (index - (count - 1) * 0.5) * 0.7;
+        spawnAlien(attack.spawnType || "scout", {
+          x: boss.x + Math.cos(boss.angle + Math.PI + offset) * 70,
+          y: boss.y + Math.sin(boss.angle + Math.PI + offset) * 70,
+          threatCost: 0,
+          score: attack.childScore,
+          noDrops: true,
+          required: false,
+          parent: boss,
+          generation: state.encounterData.generation
+        });
+      }
+    } else if (attack.type === "mineArc") {
+      const count = Math.min(CONFIG.caps.mines, Math.max(0, Math.floor(attack.count || 0)));
+      for (let index = 0; index < count; index += 1) {
+        const angle = boss.angle + (index - (count - 1) / 2) * 0.45;
+        spawnMine(boss.x, boss.y, boss.x + Math.cos(angle) * 400, boss.y + Math.sin(angle) * 400, {
+          fuse: attack.fuse + index * (attack.fuseStep || 0),
+          blastRadius: attack.blastRadius,
+          damage: attack.damage
+        });
+      }
+    }
+  }
+
+  function updateBossAttacks(boss) {
+    const attacks = CONFIG.bosses[boss.type].phases[boss.phase].attacks;
     const primary = attacks[0];
     const secondary = attacks[1];
     if (boss.attackTimer <= 0 && !boss.action) {
-      if (phase === 0) {
-        boss.action = "beamWarning";
-        boss.actionConfig = primary;
-        boss.actionTimer = primary.warning;
-        const lead = leadPoint(boss.x, boss.y, 900);
-        boss.actionAngle = Math.atan2(lead.y - boss.y, lead.x - boss.x);
-      } else if (phase === 1) {
-        fireEnemyAt(boss.x, boss.y, state.ship.x, state.ship.y, primary.speed, primary.damage, primary.projectiles, primary.spread, "#ff59d2");
-      } else {
-        fireEnemyAt(boss.x, boss.y, state.ship.x, state.ship.y, primary.speed, primary.damage, primary.projectiles, primary.spread, "#d968ff");
-        const dashAngle = Math.atan2(state.ship.y - boss.y, state.ship.x - boss.x);
-        const dashSpeed = primary.dashSpeed * CONFIG.difficulty.speedScale(state.sector);
-        boss.vx = Math.cos(dashAngle) * dashSpeed;
-        boss.vy = Math.sin(dashAngle) * dashSpeed;
-        boss.action = "dash";
-        boss.actionTimer = primary.dashDuration;
-      }
+      performBossAttack(boss, primary);
       boss.attackTimer = CONFIG.difficulty.scaledCooldown(primary.baseCooldown, state.sector);
     }
     if (boss.secondaryTimer <= 0 && !boss.action) {
-      if (phase === 0) {
-        for (let index = 0; index < secondary.count && state.aliens.length < CONFIG.caps.aliens; index += 1) {
-          spawnAlien("scout", {
-            x: boss.x + Math.cos(boss.angle + Math.PI + (index ? 0.7 : -0.7)) * 70,
-            y: boss.y + Math.sin(boss.angle + Math.PI + (index ? 0.7 : -0.7)) * 70,
-            threatCost: 0,
-            score: secondary.childScore,
-            noDrops: true,
-            required: false,
-            generation: state.encounterData.generation
-          });
-        }
-      } else if (phase === 1) {
-        for (let index = 0; index < secondary.count; index += 1) {
-          const angle = boss.angle + (index - (secondary.count - 1) / 2) * 0.45;
-          spawnMine(boss.x, boss.y, boss.x + Math.cos(angle) * 400, boss.y + Math.sin(angle) * 400, {
-            fuse: secondary.fuse + index * secondary.fuseStep,
-            blastRadius: secondary.blastRadius,
-            damage: secondary.damage
-          });
-        }
-      } else {
-        boss.action = "beamWarning";
-        boss.actionConfig = secondary;
-        boss.actionTimer = secondary.warning;
-        const lead = leadPoint(boss.x, boss.y, 950);
-        boss.actionAngle = Math.atan2(lead.y - boss.y, lead.x - boss.x);
-      }
+      performBossAttack(boss, secondary);
       boss.secondaryTimer = CONFIG.difficulty.scaledCooldown(secondary.baseCooldown, state.sector);
     }
   }
@@ -2964,6 +3252,28 @@
       mine.y += mine.vy * dt;
       mine.vx *= Math.exp(-2.4 * dt);
       mine.vy *= Math.exp(-2.4 * dt);
+      if (mine.owner === "player") {
+        mine.life = Math.max(0, mine.life - dt);
+        let triggered = false;
+        const triggerSquared = mine.triggerRadius * mine.triggerRadius;
+        for (const asteroid of state.asteroids) {
+          if (!asteroid.dead && distanceSquared(mine.x, mine.y, asteroid.x, asteroid.y) <= triggerSquared) {
+            triggered = true;
+            break;
+          }
+        }
+        if (!triggered) {
+          for (const alien of state.aliens) {
+            if (!alien.dead && distanceSquared(mine.x, mine.y, alien.x, alien.y) <= triggerSquared) {
+              triggered = true;
+              break;
+            }
+          }
+        }
+        if (!triggered && state.boss && distanceSquared(mine.x, mine.y, state.boss.x, state.boss.y) <= triggerSquared) triggered = true;
+        if (triggered || mine.life <= 0) explodeMine(mine);
+        continue;
+      }
       mine.fuse -= dt;
       mine.armed = mine.fuse < 0.65;
       if (mine.fuse <= 0) explodeMine(mine);
@@ -2973,6 +3283,24 @@
   function explodeMine(mine) {
     if (!mine || mine.dead) return;
     mine.dead = true;
+    if (mine.owner === "player") {
+      const radiusSquared = mine.blastRadius * mine.blastRadius;
+      for (const asteroid of state.asteroids) {
+        if (!asteroid.dead && distanceSquared(mine.x, mine.y, asteroid.x, asteroid.y) <= radiusSquared) {
+          damageThreat(asteroid, mine.damage, null, "playerMine");
+        }
+      }
+      for (const alien of state.aliens) {
+        if (!alien.dead && distanceSquared(mine.x, mine.y, alien.x, alien.y) <= radiusSquared) {
+          damageThreat(alien, mine.damage, null, "playerMine");
+        }
+      }
+      if (state.boss && distanceSquared(mine.x, mine.y, state.boss.x, state.boss.y) <= radiusSquared) damageBoss(mine.damage);
+      addRing(mine.x, mine.y, CONFIG.weapons.modules.mineLayer.color, 5, 0.45, mine.blastRadius);
+      burst(mine.x, mine.y, CONFIG.weapons.modules.mineLayer.color, settings.reducedEffects ? 8 : 18, 1.2);
+      audio.explode(false);
+      return;
+    }
     if (distanceSquared(state.ship.x, state.ship.y, mine.x, mine.y) <= mine.blastRadius * mine.blastRadius) {
       damagePlayer(mine.damage, mine.x, mine.y);
     }
@@ -3212,7 +3540,8 @@
   function damagePlayer(amount, sourceX, sourceY) {
     const ship = state.ship;
     if (!ship || ship.invulnerable > 0 || state.mode !== "playing") return false;
-    let remaining = amount;
+    const aegisReduction = ship.aegisTimer > 0 ? clamp(Number(CONFIG.powerups.aegis.damageReduction) || 0, 0, 0.9) : 0;
+    let remaining = Math.max(0, Number(amount) || 0) * (1 - aegisReduction);
     if (ship.shield > 0) {
       const absorbed = Math.min(ship.shield, remaining);
       ship.shield -= absorbed;
@@ -3250,6 +3579,8 @@
         ["piercing", CONFIG.powerups.piercing.weight],
         ["arcBurst", CONFIG.powerups.arcBurst.weight],
         ["novaLance", CONFIG.powerups.novaLance.weight],
+        ["amplifier", CONFIG.powerups.amplifier.weight],
+        ["aegis", CONFIG.powerups.aegis.weight],
         ["pulseCharge", CONFIG.powerups.pulseCharge.weight],
         ["enigma", CONFIG.powerups.enigma.weight],
         ["module", CONFIG.powerups.moduleUpgrade.weight]
@@ -3301,7 +3632,7 @@
       enhancementId: moduleId,
       kind: "module",
       permanence: "permanent",
-      activation: definition.activation === "autonomous" ? "passive" : "active",
+      activation: definition.activation === "whileFiring" ? "active" : "passive",
       moduleId,
       title: definition.label,
       tier: currentTier ? `Mk ${roman(currentTier)} → Mk ${roman(nextTier)}` : "Install Mk I",
@@ -3803,6 +4134,7 @@
       state.effects,
       state.floaters,
       state.ship.drones,
+      state.ship.orbitBlades,
       state.boss && state.boss.nodes,
       state.boss
     ];
@@ -3854,7 +4186,7 @@
     updateProjectiles(simulationDt);
     updateMines(simulationDt);
     collidePlayerBullets();
-    if (state.mode === "playing" && state.encounterData.spec.id !== "boss") updateEncounter(0);
+    if (state.mode === "playing" && !state.encounterData.spec.bossType) updateEncounter(0);
     if (state.mode === "playing") collidePlayer();
     if (state.mode === "gameover") {
       clearPressed();
@@ -3892,11 +4224,13 @@
     dom.moduleStrip.textContent = "";
     dom.moduleStrip.setAttribute("role", "list");
     dom.moduleStrip.removeAttribute("aria-live");
-    for (let index = 0; index < MODULE_ORDER.length; index += 1) {
-      const id = MODULE_ORDER[index];
+    const equipped = MODULE_ORDER.filter((id) => (state.ship.modules[id] || 0) > 0);
+    if (dom.moduleConsole) dom.moduleConsole.classList.toggle("is-hidden", equipped.length === 0);
+    for (let index = 0; index < equipped.length; index += 1) {
+      const id = equipped[index];
       const tier = state.ship.modules[id] || 0;
       const slot = global.document.createElement("div");
-      slot.className = `module-slot${tier ? " is-equipped" : ""}`;
+      slot.className = "module-slot is-equipped";
       slot.setAttribute("role", "listitem");
       const number = global.document.createElement("span");
       number.className = "module-index";
@@ -3905,11 +4239,11 @@
       name.className = "module-name";
       const definition = CONFIG.weapons.modules[id];
       const autonomous = definition.activation === "autonomous";
-      name.textContent = tier ? definition.label : "Empty";
+      name.textContent = definition.label;
       const rank = global.document.createElement("span");
       rank.className = "module-rank";
-      rank.textContent = tier ? `Mk ${roman(tier)}` : "—";
-      if (tier && autonomous) {
+      rank.textContent = `Mk ${roman(tier)}`;
+      if (autonomous) {
         const badge = global.document.createElement("span");
         badge.className = "module-auto-badge";
         badge.textContent = "AUTO";
@@ -3917,7 +4251,7 @@
       }
       slot.setAttribute(
         "aria-label",
-        tier ? `${definition.label}, ${autonomous ? "autonomous, " : ""}Mark ${roman(tier)}` : `Module slot ${index + 1}, empty`
+        `${definition.label}, ${autonomous ? "autonomous, " : ""}Mark ${roman(tier)}`
       );
       slot.appendChild(number);
       slot.appendChild(name);
@@ -3926,11 +4260,47 @@
     }
   }
 
+  function updateActiveEffectsUI() {
+    if (!dom.activeEffects || !dom.activeEffectsList || !state.ship) return;
+    const active = TEMP_WEAPON_TIMERS.map((timer) => ({
+      timer,
+      kind: TEMPORARY_KIND_BY_TIMER[timer],
+      seconds: Math.ceil(state.ship[timer])
+    })).filter((entry) => entry.seconds > 0);
+    const signature = active.map((entry) => `${entry.kind}:${entry.seconds}`).join("|");
+    dom.activeEffects.classList.toggle("is-hidden", active.length === 0);
+    if (!active.length) {
+      if (state.activeEffectSignature || dom.activeEffectsList.textContent) dom.activeEffectsList.textContent = "";
+      state.activeEffectSignature = "";
+      return;
+    }
+    if (signature === state.activeEffectSignature) return;
+    state.activeEffectSignature = signature;
+    dom.activeEffectsList.textContent = "";
+    dom.activeEffectsList.setAttribute("role", "list");
+    for (const entry of active) {
+      const label = CONFIG.powerups[entry.kind].label;
+      const chip = global.document.createElement("div");
+      chip.className = "active-effect-chip";
+      chip.setAttribute("role", "listitem");
+      chip.setAttribute("aria-label", `${label}, ${entry.seconds} seconds remaining`);
+      const name = global.document.createElement("span");
+      name.className = "active-effect-name";
+      name.textContent = label;
+      const time = global.document.createElement("span");
+      time.className = "active-effect-time";
+      time.textContent = `${entry.seconds}s`;
+      chip.appendChild(name);
+      chip.appendChild(time);
+      dom.activeEffectsList.appendChild(chip);
+    }
+  }
+
   function objectiveText() {
     const data = state.encounterData;
     if (!data) return "Stand by";
     if (state.mode === "transition" && state.cinematic.active) return `Transit ${Math.round(state.cinematic.progress * 100)}%`;
-    if (data.spec.id === "boss") {
+    if (data.spec.bossType) {
       if (state.arena.warning > 0) return `Arena lock in ${state.arena.warning.toFixed(1)}s`;
       if (data.bossDefeated) return `Clear remaining threats · ${encounterThreatsRemaining()}`;
       if (state.boss) return `Break ${CONFIG.bosses[state.boss.type].label}`;
@@ -3972,6 +4342,7 @@
       if (dom.objectiveStatus.textContent !== nextObjective) dom.objectiveStatus.textContent = nextObjective;
     }
     updateModuleUI();
+    updateActiveEffectsUI();
 
     if (state.boss) {
       const ratio = clamp(state.boss.health / state.boss.maxHealth, 0, 1);
@@ -4040,8 +4411,11 @@
         piercingTimer: state.ship.piercingTimer,
         arcBurstTimer: state.ship.arcBurstTimer,
         novaLanceTimer: state.ship.novaLanceTimer,
+        amplifierTimer: state.ship.amplifierTimer,
+        aegisTimer: state.ship.aegisTimer,
         modules: { ...state.ship.modules },
-        weaponTimers: { ...state.ship.weaponTimers }
+        weaponTimers: { ...state.ship.weaponTimers },
+        orbitBlades: state.ship.orbitBlades.map((blade) => ({ ...blade }))
       } : null,
       objective: state.encounterData ? {
         type: state.encounterData.goalType,
