@@ -1,9 +1,7 @@
 "use strict";
 
-const { assert, vm, readProject } = require("./_harness");
-const browserSmoke = require("./browser-smoke.test");
-
-const SCRIPTS = ["js/config.js", "js/core.js", "js/audio.js", "js/render.js", "js/game.js"];
+const { assert, readProject } = require("./_harness");
+const { buildBrowser, loadRuntimeScripts } = require("./_browser-harness");
 const PROGRESS_KEY = "neon-voyage-progress-v1";
 const SAVE_KEY = "neon-voyage-v1";
 const LEGACY_MODULE_IDS = ["pulse", "homingSalvo", "radialArray", "prism", "seeker", "massDriver", "drone"];
@@ -67,7 +65,7 @@ function storedProgress(storage) {
 
 function boot(options) {
   const settings = options || {};
-  const browser = browserSmoke.buildBrowser({
+  const browser = buildBrowser({
     storage: settings.storage,
     maxTouchPoints: settings.maxTouchPoints || 0
   });
@@ -75,7 +73,7 @@ function boot(options) {
     browser.window.innerWidth = settings.viewport.width;
     browser.window.innerHeight = settings.viewport.height;
   }
-  for (const script of SCRIPTS) vm.runInContext(readProject(script), browser.context, { filename: script, timeout: 3000 });
+  loadRuntimeScripts(browser);
   browser.document.readyState = "interactive";
   browser.emit(browser.document, "DOMContentLoaded");
   return { browser, game: browser.window.ND.game, CONFIG: browser.window.ND.CONFIG };

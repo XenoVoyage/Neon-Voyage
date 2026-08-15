@@ -276,7 +276,6 @@ dd {
 .sector-line,
 .meter-label,
 .module-heading,
-.module-index,
 .module-rank,
 .objective-label,
 .stick-zone > span {
@@ -366,11 +365,6 @@ dd {
   gap: 5px;
   max-width: min(46vw, 360px);
   pointer-events: auto;
-}
-
-#motion-button,
-#fullscreen-button {
-  display: none;
 }
 
 .hud-button,
@@ -638,10 +632,6 @@ dd {
   border-color: rgba(102, 247, 255, 0.38);
   color: var(--ink);
   box-shadow: inset 0 0 12px rgba(102, 247, 255, 0.055);
-}
-
-.module-index {
-  display: none;
 }
 
 .module-name {
@@ -1764,10 +1754,6 @@ kbd {
 
   .encounter-name {
     font-size: 0.65rem;
-  }
-
-  .quick-controls .hud-button:not(#pause-button):not(#sound-button) {
-    display: none;
   }
 
   .hud-button {

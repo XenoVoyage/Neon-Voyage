@@ -1838,25 +1838,15 @@
 
     drawBossReflectionShield(boss, camera, time) {
       if (!boss) return;
-      const source = boss.reflectionShield;
-      const profile = source && typeof source === "object" ? source : null;
-      const timer = Number(boss.reflectionShieldTimer || boss.reflectTimer || 0);
-      const warning = Boolean(profile && (profile.warning || profile.phase === "warning"));
-      const active = profile
-        ? Boolean(profile.active || warning) && Number(profile.remaining == null ? 1 : profile.remaining) > 0
-        : Boolean(source || boss.reflectionShieldActive || timer > 0);
-      if (!active) return;
-      const strengthSource = profile && profile.strength != null
-        ? profile.strength
-        : boss.reflectionShieldStrength != null ? boss.reflectionShieldStrength : warning ? 0.58 : 1;
-      const strength = clamp(Number(strengthSource) || 0, 0.12, 1);
+      const shield = boss.reflectionShield;
+      if (!shield || (!shield.active && !shield.warning)) return;
+      const warning = Boolean(shield.warning);
+      const strength = warning ? 0.58 : 1;
       const bossRadius = Math.max(1, Number(boss.radius) || 1);
-      const radiusSource = profile && profile.radius != null ? profile.radius : boss.reflectionShieldRadius;
-      const radius = clamp(Number(radiusSource) || bossRadius + 24, bossRadius + 6, bossRadius + 96);
-      const rotationSource = profile && Number.isFinite(Number(profile.angle)) ? Number(profile.angle) : 0;
-      const rotation = rotationSource + (this.reduced ? 0 : time * 0.24);
+      const radius = clamp(Number(shield.radius) || bossRadius + 24, bossRadius + 6, bossRadius + 96);
+      const rotation = this.reduced ? 0 : time * 0.24;
       const point = this.worldToScreen(boss.x, boss.y, camera);
-      const color = profile && profile.color || (warning ? "#d7b2ff" : "#9defff");
+      const color = warning ? "#d7b2ff" : "#9defff";
       const ctx = this.ctx;
       ctx.save();
       ctx.translate(point.x, point.y);
