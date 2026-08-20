@@ -1,8 +1,8 @@
-# Neon Voyage v2026.8.20e — source audit
+# Neon Voyage v2026.8.20f — source audit
 
 - Audited: 2026-08-20
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 181/181 automated source checks**
+- Result: **PASS — 183/183 automated source checks**
 
 Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated layout boxes, viewports, Pointer Events, DOM behavior, and Canvas calls. It is not physical-device acceptance.
 
@@ -17,9 +17,30 @@ Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins onl
 - Saved-data change in this checkpoint: **none**
 - License: MIT
 
-## v2026.8.20e verified changes
+## v2026.8.20f verified changes
 
-Source inspection, focused renderer coverage, encoded-asset inspection, and the frozen full-suite gate establish these implemented contracts.
+Source inspection, deterministic camera/input/renderer regressions, and the frozen full-suite gate establish these implemented contracts.
+
+### Expanded finite fields and bounded camera
+
+- Every normal and boss stage now derives one finite combat field from the live game-shell dimensions at 1.64 viewport widths by 1.44 viewport heights, subject to configured minimum half-extents. The same field continues to own player and encounter containment.
+- Normal play follows the ship through a viewport-relative dead zone with bounded velocity lookahead. Camera target and final position clamp so the viewport never reveals outside the field; cinematic camera ownership remains separate and unchanged.
+- Resize, early-stage spawn, boss entry, boss-node containment, Dash-to-edge recovery, Stage 1–20 progression, next-sector wrap, fixed-step behavior, collection caps, and origin rebasing remain deterministic and finite.
+
+### Off-screen objective cues
+
+- Presentation-only target projection considers current-generation living asteroids, aliens, bosses, and boss nodes; visible, stale, dead, or protected boss bodies are excluded as appropriate.
+- At most six cues intersect a safe viewport margin. Stable priority favors exposed boss nodes, bosses, aliens, then asteroids; nearby and over-cap objectives aggregate into accurate counts instead of disappearing.
+- Cue miniatures reuse existing repository-local target art with procedural fallback. Reduced effects removes pulse and shadow, and cue generation consumes no simulation random draw or saved state.
+
+### Reliable desktop tap fire
+
+- A click or Space press released between two fixed updates queues exactly one shot on the next update. Holding either input retains the existing weapon cadence, while release cannot create stuck or automated fire.
+- The local player-interceptor favicon removes the otherwise harmless missing-favicon request without adding a resource, dependency, or network path.
+
+## Prior v2026.8.20e frozen evidence
+
+The following complete gameplay-art and audio contracts were observed in the prior frozen `v2026.8.20e` audit and remain historical context.
 
 ### Complete realistic gameplay presentation
 
@@ -148,9 +169,9 @@ The following properties were observed in the prior frozen `v2026.8.15c` audit (
 
 ## Automated evidence boundary
 
-The frozen run registered and passed 181 checks across configuration/core (13), offline/repository (16), browser VM (4), progress (17), mobile input (45), gameplay (67), visuals (17), and stress (2).
+The frozen run registered and passed 183 checks across configuration/core (13), offline/repository (16), browser VM (4), progress (17), mobile input (46), gameplay (67), visuals (18), and stress (2).
 
-Current `v2026.8.20e` coverage verifies all 46 gameplay paths, complete mapped renderer ownership, safe procedural fallback, material-effect routing, and bounded audio vocabulary while retaining the progress record, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
+Current `v2026.8.20f` coverage adds expanded-field containment, bounded camera follow, capped clustered off-screen cues, and queued quick-tap fire while retaining complete mapped renderer ownership, safe procedural fallback, material-effect routing, bounded audio vocabulary, progress compatibility, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
 
 Retained `v2026.8.20` deterministic coverage exercises shell/viewport disagreement and dynamic resizing; pointer-only reticle rendering; death-effect rendering without ship-owned visuals; clear-versus-travel presentation; terminal-but-delayed game-over focus and effect timing; delayed stationary target acquisition, deterministic tie order, bounded turn and fire; target lock and reacquisition; touch and hybrid-manual takeover; both command ships' live-node protection; and same-landscape orientation cleanup.
 
@@ -165,11 +186,11 @@ node tests/run.js
 sha256sum --check SHA256SUMS
 ```
 
-Observed result for this frozen source tree: `181/181 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 93 manifest entries.
+Observed result for this frozen source tree: `183/183 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 93 manifest entries.
 
 ## Browser and publication boundary
 
-- No prepublication hands-on browser play or in-motion complete-set visual/audio acceptance is claimed. Static family composition and encoded-alpha inspection are reported separately above.
+- No prepublication hands-on browser acceptance of the new camera, target cues, or complete-set visual/audio motion is claimed by this source audit. Automated browser-VM and deterministic renderer evidence are reported separately above.
 - No post-change physical phone or iPad play is claimed. Two-thumb feel, browser-toolbar behavior on real devices, target selection feel, balance, readability, and audio acceptance remain pending.
 - After protected merge and Pages deployment, acceptance requires opening the exact live repository-subpath URL, confirming the deployed version, selecting **Play**, exercising a short combat interaction, and checking the browser console.
 - This source audit does not itself prove a pull-request check, merge, Pages deployment, immutable tag, GitHub Release, or live Play result. Those are external publication gates.

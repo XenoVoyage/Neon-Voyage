@@ -1114,17 +1114,19 @@ module.exports = function register(test) {
     assert.ok(state.asteroids.some((entity) => !entity.dead), "second alien wave omitted its asteroid pressure");
   });
 
-  test("Earth Orbit opens with exactly three visible rocks and never over-spawns its finite waves", () => {
+  test("Earth Orbit opens with exactly three guided rocks and never over-spawns its finite waves", () => {
     const { browser, game, CONFIG, Core } = boot(501);
     const state = game.state;
     game.setStage(1, 1);
     const opening = living(state);
     assert.equal(opening.length, 3);
     assert.ok(opening.every((entity) => entity.kind === "rock" && entity.required && entity.waveIndex === 0));
-    opening.forEach((entity, index) => assert.ok(
-      Core.circleVisible(entity.x, entity.y, entity.radius, state.camera, browser.window.innerWidth, browser.window.innerHeight, 0),
-      `opening threat ${index} was off-screen`
-    ));
+    const offscreen = opening.filter((entity) => !Core.circleVisible(
+      entity.x, entity.y, entity.radius, state.camera, browser.window.innerWidth, browser.window.innerHeight, 0));
+    const indicators = browser.window.ND.RenderDebug.offscreenIndicators(
+      state, { width: browser.window.innerWidth, height: browser.window.innerHeight });
+    assert.ok(indicators.reduce((total, entry) => total + entry.count, 0) >= offscreen.length,
+      "off-screen opening threats were not represented by bounded indicators");
     runSteps(game, 2, CONFIG.world.fixedStep);
     assert.equal(requiredLiving(state).length, 3, "first wave spawned beyond its configured total");
     opening.forEach((entity) => game.killThreat(entity, "player"));
@@ -1167,10 +1169,19 @@ module.exports = function register(test) {
             `${label} spawned ${asteroid.id} with insufficient time to contact`
           );
           assert.ok(
-            Core.circleVisible(asteroid.x, asteroid.y, asteroid.radius, state.camera, browser.window.innerWidth, browser.window.innerHeight, 0),
-            `${label} spawned ${asteroid.id} outside the visible field`
+            asteroid.x - asteroid.radius >= state.combatField.x - state.combatField.halfWidth - 1e-7 &&
+            asteroid.x + asteroid.radius <= state.combatField.x + state.combatField.halfWidth + 1e-7 &&
+            asteroid.y - asteroid.radius >= state.combatField.y - state.combatField.halfHeight - 1e-7 &&
+            asteroid.y + asteroid.radius <= state.combatField.y + state.combatField.halfHeight + 1e-7,
+            `${label} spawned ${asteroid.id} outside the finite combat field`
           );
         }
+        const offscreen = opening.filter((asteroid) => !Core.circleVisible(
+          asteroid.x, asteroid.y, asteroid.radius, state.camera, browser.window.innerWidth, browser.window.innerHeight, 0));
+        const indicators = browser.window.ND.RenderDebug.offscreenIndicators(
+          state, { width: browser.window.innerWidth, height: browser.window.innerHeight });
+        assert.ok(indicators.reduce((total, entry) => total + entry.count, 0) >= offscreen.length,
+          `${label} omitted an off-screen opening threat indicator`);
         for (let first = 0; first < opening.length; first += 1) {
           for (let second = first + 1; second < opening.length; second += 1) {
             const surface = Math.hypot(opening[first].x - opening[second].x, opening[first].y - opening[second].y) - opening[first].radius - opening[second].radius;
@@ -1233,8 +1244,11 @@ module.exports = function register(test) {
               `${label} placed ${threat.id} with insufficient time to contact`
             );
             assert.ok(
-              Core.circleVisible(threat.x, threat.y, threat.radius, state.camera, browser.window.innerWidth, browser.window.innerHeight, 0),
-              `${label} placed ${threat.id} outside the visible field`
+              threat.x - threat.radius >= state.combatField.x - state.combatField.halfWidth - 1e-7 &&
+              threat.x + threat.radius <= state.combatField.x + state.combatField.halfWidth + 1e-7 &&
+              threat.y - threat.radius >= state.combatField.y - state.combatField.halfHeight - 1e-7 &&
+              threat.y + threat.radius <= state.combatField.y + state.combatField.halfHeight + 1e-7,
+              `${label} placed ${threat.id} outside the finite combat field`
             );
             if (threat.kind) {
               assert.ok(threat.radius >= CONFIG.combatField.spawnMinimumRadius - 1e-7, `${label} shrank ${threat.kind} below the safe configured radius floor`);
@@ -2935,10 +2949,10 @@ module.exports = function register(test) {
     for (let index = 0; index < CONFIG.caps.enemyProjectiles; index += 1) {
       state.enemyBullets.push({
         id: 991000 + index,
-        x: boss.x + 1000,
-        y: boss.y + 1000,
-        px: boss.x + 1000,
-        py: boss.y + 1000,
+        x: state.ship.x + 40,
+        y: state.ship.y + 40,
+        px: state.ship.x + 40,
+        py: state.ship.y + 40,
         vx: 0,
         vy: 0,
         radius: 1,
@@ -2997,7 +3011,7 @@ module.exports = function register(test) {
     }
   });
 
-  test("boss camera keeps the full rectangular field visible from every legal edge and corner", () => {
+  test("boss camera follows the ship inside the expanded field without exposing beyond its edges", () => {
     const layouts = [
       { width: 1280, height: 720, label: "desktop" },
       { width: 320, height: 568, label: "portrait" },
@@ -3018,6 +3032,8 @@ module.exports = function register(test) {
         state.arena.warning = Infinity;
         state.boss = null;
         state.ship.invulnerable = 1e9;
+        assert.ok(state.arena.halfWidth * 2 > layout.width, `stage ${stage} ${layout.label} field is not wider than its viewport`);
+        assert.ok(state.arena.halfHeight * 2 > layout.height, `stage ${stage} ${layout.label} field is not taller than its viewport`);
         const legalX = Math.max(0, state.arena.halfWidth - state.ship.radius);
         const legalY = Math.max(0, state.arena.halfHeight - state.ship.radius);
 
@@ -3032,13 +3048,21 @@ module.exports = function register(test) {
           game.input.touchMoveY = 0;
           runSteps(game, 3, CONFIG.world.fixedStep);
 
-          const centerX = state.arena.x - state.camera.x + browser.window.innerWidth * 0.5;
-          const centerY = state.arena.y - state.camera.y + browser.window.innerHeight * 0.5;
           const context = `stage ${stage} ${layout.label} ${layout.width}x${layout.height} ship edge ${edgeX},${edgeY}`;
-          assert.ok(centerX - state.arena.halfWidth >= -tolerance, `field clipped left in ${context}`);
-          assert.ok(centerX + state.arena.halfWidth <= browser.window.innerWidth + tolerance, `field clipped right in ${context}`);
-          assert.ok(centerY - state.arena.halfHeight >= -tolerance, `field clipped top in ${context}`);
-          assert.ok(centerY + state.arena.halfHeight <= browser.window.innerHeight + tolerance, `field clipped bottom in ${context}`);
+          const cameraTravelX = Math.max(0, state.arena.halfWidth - layout.width * 0.5);
+          const cameraTravelY = Math.max(0, state.arena.halfHeight - layout.height * 0.5);
+          assert.ok(state.camera.x >= state.arena.x - cameraTravelX - tolerance &&
+            state.camera.x <= state.arena.x + cameraTravelX + tolerance, `camera escaped horizontal field bounds in ${context}`);
+          assert.ok(state.camera.y >= state.arena.y - cameraTravelY - tolerance &&
+            state.camera.y <= state.arena.y + cameraTravelY + tolerance, `camera escaped vertical field bounds in ${context}`);
+          const shipX = state.ship.x - state.camera.x + layout.width * 0.5;
+          const shipY = state.ship.y - state.camera.y + layout.height * 0.5;
+          assert.ok(shipX >= state.ship.radius - tolerance && shipX <= layout.width - state.ship.radius + tolerance,
+            `camera lost the ship horizontally in ${context}`);
+          assert.ok(shipY >= state.ship.radius - tolerance && shipY <= layout.height - state.ship.radius + tolerance,
+            `camera lost the ship vertically in ${context}`);
+          if (edgeX) assert.ok(Math.sign(state.camera.x - state.arena.x) === Math.sign(edgeX), `camera did not follow horizontal travel in ${context}`);
+          if (edgeY) assert.ok(Math.sign(state.camera.y - state.arena.y) === Math.sign(edgeY), `camera did not follow vertical travel in ${context}`);
         }
       }
     }
@@ -3070,6 +3094,7 @@ module.exports = function register(test) {
         state.ship.vy = edgeY * 180;
         state.camera.x = state.arena.x;
         state.camera.y = state.arena.y;
+        runSteps(game, 3, CONFIG.world.fixedStep);
         const before = browser.window.ND.RenderDebug.screenAnchor(state, layout);
         const context = `${layout.label} ${layout.width}x${layout.height} edge ${edgeX},${edgeY}`;
 
@@ -3096,8 +3121,10 @@ module.exports = function register(test) {
         browser.window.dispatchEvent({ type: "resize" });
         game.step(CONFIG.world.fixedStep);
         const afterResize = browser.window.ND.RenderDebug.screenAnchor(state, layout);
-        approximately(afterResize.x, before.x, 1e-7, `${context} post-resize anchor x`);
-        approximately(afterResize.y, before.y, 1e-7, `${context} post-resize anchor y`);
+        assert.ok(afterResize.x >= state.ship.radius - 1e-7 && afterResize.x <= layout.width - state.ship.radius + 1e-7,
+          `${context} post-resize camera lost the ship horizontally`);
+        assert.ok(afterResize.y >= state.ship.radius - 1e-7 && afterResize.y <= layout.height - state.ship.radius + 1e-7,
+          `${context} post-resize camera lost the ship vertically`);
         const field = state.combatField;
         assert.equal(field.active, true, `${context} Stage 1 field is inactive after resize`);
         assert.ok(state.ship.x - state.ship.radius >= field.x - field.halfWidth - 1e-7, `${context} ship escaped left field edge after resize`);

@@ -35,6 +35,7 @@ Use `CONTRIBUTING.md` as the short public entrypoint, not as a substitute for th
 - Use a fixed time step with bounded catch-up. Every collection and repeating effect needs a real enforced cap and deterministic cleanup.
 - Preserve keyboard, mouse, touch, and gamepad access; dialog focus, live status, reduced effects, and pause behavior are product requirements.
 - Size the Canvas simulation and DPR-scaled backing store from the live `#game-shell` layout box. Browser viewport metrics may differ from that box when mobile browser chrome changes; do not make `window.innerHeight` a second layout owner or write inline Canvas CSS dimensions from renderer state.
+- Keep every encounter in one finite viewport-scaled rectangular field. Camera follow must remain clamped inside that field, and off-screen objective cues must stay bounded, clustered, deterministic, and presentation-only.
 
 ## 4. Code quality
 

@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.20e configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.20e");
+  test("Neon Voyage v2026.8.20f configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.20f");
     assert.ok(CONFIG.presentation.gameoverEffectDuration >= 1 && CONFIG.presentation.gameoverEffectDuration <= 2);
     assert.ok(CONFIG.mobileControls.autoAimHoldSeconds > 0 && CONFIG.mobileControls.autoAimHoldSeconds <= 0.25);
     collectFrozen(CONFIG, new Set());
@@ -37,6 +37,12 @@ module.exports = function register(test) {
   test("fixed-step simulation and every runtime collection have conservative finite caps", () => {
     assert.ok(CONFIG.world.fixedStep >= 1 / 240 && CONFIG.world.fixedStep <= 1 / 30);
     assert.ok(CONFIG.world.maxFrameDelta >= CONFIG.world.fixedStep && CONFIG.world.maxFrameDelta <= 0.1);
+    assert.ok(CONFIG.combatField.halfWidthViewportRatio > 0.5 && CONFIG.combatField.halfWidthViewportRatio <= 1);
+    assert.ok(CONFIG.combatField.halfHeightViewportRatio > 0.5 && CONFIG.combatField.halfHeightViewportRatio <= 1);
+    assert.ok(CONFIG.camera.deadZoneHalfWidthViewportRatio > 0 && CONFIG.camera.deadZoneHalfWidthViewportRatio < 0.5);
+    assert.ok(CONFIG.camera.deadZoneHalfHeightViewportRatio > 0 && CONFIG.camera.deadZoneHalfHeightViewportRatio < 0.5);
+    assert.ok(Number.isSafeInteger(CONFIG.targetIndicators.maxVisible) && CONFIG.targetIndicators.maxVisible <= 8);
+    assert.ok(CONFIG.targetIndicators.minimumSeparation >= CONFIG.targetIndicators.iconRadius * 2);
     for (const [name, value] of Object.entries(CONFIG.caps)) {
       assert.ok(Number.isSafeInteger(value) && value > 0, `${name} cap must be a positive integer`);
       assert.ok(value <= 1000, `${name} cap is unexpectedly large`);

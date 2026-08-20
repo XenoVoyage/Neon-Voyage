@@ -1185,6 +1185,7 @@
     }
     audio.ensure();
     input.pointerFire = true;
+    input.pressed.primaryFire = true;
     input.pointerActive = true;
     canvas.setPointerCapture?.(event.pointerId);
   });
@@ -1558,6 +1559,7 @@
     if (!state.ship || !field.active) return;
     field.halfWidth = Math.max(field.halfWidth, Math.abs(state.ship.x - field.x) + state.ship.radius);
     field.halfHeight = Math.max(field.halfHeight, Math.abs(state.ship.y - field.y) + state.ship.radius);
+    clampCameraToCombatField();
   }
 
   function openCombatField() {
@@ -1720,7 +1722,8 @@
 
   function shouldFire(autoAimTarget) {
     const touchFire = touchSticks.aim.activeId !== null && input.touchFire;
-    return Boolean(input.keys.space || input.pointerFire || touchFire || autoAimTarget || input.gamepadFire);
+    return Boolean(input.keys.space || input.pressed.space || input.pointerFire || input.pressed.primaryFire ||
+      touchFire || autoAimTarget || input.gamepadFire);
   }
 
   function constrainShipToCombatField(ship) {
@@ -4854,21 +4857,54 @@
     const ship = state.ship;
     const lookSpeed = Math.hypot(ship.vx, ship.vy);
     const lookScale = lookSpeed > 0.01 ? Math.min(CONFIG.camera.maxLookAhead, lookSpeed * CONFIG.camera.velocityLookAhead) / lookSpeed : 0;
-    let targetX = ship.x + ship.vx * lookScale;
-    let targetY = ship.y + ship.vy * lookScale;
+    const projectedX = ship.x + ship.vx * lookScale;
+    const projectedY = ship.y + ship.vy * lookScale;
+    let targetX = projectedX;
+    let targetY = projectedY;
     let sharpness = CONFIG.camera.followSharpness;
     if (state.mode === "transition" && state.cinematic.active) {
       targetX = ship.x - (state.cinematic.anchorX || 0);
       targetY = ship.y - (state.cinematic.anchorY || 0);
       sharpness = CONFIG.cinematic.cameraSharpness;
     } else if (state.combatField.active) {
-      targetX = state.combatField.x;
-      targetY = state.combatField.y;
-      sharpness = CONFIG.combatField.cameraSharpness;
+      const deadZoneX = renderer.width * CONFIG.camera.deadZoneHalfWidthViewportRatio;
+      const deadZoneY = renderer.height * CONFIG.camera.deadZoneHalfHeightViewportRatio;
+      targetX = state.camera.x;
+      targetY = state.camera.y;
+      if (projectedX < state.camera.x - deadZoneX) targetX = projectedX + deadZoneX;
+      else if (projectedX > state.camera.x + deadZoneX) targetX = projectedX - deadZoneX;
+      if (projectedY < state.camera.y - deadZoneY) targetY = projectedY + deadZoneY;
+      else if (projectedY > state.camera.y + deadZoneY) targetY = projectedY - deadZoneY;
+      const bounds = combatCameraBounds();
+      targetX = clamp(targetX, bounds.left, bounds.right);
+      targetY = clamp(targetY, bounds.top, bounds.bottom);
     }
     const amount = 1 - Math.exp(-sharpness * dt);
     state.camera.x = lerp(state.camera.x, targetX, amount);
     state.camera.y = lerp(state.camera.y, targetY, amount);
+    if (state.combatField.active && state.mode !== "transition") clampCameraToCombatField();
+  }
+
+  function combatCameraBounds() {
+    const field = state.combatField;
+    const horizontalInset = renderer.width * 0.5;
+    const verticalInset = renderer.height * 0.5;
+    const horizontalTravel = Math.max(0, field.halfWidth - horizontalInset);
+    const verticalTravel = Math.max(0, field.halfHeight - verticalInset);
+    return {
+      left: field.x - horizontalTravel,
+      right: field.x + horizontalTravel,
+      top: field.y - verticalTravel,
+      bottom: field.y + verticalTravel
+    };
+  }
+
+  function clampCameraToCombatField() {
+    const field = state.combatField;
+    if (!field || !field.active) return;
+    const bounds = combatCameraBounds();
+    state.camera.x = clamp(state.camera.x, bounds.left, bounds.right);
+    state.camera.y = clamp(state.camera.y, bounds.top, bounds.bottom);
   }
 
   function rebaseIfNeeded() {

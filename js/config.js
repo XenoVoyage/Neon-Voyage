@@ -89,7 +89,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.20e",
+    version: "v2026.8.20f",
 
     world: {
       fixedStep: 1 / 60,
@@ -120,6 +120,8 @@
       followSharpness: 8,
       velocityLookAhead: 0.14,
       maxLookAhead: 145,
+      deadZoneHalfWidthViewportRatio: 0.14,
+      deadZoneHalfHeightViewportRatio: 0.12,
       maxShake: 24
     },
 
@@ -128,11 +130,10 @@
     },
 
     combatField: {
-      halfWidthViewportRatio: 0.43,
-      halfHeightViewportRatio: 0.39,
-      minHalfWidth: 120,
-      minHalfHeight: 100,
-      cameraSharpness: 15,
+      halfWidthViewportRatio: 0.82,
+      halfHeightViewportRatio: 0.72,
+      minHalfWidth: 260,
+      minHalfHeight: 210,
       boundaryBounce: 0.16,
       spawnEdgeSpan: 0.96,
       spawnShipClearance: 72,
@@ -147,6 +148,15 @@
       asteroidCollisionGraceSeconds: 0.22,
       waveSpawnRetrySeconds: 0.08,
       interWaveSeconds: 0.7
+    },
+
+    targetIndicators: {
+      maxVisible: 6,
+      edgeMargin: 54,
+      topMargin: 76,
+      bottomMargin: 82,
+      minimumSeparation: 42,
+      iconRadius: 16
     },
 
     cinematic: {
