@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.20 configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.20");
+  test("Neon Voyage v2026.8.20a configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.20a");
     assert.ok(CONFIG.presentation.gameoverEffectDuration >= 1 && CONFIG.presentation.gameoverEffectDuration <= 2);
     assert.ok(CONFIG.mobileControls.autoAimHoldSeconds > 0 && CONFIG.mobileControls.autoAimHoldSeconds <= 0.25);
     collectFrozen(CONFIG, new Set());
@@ -47,7 +47,6 @@ module.exports = function register(test) {
 
   test("twenty authored stages place a distinct boss at every tenth encounter", () => {
     const stages = CONFIG.sector.encounters;
-    assert.equal(CONFIG.sector.encountersPerSector, 20);
     assert.equal(stages.length, 20);
     stages.forEach((stage, index) => assert.equal(stage.index, index + 1));
     assert.deepEqual(Array.from(stages, (stage) => stage.id), [
@@ -314,7 +313,7 @@ module.exports = function register(test) {
         previous = current;
       }
       let previousStage = fn(1, 1);
-      for (let stage = 2; stage <= CONFIG.sector.encountersPerSector; stage += 1) {
+      for (let stage = 2; stage <= CONFIG.sector.encounters.length; stage += 1) {
         const currentStage = fn(1, stage);
         assert.ok(Number.isFinite(currentStage) && currentStage >= previousStage, `${name} stage curve must be finite and monotonic`);
         assert.ok(currentStage <= difficulty.caps[capName]);
@@ -417,11 +416,7 @@ module.exports = function register(test) {
     assert.equal(values.length, 1);
   });
 
-  test("world constraints and origin rebasing preserve finite positions", () => {
-    const circle = { x: 300, y: 400, radius: 10, vx: 300, vy: 400 };
-    assert.equal(Core.constrainToCircle(circle, 0, 0, 100, 0.25), true);
-    approximately(Math.hypot(circle.x, circle.y), 90, 1e-9);
-    assert.ok(circle.vx * circle.x + circle.vy * circle.y <= 0);
+  test("finite-entity checks and origin rebasing preserve valid positions", () => {
     const poisoned = { x: NaN, y: 2, vx: 3, vy: 4 };
     assert.equal(Core.isFiniteEntity(poisoned), false);
 

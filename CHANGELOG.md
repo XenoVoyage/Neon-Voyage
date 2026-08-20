@@ -2,6 +2,17 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.20a] — 2026-08-20
+
+### Changed
+
+- Made the browser-play entry point unmistakable and turned the Earth-orbit README image into a direct launch link.
+- Improved the legibility of small menu metadata without changing the established interface palette.
+
+### Fixed
+
+- Persisted a deferred boss-core upgrade on the first resumed combat step after an Enigma choice resolves while an escort remains alive.
+
 ## [v2026.8.20] — 2026-08-20
 
 ### Added

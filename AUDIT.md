@@ -1,8 +1,8 @@
-# Neon Voyage v2026.8.20 — source audit
+# Neon Voyage v2026.8.20a — source audit
 
 - Audited: 2026-08-20
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 177/177 automated source checks**
+- Result: **PASS — 179/179 automated source checks**
 
 Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated layout boxes, viewports, Pointer Events, DOM behavior, and Canvas calls. It is not physical-device acceptance.
 
@@ -17,9 +17,27 @@ Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins onl
 - Saved-data change in this checkpoint: **none**
 - License: MIT
 
-## v2026.8.20 verified changes
+## v2026.8.20a verified changes
 
 Source inspection, focused regression coverage, and the frozen full-suite gate establish these implemented contracts.
+
+### Persistence and runtime ownership
+
+- Module caches, authored milestones, Enigma module choices, boss-core clears, and boss cores with surviving escorts each write one campaign checkpoint per reward transaction. The storage key, strict schema-3 record, size bound, validators, and schema-2/schema-1 migrations are unchanged.
+- The configured encounter array now owns runtime sector length. Validation, progression, stage wrapping, checkpoint bounds, and debug stage selection derive from that array length; the deliberately tuned twenty-stage difficulty curve remains separate.
+- Obsolete circular-arena containment code, unused arena-shape and cinematic-start metadata, the noncanonical battlefield pickup alias, and unconsumed UI class state were removed only after complete reference searches. Rectangular boss containment, beam/victory radius use, transition entry coordinates, and canonical module-reward configuration remain intact.
+- Immutable asteroid, alien, and pickup presentation maps are created once with the renderer module instead of being rebuilt inside per-entity draw calls; visual values and bounded render behavior are unchanged.
+
+### Interface, documentation, and governance
+
+- Small menu metadata now uses a `0.6rem` size and the existing `--ink-dim` color, which measures 9.26:1 against the declared `--void` base instead of the prior 4.28:1 pairing.
+- The README keeps an explicit browser-play heading and makes the existing Earth-orbit gameplay image a direct, action-labelled link to the verified GitHub Pages repository-subpath URL. No new image, runtime request, or dependency was added.
+- Duplicate CSS declarations, impossible selector states, and redundant presentational class tokens were consolidated without hiding accessible text or changing Enigma selection semantics. Repository tests verify the grouped compact assistive-text rules and menu contrast contract.
+- The contributor handoff now owns Git, pull-request, release, and stale-branch policy in one section. Governance tests retain the operational workflow and deletion-proof contracts without locking incidental prose.
+
+## Prior v2026.8.20 frozen evidence
+
+The following contracts were observed in the prior frozen `v2026.8.20` audit (177/177 checks) and are preserved here as historical context. The current frozen gate re-exercises their registered coverage alongside the maintenance checks above.
 
 ### Mobile field ownership and pointer presentation
 
@@ -45,7 +63,7 @@ Source inspection, focused regression coverage, and the frozen full-suite gate e
 - Lethal damage still makes the run logically terminal in the damage frame. Simulation, input, rewards, collisions, audio cadence, and random progression remain frozen while a capped presentation-only path advances the existing destruction effects for 1.2 seconds.
 - The game-over overlay remains hidden, inert, and unfocused during that death beat. After the finite timer completes, it appears and its primary action receives focus; no second gameplay mode or animation loop was added.
 
-## Prior frozen baseline evidence
+## Earlier v2026.8.15c frozen evidence
 
 The following properties were observed in the prior frozen `v2026.8.15c` audit (168/168 checks) and are preserved here as historical context. The current frozen gate re-exercises their registered coverage alongside the new checks above.
 
@@ -91,9 +109,11 @@ The following properties were observed in the prior frozen `v2026.8.15c` audit (
 
 ## Automated evidence boundary
 
-The frozen run registered and passed 177 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (16), mobile input (45), gameplay (67), visuals (15), and stress (2).
+The frozen run registered and passed 179 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (17), mobile input (45), gameplay (67), visuals (16), and stress (2).
 
-New deterministic coverage exercises shell/viewport disagreement and dynamic resizing; pointer-only reticle rendering; death-effect rendering without ship-owned visuals; clear-versus-travel presentation; terminal-but-delayed game-over focus and effect timing; delayed stationary target acquisition, deterministic tie order, bounded turn and fire; target lock and reacquisition; touch and hybrid-manual takeover; both command ships' live-node protection; and same-landscape orientation cleanup.
+New `v2026.8.20a` coverage exercises one progress-record write for each permanent reward route, including boss clears with and without surviving escorts; the linked README launch target; grouped compact assistive-text presentation; and the menu metadata size and contrast contract.
+
+Retained `v2026.8.20` deterministic coverage exercises shell/viewport disagreement and dynamic resizing; pointer-only reticle rendering; death-effect rendering without ship-owned visuals; clear-versus-travel presentation; terminal-but-delayed game-over focus and effect timing; delayed stationary target acquisition, deterministic tie order, bounded turn and fire; target lock and reacquisition; touch and hybrid-manual takeover; both command ships' live-node protection; and same-landscape orientation cleanup.
 
 The browser VM loads every classic script, constructs the DOM and Canvas surfaces, starts a run, creates real Enigma buttons/previews, projects shield and compact summaries, and keeps one animation loop. Responsive contracts include 568×320 and 667×375 phone landscapes and a 1024×768 tablet-class viewport. This is automated source and simulated-browser evidence, not a pixel-comparison test or hands-on device play.
 
@@ -106,7 +126,7 @@ node tests/run.js
 sha256sum --check SHA256SUMS
 ```
 
-Observed result for this frozen source tree: `177/177 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 47 manifest entries.
+Observed result for this frozen source tree: `179/179 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 47 manifest entries.
 
 ## Browser and publication boundary
 

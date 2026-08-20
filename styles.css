@@ -38,15 +38,12 @@ button {
 
 button {
   touch-action: manipulation;
+  border: 0;
 }
 
 body {
   user-select: none;
   -webkit-user-select: none;
-}
-
-button {
-  border: 0;
 }
 
 button:focus-visible,
@@ -621,15 +618,10 @@ dd {
   min-height: 25px;
   max-width: 154px;
   padding: 3px 7px;
-  border: 1px solid rgba(102, 247, 255, 0.2);
+  border: 1px solid rgba(102, 247, 255, 0.38);
   border-radius: 999px;
   color: var(--ink);
   background: rgba(4, 13, 26, 0.76);
-}
-
-.module-slot.is-equipped {
-  border-color: rgba(102, 247, 255, 0.38);
-  color: var(--ink);
   box-shadow: inset 0 0 12px rgba(102, 247, 255, 0.055);
 }
 
@@ -886,8 +878,8 @@ dd {
   margin-top: 30px;
   padding-top: 12px;
   border-top: 1px solid rgba(151, 217, 231, 0.12);
-  color: var(--ink-faint);
-  font-size: 0.52rem;
+  color: var(--ink-dim);
+  font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1224,8 +1216,7 @@ kbd {
 
 .upgrade-card:hover,
 .upgrade-card:focus-visible,
-.upgrade-card[aria-pressed="true"],
-.upgrade-card.is-selected {
+.upgrade-card[aria-pressed="true"] {
   border-color: rgba(102, 247, 255, 0.68);
   color: #fff;
   background:
@@ -1365,8 +1356,6 @@ kbd {
   color: #cba0ff;
 }
 
-.upgrade-card-tag.is-active,
-.upgrade-card.is-active .upgrade-card-kind,
 .upgrade-card-tag.is-instant,
 .upgrade-card.is-instant .upgrade-card-kind {
   border-color: rgba(188, 132, 255, 0.42);
@@ -1903,8 +1892,7 @@ kbd {
 
   .upgrade-card:hover,
   .upgrade-card:focus-visible,
-  .upgrade-card[aria-pressed="true"],
-  .upgrade-card.is-selected {
+  .upgrade-card[aria-pressed="true"] {
     transform: translateY(-1px);
   }
 
@@ -2001,7 +1989,9 @@ kbd {
     gap: 6px;
   }
 
-  .is-touch-capable .record-readout {
+  .is-touch-capable .record-readout,
+  .is-touch-capable .objective-label,
+  .is-touch-capable .loadout-readouts .module-heading {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -2076,18 +2066,6 @@ kbd {
     top: calc(var(--safe-top) + 75px);
   }
 
-  .is-touch-capable .objective-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
   .is-touch-capable .objective-hud strong {
     margin-top: 0;
     font-size: 0.54rem;
@@ -2134,18 +2112,6 @@ kbd {
 
   .is-touch-capable .loadout-readouts {
     gap: 3px;
-  }
-
-  .is-touch-capable .loadout-readouts .module-heading {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
   }
 
   .is-touch-capable .module-strip,

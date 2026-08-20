@@ -110,9 +110,25 @@ Never weaken or remove a test to hide a defect.
 
 Update every affected canonical document in the same coherent change when implemented behavior, project status, owner decisions, interfaces, commands, verification gates, or workflows change. Update `AGENTS.md` only for enduring contributor contracts, `README.md` only for public-facing truth, and `docs/STATUS.md` only for current state; do not alter unaffected owners or use them as task logs.
 
-## 9. Git and releases
+## 9. Git, collaboration, and releases
 
-Treat `main` as protected. Never push directly to it, force-push it, delete it, or bypass branch protection. Use a short-lived branch and merge through a pull request only after the required `Offline audit / audit` check passes. If approval protection is enabled, wait for a genuine independent approval; never self-approve or fabricate review.
+Before editing, inspect the current default-branch head, working tree, open issues, open and draft pull requests, and recent merged work relevant to the task. Do not duplicate active work.
+
+Treat `main` as protected: never push directly to it, force-push it, delete it, or bypass branch protection. Work from the current default branch on a short-lived `agent/<description>` branch unless the user explicitly approves another strategy. Agents may create or switch branches, edit, commit, push the task branch, and open or update a draft pull request when the authorized task requires it.
+
+Stage only task-related files and keep commits coherent. Before requesting review or merge, compare the complete branch with the current base, inspect the full diff, incorporate relevant issue and review context, and run every required check on the frozen candidate. Describe the reason, user impact, risk, rollback path, and observed validation in the pull request.
+
+Open pull requests as drafts by default. Merge through a pull request only after the required `Offline audit / audit` check passes. If approval protection is enabled, wait for a genuine independent approval; never self-approve or fabricate review. Do not merge without the user's explicit request unless a repository-specific rule explicitly grants that authority.
+
+Do not rewrite shared history, move or delete tags or published releases, or discard another contributor's work unless the user explicitly authorizes the exact action. Keep tags and published releases immutable. If authentication, permissions, branch state, or ownership is uncertain, stop and ask instead of guessing.
+
+A stale local or remote branch may be deleted without additional confirmation only after proving all of the following:
+
+- It is not the default, protected, or a release branch, and it has no open pull request.
+- Its tip is reachable from the default branch, or its associated pull request is merged and the tip still matches that pull request's recorded head.
+- No commits were added after the merge, and no active worktree or collaborator uses the branch.
+
+Report every deleted branch.
 
 Use these terms precisely:
 
@@ -140,15 +156,3 @@ For every coherent public release:
 8. Verify post-merge CI, Pages deployment, the live version, and one final Play action.
 
 Do not claim a test, check, deployment, or live verification before observing it. If access blocks publication, leave the branch and pull request in a tested, recoverable state and report the exact blocker.
-
-## GitHub collaboration
-
-- Before editing, inspect the current default-branch head, working tree, open issues, open and draft pull requests, and recent merged work relevant to the task. Do not duplicate active work.
-- Work on a short-lived `agent/<description>` branch created from the current default branch unless the user explicitly requests another branch strategy.
-- Agents may create and switch branches, edit files, commit, push, and open or update draft pull requests when those actions are required to complete an authorized task.
-- Do not push directly to a protected default branch. Do not force-push, rewrite shared history, move or delete tags or releases, or discard another contributor's work unless the user explicitly authorizes the exact action.
-- Stage only task-related files. Keep commits coherent and describe the reason, user impact, and validation evidence in the pull request.
-- Before requesting review or merge, compare the complete branch against the current base branch, inspect the full diff, incorporate relevant issue and review context, and run every required check on the final candidate.
-- Agents may delete a stale local or remote branch without additional confirmation only when all of these are proven: it is not the default, protected, or a release branch; it has no open pull request; either its tip is reachable from the default branch or its associated pull request is merged and the branch tip still matches the pull request's recorded head; it has no commits added after that merge; and no active worktree or collaborator uses it. Report every deleted branch.
-- Keep tags and published releases immutable. If authentication, permissions, branch state, or ownership is uncertain, stop and ask instead of guessing.
-- Open pull requests as drafts by default. Do not merge a pull request unless the user explicitly requests the merge or a repository-specific rule grants that authority.

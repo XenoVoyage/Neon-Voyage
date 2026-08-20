@@ -946,6 +946,7 @@ module.exports = function register(test) {
     assert.equal(state.mode, "gameover");
     assert.equal(state.score, earned, "live score changed after final-score capture");
     assert.equal(browser.elements.get("final-score").textContent, "000598");
+    assert.equal(browser.elements.get("final-encounter").textContent, "15");
     assert.equal(browser.elements.get("high-score").textContent, "000598");
     assert.equal(corona.dead, true);
     assert.equal(laterThreat.dead, false, "a later projectile mutated combat after the lethal trade");
@@ -1660,7 +1661,7 @@ module.exports = function register(test) {
     clearEntities(state);
     freezeDirector(state);
     const before = { ...state.ship.modules };
-    game.applyPickup(game.spawnPickup(0, 0, "moduleUpgrade"));
+    game.applyPickup(game.spawnPickup(0, 0, "module"));
     const changed = Object.keys(state.ship.modules).filter((id) => state.ship.modules[id] !== before[id]);
     assert.equal(changed.length, 1, "module upgrade did not change exactly one permanent module");
     const selected = changed[0];
@@ -1671,7 +1672,7 @@ module.exports = function register(test) {
 
     for (let index = 0; index < moduleCount * CONFIG.weapons.maxModuleTier; index += 1) {
       state.pickups.length = 0;
-      game.applyPickup(game.spawnPickup(0, 0, "moduleUpgrade"));
+      game.applyPickup(game.spawnPickup(0, 0, "module"));
     }
     assert.equal(Object.keys(state.ship.modules).length, moduleCount, "normal upgrades did not reach every module slot");
     for (const id of Object.keys(CONFIG.weapons.modules)) {
@@ -1681,7 +1682,7 @@ module.exports = function register(test) {
     assert.ok(state.ship.modules.homingSalvo && state.ship.modules.radialArray, "passive modules were unreachable through normal upgrades");
     const capped = JSON.stringify(state.ship.modules);
     state.pickups.length = 0;
-    game.applyPickup(game.spawnPickup(0, 0, "moduleUpgrade"));
+    game.applyPickup(game.spawnPickup(0, 0, "module"));
     assert.equal(JSON.stringify(state.ship.modules), capped, "overflow upgrade exceeded a module tier or slot cap");
   });
 
@@ -1700,8 +1701,8 @@ module.exports = function register(test) {
       noDrops: true
     });
     assert.ok(target);
-    game.applyPickup(game.spawnPickup(0, 0, "moduleUpgrade"));
-    game.applyPickup(game.spawnPickup(0, 0, "moduleUpgrade"));
+    game.applyPickup(game.spawnPickup(0, 0, "module"));
+    game.applyPickup(game.spawnPickup(0, 0, "module"));
     assert.equal(state.ship.modules.homingSalvo, 1);
     assert.equal(state.ship.modules.radialArray, 1);
     state.playerBullets.length = 0;
@@ -2488,7 +2489,7 @@ module.exports = function register(test) {
     const sectorTwo = game.snapshot();
     assert.equal(sectorTwo.dropBand.rewardTierCap, CONFIG.weapons.maxModuleTier);
     for (const choice of sectorTwo.enigma.choices.filter((entry) => entry.kind === "module")) {
-      assert.ok(CONFIG.weapons.modules[choice.moduleId].unlockStage <= CONFIG.sector.encountersPerSector);
+      assert.ok(CONFIG.weapons.modules[choice.moduleId].unlockStage <= CONFIG.sector.encounters.length);
     }
   });
 
@@ -2793,7 +2794,6 @@ module.exports = function register(test) {
         const { browser, game, CONFIG } = boot(9000 + stage + layout.width, layout);
         const state = game.state;
         game.setStage(stage, 1);
-        assert.equal(state.arena.shape, "field");
         assert.equal(state.combatField.active, true);
         approximately(state.arena.x, state.combatField.x, 1e-9, "boss field center x");
         approximately(state.arena.y, state.combatField.y, 1e-9, "boss field center y");
@@ -2820,7 +2820,6 @@ module.exports = function register(test) {
         browser.window.innerWidth = Math.max(320, layout.height);
         browser.window.innerHeight = Math.max(320, layout.width * 0.5);
         browser.window.dispatchEvent({ type: "resize" });
-        assert.equal(state.arena.shape, "field", "resize changed the boss field shape");
         assert.ok(Number.isFinite(state.arena.halfWidth) && Number.isFinite(state.arena.halfHeight));
         approximately(state.arena.halfWidth, state.combatField.halfWidth, 1e-9, "resized boss field half width");
         approximately(state.arena.halfHeight, state.combatField.halfHeight, 1e-9, "resized boss field half height");

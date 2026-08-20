@@ -1,15 +1,15 @@
 # Neon Voyage
 
-[![Version v2026.8.20](https://img.shields.io/badge/version-v2026.8.20-63f7f0)](CHANGELOG.md)
+[![Version v2026.8.20a](https://img.shields.io/badge/version-v2026.8.20a-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
 
 Neon Voyage is a fast, fixed-screen space shooter about leaving Earth, crossing a dangerous asteroid frontier, and surviving first contact with an alien fleet.
 
-## [Play Neon Voyage](https://xenovoyage.github.io/Neon-Voyage/)
+## [▶ Play Neon Voyage in your browser](https://xenovoyage.github.io/Neon-Voyage/)
 
-![The Neon Voyage ship firing through an asteroid wave above Earth.](docs/assets/neon-voyage-earth-orbit.webp)
+[![Play Neon Voyage — launch above Earth and fire through an asteroid wave.](docs/assets/neon-voyage-earth-orbit.webp)](https://xenovoyage.github.io/Neon-Voyage/)
 
 ## At a glance
 
