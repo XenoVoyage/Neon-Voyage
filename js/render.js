@@ -65,25 +65,6 @@
     novaLance: "N",
     enigma: "?"
   });
-  const VISUAL_LANGUAGE = Object.freeze({
-    revision: 1,
-    voidInk: "#07111f",
-    hullMid: "#10283a",
-    materialHighlight: "#d8ffff",
-    playerEdge: "#9afaff",
-    playerCore: "#ff4fd8",
-    hostileCore: "#ff5da9",
-    stoneBody: "#101923",
-    stoneFacet: "#8da9bb",
-    pilotCategories: Object.freeze([
-      "playerShip",
-      "asteroid",
-      "alienScout",
-      "projectiles",
-      "pickup",
-      "particles"
-    ])
-  });
   const SCENE_KEYFRAMES = Object.freeze([
     Object.freeze({ depth: 0.08, hue: 205, bodies: Object.freeze([
       Object.freeze({ id: "earth", type: "earth", x: 0.88, y: 0.58, size: 0.62, alpha: 0.92, hue: 205 }),
@@ -747,8 +728,7 @@
     cinematicProfile,
     screenAnchor,
     asteroidCrackStage,
-    assetSource,
-    visualLanguage: VISUAL_LANGUAGE
+    assetSource
   });
   ND.StagePreview = Object.freeze({ render: renderStagePreview });
   ND.EnigmaPreview = Object.freeze({ render: renderEnigmaPreview });
@@ -1422,8 +1402,8 @@
       if (!decorative || engine > 0) {
         const flameGradient = ctx.createLinearGradient(-flame - 12, 0, -8, 0);
         flameGradient.addColorStop(0, "rgba(255,79,216,0)");
-        flameGradient.addColorStop(0.5, VISUAL_LANGUAGE.playerCore);
-        flameGradient.addColorStop(1, VISUAL_LANGUAGE.playerEdge);
+        flameGradient.addColorStop(0.5, "#ff4fd8");
+        flameGradient.addColorStop(1, "#b8ffff");
         ctx.fillStyle = flameGradient;
         for (const side of [-1, 1]) {
           ctx.beginPath();
@@ -1433,21 +1413,12 @@
           ctx.closePath();
           ctx.fill();
         }
-        ctx.fillStyle = "rgba(216,255,255,0.9)";
-        for (const side of [-1, 1]) {
-          ctx.beginPath();
-          ctx.moveTo(-13, side * 6);
-          ctx.lineTo(-flame * 0.62 - 4, side * 6);
-          ctx.lineTo(-11, side * 4.5);
-          ctx.closePath();
-          ctx.fill();
-        }
       }
 
-      ctx.shadowColor = VISUAL_LANGUAGE.playerEdge;
+      ctx.shadowColor = "#55f5ff";
       ctx.shadowBlur = this.reduced ? 0 : 12;
-      ctx.fillStyle = VISUAL_LANGUAGE.voidInk;
-      ctx.strokeStyle = VISUAL_LANGUAGE.playerEdge;
+      ctx.fillStyle = "rgba(7,17,31,0.98)";
+      ctx.strokeStyle = "#9afaff";
       ctx.lineWidth = 1.4;
       ctx.beginPath();
       ctx.moveTo(24, 0);
@@ -1465,43 +1436,22 @@
       ctx.fill();
       ctx.stroke();
       ctx.shadowBlur = 0;
-
-      ctx.fillStyle = VISUAL_LANGUAGE.hullMid;
+      ctx.fillStyle = "rgba(255,79,216,0.82)";
       ctx.beginPath();
-      ctx.moveTo(15, 0);
-      ctx.lineTo(1, -6.5);
-      ctx.lineTo(-9, -11);
+      ctx.moveTo(14, 0);
+      ctx.lineTo(2, -4.5);
       ctx.lineTo(-5, 0);
-      ctx.lineTo(-9, 11);
-      ctx.lineTo(1, 6.5);
+      ctx.lineTo(2, 4.5);
       ctx.closePath();
       ctx.fill();
-
-      ctx.strokeStyle = "rgba(216,255,255,0.56)";
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(179,250,255,0.5)";
       ctx.beginPath();
       ctx.moveTo(5, -6);
       ctx.lineTo(-7, -12);
       ctx.moveTo(5, 6);
       ctx.lineTo(-7, 12);
-      ctx.moveTo(-5, 0);
-      ctx.lineTo(-13, 0);
       ctx.stroke();
-
-      ctx.fillStyle = VISUAL_LANGUAGE.materialHighlight;
-      ctx.beginPath();
-      ctx.moveTo(13, 0);
-      ctx.lineTo(4, -3.2);
-      ctx.lineTo(0, 0);
-      ctx.lineTo(4, 3.2);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = VISUAL_LANGUAGE.playerCore;
-      ctx.beginPath();
-      ctx.ellipse(-4, 0, 5.5, 2.5, 0, 0, TAU);
-      ctx.fill();
-      ctx.fillStyle = VISUAL_LANGUAGE.materialHighlight;
+      ctx.fillStyle = "#d8ffff";
       ctx.fillRect(-14, -8, 3, 4);
       ctx.fillRect(-14, 4, 3, 4);
       ctx.restore();
@@ -1546,7 +1496,7 @@
                 ? asteroid.hazardVariant === "magnetic" ? "rgba(7, 25, 36, 0.97)" : "rgba(40, 20, 8, 0.97)"
                 : asteroid.kind === "corona"
                   ? "rgba(43, 13, 8, 0.97)"
-            : VISUAL_LANGUAGE.stoneBody;
+            : "rgba(13,21,32,0.97)";
       ctx.strokeStyle = color;
       ctx.lineWidth = asteroid.kind === "titan" || asteroid.kind === "auricColossus" ? 3 : 1.6;
       ctx.shadowColor = color;
@@ -1554,37 +1504,6 @@
       ctx.fill();
       ctx.stroke();
       ctx.shadowBlur = 0;
-
-      ctx.globalAlpha = 0.24;
-      ctx.fillStyle = VISUAL_LANGUAGE.stoneFacet;
-      ctx.beginPath();
-      for (let i = 0; i < count; i += 2) {
-        const angle = points.length ? points[i].angle : i / count * TAU;
-        const radius = (points.length ? points[i].radius : asteroid.radius * 0.86) * 0.56;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.globalAlpha = 0.4;
-      ctx.strokeStyle = VISUAL_LANGUAGE.materialHighlight;
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      for (let i = 1; i < Math.min(count, 7); i += 2) {
-        const angle = points.length ? points[i].angle : i / count * TAU;
-        const radius = (points.length ? points[i].radius : asteroid.radius * 0.84) * 0.72;
-        ctx.moveTo(Math.cos(angle) * radius * 0.28, Math.sin(angle) * radius * 0.28);
-        ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-      }
-      ctx.stroke();
-      ctx.globalAlpha = 0.3;
-      ctx.beginPath();
-      ctx.arc(-asteroid.radius * 0.22, asteroid.radius * 0.14, asteroid.radius * 0.16, 0.2, 4.7);
-      ctx.arc(asteroid.radius * 0.24, -asteroid.radius * 0.2, asteroid.radius * 0.1, 2.5, 6.1);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
 
       if (asteroid.hitFlash > 0) {
         ctx.globalAlpha = clamp(asteroid.hitFlash, 0, 1) * 0.34;
@@ -1737,7 +1656,7 @@
       ctx.rotate(heading);
       const color = ALIEN_COLORS[alien.type] || "#62f7c8";
       ctx.strokeStyle = color;
-      ctx.fillStyle = VISUAL_LANGUAGE.voidInk;
+      ctx.fillStyle = "rgba(9,15,29,0.96)";
       ctx.lineWidth = 1.7;
       ctx.shadowColor = color;
       ctx.shadowBlur = this.reduced ? 0 : 10;
@@ -1779,37 +1698,14 @@
       ctx.fill();
       ctx.stroke();
       ctx.shadowBlur = 0;
-      const heavy = alien.type === "carrier" || alien.type === "broodCarrier" || alien.type === "gunship";
-      ctx.fillStyle = VISUAL_LANGUAGE.hullMid;
-      ctx.globalAlpha = 0.94;
-      ctx.beginPath();
-      ctx.ellipse(1, 0, heavy ? 14 : 9, heavy ? 8 : 5.5, 0, 0, TAU);
-      ctx.fill();
-      if (alien.type === "scout") {
-        ctx.globalAlpha = 0.5;
-        ctx.fillStyle = color;
-        for (const side of [-1, 1]) {
-          ctx.beginPath();
-          ctx.moveTo(8, side * 3);
-          ctx.lineTo(-3, side * 8.5);
-          ctx.lineTo(-10, side * 6.5);
-          ctx.lineTo(-3, side * 3.5);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
       ctx.fillStyle = color;
-      ctx.globalAlpha = 0.84;
+      ctx.globalAlpha = 0.72;
       ctx.beginPath();
-      ctx.ellipse(4, 0, heavy ? 7 : 4.5, heavy ? 4 : 2.6, 0, 0, TAU);
-      ctx.fill();
-      ctx.fillStyle = VISUAL_LANGUAGE.materialHighlight;
-      ctx.globalAlpha = 0.9;
-      ctx.beginPath();
-      ctx.ellipse(6, -1, heavy ? 2.2 : 1.5, heavy ? 1.2 : 0.9, 0, 0, TAU);
+      const heavy = alien.type === "carrier" || alien.type === "broodCarrier" || alien.type === "gunship";
+      ctx.ellipse(3, 0, heavy ? 12 : 7, heavy ? 7 : 4, 0, 0, TAU);
       ctx.fill();
       ctx.globalAlpha = 0.52;
-      ctx.strokeStyle = VISUAL_LANGUAGE.materialHighlight;
+      ctx.strokeStyle = "#d9ffff";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(8, -4); ctx.lineTo(-8, -9);
@@ -2089,14 +1985,6 @@
         ctx.moveTo(point.x - Math.cos(angle) * length, point.y - Math.sin(angle) * length);
         ctx.lineTo(point.x, point.y);
         ctx.stroke();
-        ctx.strokeStyle = VISUAL_LANGUAGE.materialHighlight;
-        ctx.lineWidth = Math.max(0.8, (isLance ? 5 : bullet.kind === "rail" ? 4 : isArc ? 3 : isRadial ? 1.6 : isRocket ? 2 : isReflected ? 3.2 : 2.5) * 0.34);
-        ctx.globalAlpha = isRadial ? 0.46 : 0.82;
-        ctx.beginPath();
-        ctx.moveTo(point.x - Math.cos(angle) * length * 0.62, point.y - Math.sin(angle) * length * 0.62);
-        ctx.lineTo(point.x, point.y);
-        ctx.stroke();
-        ctx.strokeStyle = color;
         if (isArc) {
           ctx.globalAlpha = 0.48;
           ctx.lineWidth = 1.2;
@@ -2165,24 +2053,11 @@
           ctx.restore();
         }
         if (!isRocket && !isRadial && !isReflected) {
-          const radius = Math.max(2.5, bullet.radius || 2.5);
-          ctx.save();
-          ctx.translate(point.x, point.y);
-          ctx.rotate(angle);
-          ctx.fillStyle = hostile ? VISUAL_LANGUAGE.hostileCore : VISUAL_LANGUAGE.playerEdge;
-          ctx.globalAlpha = 0.96;
+          ctx.fillStyle = "#ffffff";
+          ctx.globalAlpha = 0.95;
           ctx.beginPath();
-          ctx.moveTo(radius * 1.8, 0);
-          ctx.lineTo(-radius * 0.7, -radius);
-          ctx.lineTo(-radius * 0.2, 0);
-          ctx.lineTo(-radius * 0.7, radius);
-          ctx.closePath();
+          ctx.arc(point.x, point.y, bullet.radius || 2.5, 0, TAU);
           ctx.fill();
-          ctx.fillStyle = VISUAL_LANGUAGE.materialHighlight;
-          ctx.beginPath();
-          ctx.arc(radius * 0.45, 0, Math.max(0.8, radius * 0.34), 0, TAU);
-          ctx.fill();
-          ctx.restore();
         }
       }
       ctx.restore();
@@ -2251,27 +2126,6 @@
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.globalAlpha = 0.52;
-      ctx.strokeStyle = VISUAL_LANGUAGE.materialHighlight;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let i = 0; i < 6; i += 1) {
-        const angle = i / 6 * TAU;
-        const x = Math.cos(angle) * 8.5;
-        const y = Math.sin(angle) * 8.5;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.stroke();
-      ctx.fillStyle = color;
-      ctx.globalAlpha = 0.86;
-      for (let i = 0; i < 6; i += 2) {
-        const angle = i / 6 * TAU;
-        ctx.beginPath();
-        ctx.arc(Math.cos(angle) * 10.8, Math.sin(angle) * 10.8, 1.35, 0, TAU);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
       ctx.rotate(-time * 1.25 - pickup.phase);
       if (pickup.kind === "amplifier") {
         ctx.fillStyle = color;
@@ -2368,23 +2222,9 @@
           ctx.lineWidth = 1 + alpha * 4;
           ctx.beginPath(); ctx.arc(point.x, point.y, effect.radius, 0, TAU); ctx.stroke();
         } else {
-          const size = effect.size * (0.35 + alpha * 0.65);
-          const velocityAngle = Math.atan2(effect.vy || 0, effect.vx || 1);
-          const length = size * (this.reduced ? 1.15 : 1.7);
-          const width = size * 0.48;
           ctx.fillStyle = effect.color;
-          ctx.beginPath();
-          ctx.moveTo(point.x + Math.cos(velocityAngle) * length, point.y + Math.sin(velocityAngle) * length);
-          ctx.lineTo(point.x + Math.cos(velocityAngle + Math.PI * 0.5) * width, point.y + Math.sin(velocityAngle + Math.PI * 0.5) * width);
-          ctx.lineTo(point.x - Math.cos(velocityAngle) * length * 0.42, point.y - Math.sin(velocityAngle) * length * 0.42);
-          ctx.lineTo(point.x + Math.cos(velocityAngle - Math.PI * 0.5) * width, point.y + Math.sin(velocityAngle - Math.PI * 0.5) * width);
-          ctx.closePath();
-          ctx.fill();
-          ctx.globalAlpha = alpha * 0.78;
-          ctx.fillStyle = VISUAL_LANGUAGE.materialHighlight;
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, Math.max(0.7, size * 0.18), 0, TAU);
-          ctx.fill();
+          const size = effect.size * (0.35 + alpha * 0.65);
+          ctx.fillRect(point.x - size / 2, point.y - size / 2, size, size);
         }
       }
       ctx.restore();
