@@ -2,6 +2,23 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.20f] — 2026-08-20
+
+### Added
+
+- Expanded every normal and boss encounter into a larger finite scrolling field with a bounded dead-zone camera and velocity lookahead.
+- Added capped, clustered off-screen objective cues that reuse each target's authored local art and prioritize exposed boss nodes, bosses, aliens, then asteroids.
+- Added a repository-local favicon using the existing player-interceptor asset.
+
+### Changed
+
+- Kept ships, encounter objects, camera visibility, and viewport resizing inside deterministic hard field bounds across the complete Stage 1–20 journey.
+- Preserved schema-3 saved data, combat balance, accessibility and reduced-effects behavior, local/offline startup, restrictive security policy, and all entity caps.
+
+### Fixed
+
+- Queued one fixed-step shot for an ultra-short desktop click or Space tap so a press released between simulation steps is not lost, without creating automated or stuck firing.
+
 ## [v2026.8.20e] — 2026-08-20
 
 ### Added

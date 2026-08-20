@@ -7,14 +7,14 @@ This document is the current-state handoff. It records project maturity and open
 | Area | Status |
 | --- | --- |
 | Runtime | 20-stage browser game published from protected `main` |
-| Current runtime version | `v2026.8.20e` in the source checkpoint; Pages follows successful `main` deployments |
+| Current runtime version | `v2026.8.20f` in the source checkpoint; Pages follows successful `main` deployments |
 | Hosting | Direct `file://` launch and GitHub Pages repository subpath |
 | Dependencies and build | No runtime dependencies and no build step |
 | Saved data | Unchanged local high score, preferences, schema-3 20-stage progress, and bounded stacking checkpoint loadouts |
 | Verification | Frozen-source results belong in [`AUDIT.md`](../AUDIT.md); merge, Pages, live-play, and physical-touch evidence remain separate gates |
-| Product work | Mobile viewport alignment, touch-target readability, stage/death presentation polish, progressive rewards, evolved hazards, full-field boss counterplay, complete realistic gameplay art, and material-aware synthesized audio are implemented |
+| Product work | Mobile viewport alignment, touch-target readability, stage/death presentation polish, progressive rewards, evolved hazards, expanded finite scrolling fields, bounded follow camera, off-screen objective cues, complete realistic gameplay art, and material-aware synthesized audio are implemented |
 
-The current source checkpoint extends the accepted six-subject direction across every physical gameplay family: all asteroid variants, alien classes, bosses and nodes, player/hostile projectiles, mines, pickups, drones, blades, impacts, and destruction bursts. The pass changes presentation only; gameplay, collisions, saved data, accessibility, deterministic bounds, security, and offline operation remain unchanged. Directional cast/drop shadows are excluded from rotating sprites; self-shading and owner-attached emission provide depth without creating a false fixed light direction. [`AUDIT.md`](../AUDIT.md) owns frozen automated source evidence; GitHub records and hands-on browser sessions separately own merge, deployment, live-play, visual-quality, audio-quality, and physical-device evidence.
+The current source checkpoint gives every normal and boss encounter a larger finite scrolling field. A restrained dead-zone camera follows the ship while remaining inside hard field bounds, and capped clustered edge cues reuse authored target art to identify off-screen objectives. Ultra-short desktop click and Space taps queue one fixed-step shot rather than being lost between simulation updates. Saved data, accessibility, deterministic caps, security, offline operation, art ownership, and audio remain unchanged. [`AUDIT.md`](../AUDIT.md) owns frozen automated source evidence; GitHub records and hands-on browser sessions separately own merge, deployment, live-play, visual-quality, audio-quality, and physical-device evidence.
 
 ## Implemented product
 
@@ -25,7 +25,8 @@ The current source checkpoint extends the accepted six-subject direction across 
 - The 13-module catalog opens by stage and its reward ceiling advances from Mk I to Mk V. Only Stages 3, 6, 9, 12, 15, and 18 grant authored milestone modules.
 - Seven temporary effects last 24–30 seconds per pickup and stack to four base durations. Damage Amplifier and Aegis Field join the existing weapon effects.
 - Auric Colossi split through an exact 1→3→6 explosive/magnetic shard tree. Coronas own a warning/active rotating beam and local death blast; Gunships use a warning/active laser; Brood Carriers trade long-range armor for close-range vulnerability and retain a bounded lancer lineage through requeues. Seeded mixed asteroid groups distribute kinds within one count of each other, and late anomaly waves limit guaranteed massive roots.
-- The Harrower and Leviathan both use the normal responsive rectangular battlefield with subtle edge cues. The Leviathan retains its node-dependent reflector that weakens direct body shots and returns configured hostile projectiles while nodes live.
+- Every normal and boss encounter uses the same expanded finite rectangular field. The camera follows the ship inside a viewport-scaled dead zone with bounded lookahead, while hard borders prevent the player and encounter objects from leaving the authored play space. The Leviathan retains its node-dependent reflector.
+- At most six off-screen objective cues are drawn inside a safe viewport margin. They reuse authored target art, cluster nearby objectives with counts, exclude stale or visible objects, and favor exposed boss nodes over a protected command-ship body.
 - The Canvas renderer derives its CSS-space dimensions from the actual `#game-shell` layout box and uses device-pixel ratio only for its bounded backing store. Mobile browser-toolbar changes therefore resize the combat field and its top/bottom cues with the surrounding responsive shell.
 - The cyan/magenta aim reticle appears only for active mouse or pen pointer aim. Touch input hides it; a later pointer move can restore it on a hybrid device without changing mouse, keyboard, or gamepad control.
 - Forty-six local transparent gameplay WebPs cover the player, every asteroid and spacecraft family, projectiles, equipment, pickups, and material effects. The renderer keeps deterministic procedural fallbacks for pending or failed loads while code-drawn telegraphs, shields, crack stages, hazard pulses, and pickup symbols preserve live-state readability.
@@ -48,10 +49,10 @@ See [`GAME_DESIGN.md`](GAME_DESIGN.md) for intended experience and [`ARCHITECTUR
 
 ## Publication status
 
-`v2026.8.20e` is the current runtime label. A local label, changelog heading, Pages deployment, or version badge does not by itself prove that a matching immutable tag and formal GitHub Release exist; publication status must be confirmed from GitHub.
+`v2026.8.20f` is the current runtime label. A local label, changelog heading, Pages deployment, or version badge does not by itself prove that a matching immutable tag and formal GitHub Release exist; publication status must be confirmed from GitHub.
 
 Creating or backfilling a tag is an explicit publication action. Do not do it during ordinary documentation maintenance, and never move a published tag.
 
 ## Next task boundary
 
-Review the complete gameplay-art and sound pass in live motion on desktop, then record hands-on phone and iPad landscape acceptance separately. Check silhouette and projectile scale, transparent edges against bright worlds, telegraph readability, effect density with reduced effects, mix clarity, and sustained performance before refreshing the two documentation captures. Publishing a formal release requires an explicit owner decision for any missing immutable tag or GitHub Release action. Physical phone and iPad acceptance remains an unverified boundary until actually observed.
+Review the expanded camera field, hard borders, clustered target cues, complete gameplay art, and sound pass in live motion on desktop, then record hands-on phone and iPad landscape acceptance separately. Check camera feel, target-cue readability, quick tap fire, silhouettes, transparent edges, effect density, mix clarity, and sustained performance before refreshing the two documentation captures. Publishing a formal release requires an explicit owner decision for any missing immutable tag or GitHub Release action. Physical phone and iPad acceptance remains unverified until actually observed.

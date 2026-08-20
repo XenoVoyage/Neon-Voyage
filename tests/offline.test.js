@@ -277,14 +277,14 @@ module.exports = function register(test) {
     for (const script of scripts) childProcess.execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
   });
 
-  test("runtime metadata and public documentation agree on version v2026.8.20e", () => {
+  test("runtime metadata and public documentation agree on version v2026.8.20f", () => {
     const version = readProject("VERSION.txt").trim();
-    assert.equal(version, "Neon Voyage v2026.8.20e");
-    assert.match(readProject("js/config.js"), /version:\s*["']v2026\.8\.20e["']/);
-    assert.match(readProject("index.html"), />Version v2026\.8\.20e</);
-    assert.match(readProject("README.md"), /Version v2026\.8\.20e/);
-    assert.match(readProject("CHANGELOG.md"), /^## \[v2026\.8\.20e\] — 2026-08-20$/m);
-    assert.match(readProject("AUDIT.md"), /^# Neon Voyage v2026\.8\.20e/m);
+    assert.equal(version, "Neon Voyage v2026.8.20f");
+    assert.match(readProject("js/config.js"), /version:\s*["']v2026\.8\.20f["']/);
+    assert.match(readProject("index.html"), />Version v2026\.8\.20f</);
+    assert.match(readProject("README.md"), /Version v2026\.8\.20f/);
+    assert.match(readProject("CHANGELOG.md"), /^## \[v2026\.8\.20f\] — 2026-08-20$/m);
+    assert.match(readProject("AUDIT.md"), /^# Neon Voyage v2026\.8\.20f/m);
     assert.ok(fs.existsSync(path.join(PROJECT_ROOT, "AGENTS.md")), "project contributor instructions are required");
   });
 

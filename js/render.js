@@ -456,6 +456,134 @@
     return Boolean(image && image.complete && image.naturalWidth && image.naturalHeight);
   }
 
+  function asteroidIndicatorAssetKey(asteroid) {
+    if (!asteroid) return null;
+    if (asteroid.kind === "auricShard") {
+      return asteroid.hazardVariant === "magnetic"
+        ? "asteroidAuricShardMagnetic"
+        : "asteroidAuricShardExplosive";
+    }
+    return ASTEROID_ASSET_KEYS[asteroid.kind] || null;
+  }
+
+  function offscreenIndicators(state, viewport, candidateBuffer, outputBuffer) {
+    const candidates = candidateBuffer || [];
+    const output = outputBuffer || [];
+    let candidateCount = 0;
+    let outputCount = 0;
+    const ship = state && state.ship;
+    const camera = state && state.camera;
+    const settings = CONFIG.targetIndicators;
+    const width = Math.max(1, Number(viewport && viewport.width) || 1);
+    const height = Math.max(1, Number(viewport && viewport.height) || 1);
+    if (!ship || !camera || !settings) {
+      output.length = 0;
+      return output;
+    }
+
+    const generation = state.encounterData && state.encounterData.generation;
+    const append = (entity, family, assetKey, priority, color) => {
+      if (!entity || entity.dead || !(Number(entity.health) > 0) ||
+          !Number.isFinite(Number(entity.x)) || !Number.isFinite(Number(entity.y))) return;
+      if ((family === "asteroid" || family === "alien") && generation && entity.generation !== generation) return;
+      const dx = Number(entity.x) - Number(ship.x);
+      const dy = Number(entity.y) - Number(ship.y);
+      const candidate = candidates[candidateCount] || (candidates[candidateCount] = {});
+      candidate.id = Number(entity.id) || 0;
+      candidate.family = family;
+      candidate.assetKey = assetKey;
+      candidate.color = color;
+      candidate.worldX = Number(entity.x);
+      candidate.worldY = Number(entity.y);
+      candidate.radius = Math.max(0, Number(entity.radius) || 0);
+      candidate.distance = Math.hypot(dx, dy);
+      candidate.priority = priority;
+      candidateCount += 1;
+    };
+
+    const boss = state.boss;
+    const livingNodes = boss && Array.isArray(boss.nodes)
+      ? boss.nodes.filter((node) => !node.dead && Number(node.health) > 0)
+      : [];
+    if (boss && !boss.dead && Number(boss.health) > 0) {
+      if (livingNodes.length) {
+        const nodeAsset = boss.type === "leviathan" ? "bossNodeLeviathan" : "bossNodeHarrower";
+        for (const node of livingNodes) append(node, "bossNode", nodeAsset, 0, "#c6afff");
+      } else {
+        append(boss, "boss", boss.type === "leviathan" ? "bossLeviathan" : "bossHarrower", 0, "#ff72dd");
+      }
+    }
+    for (const alien of state.aliens || []) {
+      append(alien, "alien", ALIEN_ASSET_KEYS[alien.type] || null, 1, "#6fffd5");
+    }
+    for (const asteroid of state.asteroids || []) {
+      append(asteroid, "asteroid", asteroidIndicatorAssetKey(asteroid), 2, "#8feeff");
+    }
+
+    candidates.length = candidateCount;
+    candidates.sort((first, second) =>
+      first.priority - second.priority || first.distance - second.distance || first.id - second.id);
+    const left = Math.min(Number(settings.edgeMargin) || 0, width * 0.22);
+    const right = width - left;
+    const top = Math.min(Number(settings.topMargin) || 0, height * 0.28);
+    const bottom = height - Math.min(Number(settings.bottomMargin) || 0, height * 0.28);
+    const centerX = width * 0.5;
+    const centerY = height * 0.5;
+    const minimumSeparation = Math.max(0, Number(settings.minimumSeparation) || 0);
+    const maximum = Math.max(1, Math.floor(Number(settings.maxVisible) || 1));
+
+    for (const candidate of candidates) {
+      const screenX = candidate.worldX - Number(camera.x) + centerX;
+      const screenY = candidate.worldY - Number(camera.y) + centerY;
+      if (screenX + candidate.radius >= 0 && screenX - candidate.radius <= width &&
+          screenY + candidate.radius >= 0 && screenY - candidate.radius <= height) continue;
+      const dx = screenX - centerX;
+      const dy = screenY - centerY;
+      if (Math.hypot(dx, dy) <= 0.0001) continue;
+      const horizontalScale = dx > 0 ? (right - centerX) / dx : dx < 0 ? (left - centerX) / dx : Infinity;
+      const verticalScale = dy > 0 ? (bottom - centerY) / dy : dy < 0 ? (top - centerY) / dy : Infinity;
+      const scale = Math.max(0, Math.min(horizontalScale, verticalScale));
+      const x = centerX + dx * scale;
+      const y = centerY + dy * scale;
+      let cluster = null;
+      for (let index = 0; index < outputCount; index += 1) {
+        if (Math.hypot(output[index].x - x, output[index].y - y) < minimumSeparation) {
+          cluster = output[index];
+          break;
+        }
+      }
+      if (cluster) {
+        cluster.count += 1;
+        continue;
+      }
+      if (outputCount >= maximum) {
+        let nearest = output[0];
+        let nearestDistance = Math.hypot(nearest.x - x, nearest.y - y);
+        for (let index = 1; index < outputCount; index += 1) {
+          const distance = Math.hypot(output[index].x - x, output[index].y - y);
+          if (distance < nearestDistance) {
+            nearest = output[index];
+            nearestDistance = distance;
+          }
+        }
+        nearest.count += 1;
+        continue;
+      }
+      const entry = output[outputCount] || (output[outputCount] = {});
+      entry.id = candidate.id;
+      entry.family = candidate.family;
+      entry.assetKey = candidate.assetKey;
+      entry.color = candidate.color;
+      entry.x = x;
+      entry.y = y;
+      entry.angle = Math.atan2(dy, dx);
+      entry.count = 1;
+      outputCount += 1;
+    }
+    output.length = outputCount;
+    return output;
+  }
+
   function previewAsset(type, canvas, stage, sector) {
     const source = assetSource(type);
     if (!source || typeof global.Image !== "function") return null;
@@ -841,7 +969,8 @@
     screenAnchor,
     asteroidCrackStage,
     assetSource,
-    gameplayAssetSource
+    gameplayAssetSource,
+    offscreenIndicators
   });
   ND.StagePreview = Object.freeze({ render: renderStagePreview });
   ND.EnigmaPreview = Object.freeze({ render: renderEnigmaPreview });
@@ -858,6 +987,8 @@
       this.stars = [];
       this.speedDust = [];
       this.encounterWashes = [];
+      this.indicatorCandidates = [];
+      this.indicatorEntries = [];
       this.fieldDashPattern = [10, 9];
       this.loadAssets();
       this.resize();
@@ -1064,6 +1195,8 @@
         if (shipPresentationVisible) this.drawReticle(state, pointerAimActive);
       }
       ctx.restore();
+
+      if (!cinematic.streaks) this.drawOffscreenIndicators(state, time);
 
       this.drawTimeFracture(state);
 
@@ -1391,6 +1524,72 @@
         ctx.lineTo(middle + length * 0.5, position);
       }
       ctx.stroke();
+      ctx.restore();
+    }
+
+    drawOffscreenIndicators(state, time) {
+      if (state.mode !== "playing") return;
+      const entries = offscreenIndicators(
+        state,
+        { width: this.width, height: this.height },
+        this.indicatorCandidates,
+        this.indicatorEntries
+      );
+      if (!entries.length) return;
+      const ctx = this.ctx;
+      const radius = Math.max(10, Number(CONFIG.targetIndicators.iconRadius) || 16);
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (const entry of entries) {
+        const pulse = this.reduced ? 1 : 0.86 + Math.sin(time * 4 + entry.id * 0.13) * 0.14;
+        ctx.save();
+        ctx.translate(entry.x, entry.y);
+        ctx.rotate(entry.angle);
+        ctx.globalAlpha = 0.68 + pulse * 0.24;
+        ctx.fillStyle = entry.color;
+        ctx.beginPath();
+        ctx.moveTo(radius + 10, 0);
+        ctx.lineTo(radius + 2, -5);
+        ctx.lineTo(radius + 2, 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(entry.x, entry.y);
+        ctx.globalAlpha = 0.96;
+        ctx.fillStyle = "rgba(3, 9, 20, 0.9)";
+        ctx.strokeStyle = entry.color;
+        ctx.lineWidth = 1.4;
+        ctx.shadowColor = entry.color;
+        ctx.shadowBlur = this.reduced ? 0 : 8;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, TAU);
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        const art = entry.assetKey && readyImage(this.assets[entry.assetKey]) ? this.assets[entry.assetKey] : null;
+        if (art) {
+          const maximumWidth = radius * 1.45;
+          const maximumHeight = radius * 1.15;
+          const aspect = art.naturalWidth / Math.max(1, art.naturalHeight);
+          const drawWidth = Math.min(maximumWidth, maximumHeight * aspect);
+          const drawHeight = drawWidth / Math.max(0.01, aspect);
+          ctx.drawImage(art, -drawWidth * 0.5, -drawHeight * 0.5, drawWidth, drawHeight);
+        } else {
+          ctx.fillStyle = entry.color;
+          ctx.beginPath();
+          ctx.arc(0, 0, 4, 0, TAU);
+          ctx.fill();
+        }
+        if (entry.count > 1) {
+          ctx.fillStyle = "#e8fbff";
+          ctx.font = "800 9px ui-sans-serif, system-ui, sans-serif";
+          ctx.fillText(`×${entry.count}`, radius * 0.62, radius * 0.72);
+        }
+        ctx.restore();
+      }
       ctx.restore();
     }
 

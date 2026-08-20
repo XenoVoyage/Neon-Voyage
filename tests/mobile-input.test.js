@@ -573,6 +573,32 @@ module.exports = function register(test) {
     assert.equal(game.mobile.touchCapable, false, "mouse input incorrectly promoted desktop to touch mode");
   });
 
+  test("ultra-short desktop fire taps queue exactly one fixed-step shot", () => {
+    for (const source of ["keyboard", "pointer"]) {
+      const { browser, game, CONFIG } = bootMobile({ maxTouchPoints: 0 });
+      const canvas = browser.elements.get("game");
+      game.start();
+      game.state.asteroids.length = 0;
+      game.state.aliens.length = 0;
+      game.state.playerBullets.length = 0;
+      game.state.ship.weaponTimers.pulse = 0;
+
+      if (source === "keyboard") {
+        key(browser, "keydown", " ", "Space");
+        key(browser, "keyup", " ", "Space");
+      } else {
+        rawPointer(browser, canvas, "pointerdown", 7, 700, 200, { pointerType: "mouse" });
+        rawPointer(browser, browser.window, "pointerup", 7, 700, 200, { pointerType: "mouse" });
+      }
+
+      assert.equal(game.state.playerBullets.length, 0, `${source} tap fired outside the fixed-step path`);
+      game.step(CONFIG.world.fixedStep);
+      assert.equal(game.state.playerBullets.length, 1, `${source} tap was lost before the next fixed step`);
+      game.step(CONFIG.world.fixedStep);
+      assert.equal(game.state.playerBullets.length, 1, `${source} tap became stuck automatic fire`);
+    }
+  });
+
   test("two touch sticks track independent pointer IDs and aim stick fires", () => {
     const { browser, game } = bootMobile();
     game.start();

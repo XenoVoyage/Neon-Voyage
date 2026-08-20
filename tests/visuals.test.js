@@ -113,6 +113,73 @@ module.exports = function register(test) {
     assert.equal(dots, 1, "non-playing mode drew a reticle dot");
   });
 
+  test("off-screen threat indicators stay bounded, clustered, and use target art", () => {
+    const browser = loadVisualRuntime();
+    const debug = browser.window.ND.RenderDebug;
+    const CONFIG = browser.window.ND.CONFIG;
+    const state = {
+      ship: { x: 0, y: 0 },
+      camera: { x: 0, y: 0 },
+      encounterData: { generation: "1:1:test" },
+      boss: {
+        id: 90,
+        type: "leviathan",
+        x: 0,
+        y: -900,
+        health: 100,
+        nodes: [{ id: 91, x: 0, y: -760, health: 20, dead: false }]
+      },
+      aliens: [
+        { id: 30, type: "scout", x: -900, y: 0, health: 20, generation: "1:1:test" },
+        { id: 31, type: "striker", x: 0, y: 0, health: 20, generation: "old" }
+      ],
+      asteroids: [
+        { id: 10, kind: "rock", x: 900, y: 0, health: 20, generation: "1:1:test" },
+        { id: 11, kind: "rock", x: 980, y: 8, health: 20, generation: "1:1:test" },
+        { id: 12, kind: "crystal", x: 120, y: 0, health: 20, generation: "1:1:test" },
+        { id: 13, kind: "armored", x: -650, y: 0, radius: 20, health: 20, generation: "1:1:test" }
+      ]
+    };
+    const width = 1280;
+    const height = 720;
+    const candidates = [];
+    const entries = [];
+    const baseEntries = debug.offscreenIndicators(state, { width, height }, candidates, entries);
+    assert.ok(baseEntries.length > 0 && baseEntries.length <= CONFIG.targetIndicators.maxVisible);
+    assert.ok(baseEntries.every((entry) => entry.x >= CONFIG.targetIndicators.edgeMargin - 1e-7 &&
+      entry.x <= width - CONFIG.targetIndicators.edgeMargin + 1e-7));
+    assert.ok(baseEntries.every((entry) => entry.y >= CONFIG.targetIndicators.topMargin - 1e-7 &&
+      entry.y <= height - CONFIG.targetIndicators.bottomMargin + 1e-7));
+    const node = baseEntries.find((entry) => entry.family === "bossNode");
+    assert.equal(node && node.assetKey, "bossNodeLeviathan", "living boss node lacked its authored indicator art");
+    assert.equal(baseEntries.some((entry) => entry.family === "boss"), false,
+      "damage-reduced boss body competed with its actionable node indicator");
+    const rocks = baseEntries.find((entry) => entry.assetKey === "commonAsteroid");
+    assert.equal(rocks && rocks.count, 2, "nearby off-screen rocks did not cluster into one bounded cue");
+    assert.equal(baseEntries.some((entry) => entry.id === 31 || entry.id === 12 || entry.id === 13), false,
+      "visible, partially visible, or stale-generation targets received an off-screen cue");
+
+    for (let index = 0; index < 12; index += 1) {
+      const angle = index / 12 * Math.PI * 2;
+      state.aliens.push({
+        id: 100 + index,
+        type: "lancer",
+        x: Math.cos(angle) * 1000,
+        y: Math.sin(angle) * 1000,
+        health: 20,
+        generation: "1:1:test"
+      });
+    }
+    const firstEntry = entries[0];
+    const saturatedEntries = debug.offscreenIndicators(state, { width, height }, candidates, entries);
+    assert.equal(saturatedEntries[0], firstEntry, "renderer indicator buffers were not reused");
+    assert.ok(saturatedEntries.length <= CONFIG.targetIndicators.maxVisible);
+    assert.equal(saturatedEntries.reduce((total, entry) => total + entry.count, 0), 16,
+      "indicator clustering dropped a live off-screen objective");
+    assert.equal(debug.offscreenIndicators({}, { width, height }, candidates, entries).length, 0,
+      "missing gameplay state retained stale indicator entries");
+  });
+
   test("pending game over renders death effects without ship-owned visuals", () => {
     const browser = buildBrowser({ now: 1700000000000 });
     loadRuntimeScripts(browser);

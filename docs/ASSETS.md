@@ -75,7 +75,7 @@ The six previously accepted subjects remain byte-for-byte unchanged. The additio
 | `docs/assets/neon-voyage-earth-orbit.webp` | README opening-gameplay capture |
 | `docs/assets/neon-voyage-command-arena.webp` | README Harrower encounter capture |
 
-Both captures come from a real local renderer. They predate the `v2026.8.20e` complete gameplay-art pass and remain documentation-only until a fresh real-renderer capture is warranted; they are kept compressed, repository-local, and meaningfully described in the README.
+Both captures come from a real local renderer. They predate the `v2026.8.20e` complete gameplay-art pass and the `v2026.8.20f` expanded scrolling-field pass, and remain documentation-only until a fresh real-renderer capture is warranted; they are kept compressed, repository-local, and meaningfully described in the README.
 
 The two current captures are 1200×675 WebP files. The audit enforces a 256 KiB maximum per documentation image.
 
