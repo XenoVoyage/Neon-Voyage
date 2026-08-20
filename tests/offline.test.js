@@ -146,14 +146,26 @@ module.exports = function register(test) {
 
   test("README stays concise, player-facing, and connected to the project guides", () => {
     const readme = readProject("README.md");
+    const pagesUrl = "https://xenovoyage.github.io/Neon-Voyage/";
+    const launchHeading = readme.match(/^##\s+\[([^\]]+)\]\((https:\/\/xenovoyage\.github\.io\/Neon-Voyage\/)\)$/m);
+    const linkedHero = readme.match(/\[!\[([^\]]+)\]\((docs\/assets\/neon-voyage-earth-orbit\.webp)\)\]\((https:\/\/xenovoyage\.github\.io\/Neon-Voyage\/)\)/);
     assert.ok(readme.split(/\r?\n/).length <= 65, "README has grown beyond its public landing-page role");
-    assert.match(readme, /## \[Play Neon Voyage\]/);
-    assert.match(readme, /## How to play/);
-    assert.match(readme, /## Run locally/);
+    assert.ok(launchHeading, "README needs a prominent linked browser-play heading");
+    assert.equal(launchHeading[2], pagesUrl);
+    assert.match(launchHeading[1], /\b(?:play|launch)\b/i, "browser-play link should use action-oriented text");
+    assert.ok(linkedHero, "the Earth-orbit hero image must link directly to the live game");
+    assert.equal(linkedHero[2], "docs/assets/neon-voyage-earth-orbit.webp");
+    assert.equal(linkedHero[3], pagesUrl);
+    assert.match(linkedHero[1], /\b(?:play|launch|start)\b/i, "linked hero image needs action-oriented alternative text");
+    assert.match(readme, /\bindex\.html\b/, "README needs a direct local-play instruction");
+    assert.match(readme, /\bkeyboard\b/i);
+    assert.match(readme, /\bgamepad\b/i);
+    assert.match(readme, /\btouch\b/i);
     assert.match(readme, /docs\/GAME_DESIGN\.md/);
     assert.match(readme, /docs\/ARCHITECTURE\.md/);
     assert.match(readme, /docs\/STATUS\.md/);
     assert.match(readme, /CONTRIBUTING\.md/);
+    assert.match(readme, /\[MIT License\]\(LICENSE\)/);
     assert.doesNotMatch(readme, /\b\d+\/\d+ tests passed\b|\bNode v\d+|Content Security Policy|fixed[- ]step|Pointer Events/i,
       "README contains implementation or audit detail that belongs in technical documentation");
   });
@@ -265,13 +277,14 @@ module.exports = function register(test) {
     for (const script of scripts) childProcess.execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
   });
 
-  test("runtime metadata and public documentation agree on version v2026.8.20", () => {
+  test("runtime metadata and public documentation agree on version v2026.8.20a", () => {
     const version = readProject("VERSION.txt").trim();
-    assert.equal(version, "Neon Voyage v2026.8.20");
-    assert.match(readProject("js/config.js"), /version:\s*["']v2026\.8\.20["']/);
-    assert.match(readProject("README.md"), /Version v2026\.8\.20/);
-    assert.match(readProject("CHANGELOG.md"), /^## \[v2026\.8\.20\] — 2026-08-20$/m);
-    assert.match(readProject("AUDIT.md"), /^# Neon Voyage v2026\.8\.20/m);
+    assert.equal(version, "Neon Voyage v2026.8.20a");
+    assert.match(readProject("js/config.js"), /version:\s*["']v2026\.8\.20a["']/);
+    assert.match(readProject("index.html"), />Version v2026\.8\.20a</);
+    assert.match(readProject("README.md"), /Version v2026\.8\.20a/);
+    assert.match(readProject("CHANGELOG.md"), /^## \[v2026\.8\.20a\] — 2026-08-20$/m);
+    assert.match(readProject("AUDIT.md"), /^# Neon Voyage v2026\.8\.20a/m);
     assert.ok(fs.existsSync(path.join(PROJECT_ROOT, "AGENTS.md")), "project contributor instructions are required");
   });
 
@@ -328,23 +341,43 @@ module.exports = function register(test) {
     assert.doesNotMatch(pages, /^\s*pull_request:\s*$/m, "Pages must deploy only after merge to main");
     assert.match(pages, /^\s*push:\s*\n\s*branches:\s*\[main\]\s*$/m);
 
-    assert.match(agents, /Read this file at the start of every task/);
-    assert.match(agents, /Update every affected canonical document in the same coherent change/);
-    assert.match(agents, /Update `AGENTS\.md` only for enduring contributor contracts/);
-    assert.match(agents, /Treat `main` as protected/);
-    assert.match(agents, /Never push directly to it, force-push it, delete it, or bypass branch protection/);
-    assert.match(agents, /required `Offline audit \/ audit` check passes/);
-    assert.match(agents, /merge through a pull request/);
-    assert.match(agents, /never self-approve or fabricate review/);
-    assert.match(agents, /^## GitHub collaboration$/m);
-    assert.match(agents, /Open pull requests as drafts by default/);
-    assert.match(agents, /Keep tags and published releases immutable/);
-    assert.match(agents, /Prefer simple, direct code/);
-    assert.match(agents, /Remove code, fields, selectors, assets, tests, and documentation only after proving they are unused/);
-    assert.match(agents, /docs\/GAME_DESIGN\.md/);
-    assert.match(agents, /docs\/ARCHITECTURE\.md/);
-    assert.match(agents, /docs\/STATUS\.md/);
-    assert.match(agents, /SECURITY\.md/);
+    const agentHeadings = Array.from(agents.matchAll(/^##\s+(.+)$/gm), (match) => match[1].toLowerCase());
+    for (const topic of ["priorities", "boundaries", "ownership", "verification", "documentation", "git"]) {
+      assert.ok(agentHeadings.some((heading) => heading.includes(topic)), `AGENTS.md needs a ${topic} section`);
+    }
+    const gitSectionStart = agents.search(/^##\s+[^\n]*\bgit\b/im);
+    assert.ok(gitSectionStart >= 0, "AGENTS.md needs a Git workflow owner");
+    const gitSection = agents.slice(gitSectionStart);
+    assert.match(gitSection, /\bmain\b[^\n]*\bprotected\b/i);
+    assert.match(gitSection, /\bmain\b[^\n]*(?:never|do not)[^\n]*push directly/i);
+    assert.match(gitSection, /`Offline audit \/ audit`/);
+    assert.match(gitSection, /draft[^\n]*pull request/i);
+    assert.match(gitSection, /\bmerge\b[^\n]*user[^\n]*explicit/i);
+    assert.match(gitSection, /independent[^\n]*approval/i);
+    assert.match(gitSection, /(?:never|do not)[^\n]*self-approve/i);
+    assert.match(gitSection, /(?:tags|published releases)[^\n]*immutable/i);
+
+    const branchDeletionStart = gitSection.search(/branch[^\n]{0,80}delet/i);
+    const releaseTermsStart = gitSection.search(/^Use these terms/m);
+    assert.ok(branchDeletionStart >= 0 && releaseTermsStart > branchDeletionStart,
+      "AGENTS.md needs bounded stale-branch deletion rules");
+    const branchDeletionRules = gitSection.slice(branchDeletionStart, releaseTermsStart);
+    for (const concept of [
+      /\bdefault\b/i,
+      /\bprotected\b/i,
+      /\brelease branch\b/i,
+      /\bopen pull request\b/i,
+      /\breachable\b/i,
+      /\brecorded head\b/i,
+      /\bcommits?\b[^\n]*\bmerge\b/i,
+      /\bworktree\b/i,
+      /\bcollaborator\b/i,
+      /\breport\b[^\n]*\bdeleted branch/i
+    ]) assert.match(branchDeletionRules, concept);
+    assert.match(agents, /\bSHA256SUMS\b/);
+    for (const guide of ["docs/GAME_DESIGN.md", "docs/ARCHITECTURE.md", "docs/STATUS.md", "SECURITY.md"]) {
+      assert.ok(agents.includes(guide), `AGENTS.md must route contributors to ${guide}`);
+    }
     assert.match(contributing, /Read \[`AGENTS\.md`\]/);
     assert.match(contributing, /node tests\/run\.js/);
     for (const heading of ["Summary", "Context", "Changes", "Validation", "Risk and rollback", "Checklist"]) {

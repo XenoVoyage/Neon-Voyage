@@ -157,29 +157,6 @@
     return distanceSquared(ax, ay, bx, by) <= radius * radius;
   }
 
-  function constrainToCircle(entity, centerX, centerY, boundaryRadius, restitution) {
-    const entityRadius = Math.max(0, Number(entity.radius) || 0);
-    const limit = Math.max(0, boundaryRadius - entityRadius);
-    const dx = entity.x - centerX;
-    const dy = entity.y - centerY;
-    const squared = dx * dx + dy * dy;
-    if (squared <= limit * limit) return false;
-    const length = Math.sqrt(squared);
-    const nx = length > 0.000001 ? dx / length : 1;
-    const ny = length > 0.000001 ? dy / length : 0;
-    entity.x = centerX + nx * limit;
-    entity.y = centerY + ny * limit;
-    if (Number.isFinite(entity.vx) && Number.isFinite(entity.vy)) {
-      const outward = entity.vx * nx + entity.vy * ny;
-      if (outward > 0) {
-        const bounce = clamp(Number(restitution) || 0, 0, 1);
-        entity.vx -= nx * outward * (1 + bounce);
-        entity.vy -= ny * outward * (1 + bounce);
-      }
-    }
-    return true;
-  }
-
   function translateOriginPoint(point, shiftX, shiftY) {
     if (!point || typeof point !== "object") return;
     const pairs = [
@@ -249,7 +226,6 @@
     safeWriteJSON,
     cleanupCapped,
     circlesOverlap,
-    constrainToCircle,
     rebaseOrigin,
     isFiniteEntity,
     circleVisible,

@@ -17,6 +17,54 @@
     "fleet-world": "assets/fleet-world.webp",
     "command-world": "assets/command-world.webp"
   });
+  const ASTEROID_COLORS = Object.freeze({
+    crystal: "#ff66dd",
+    volatile: "#ffb84d",
+    armored: "#a7b8c8",
+    titan: "#ffd166",
+    razor: "#7dffcf",
+    prismatic: "#b88cff",
+    monolith: "#6ea8ff",
+    auricColossus: "#ffd86b",
+    auricShard: "#ffae57",
+    corona: "#ff754f"
+  });
+  const ALIEN_COLORS = Object.freeze({
+    bomber: "#ffd166",
+    carrier: "#ff5aa5",
+    broodCarrier: "#ff9f62",
+    striker: "#b68cff",
+    lancer: "#5fe5ff",
+    gunship: "#ff7b72"
+  });
+  const PICKUP_COLORS = Object.freeze({
+    shield: "#55f5ff",
+    aegis: "#7bdcff",
+    rapid: "#ffd166",
+    amplifier: "#ffb45f",
+    repair: "#7dff9b",
+    module: "#ff4fd8",
+    triShot: "#ff9a62",
+    piercing: "#ff6b7d",
+    pulseCharge: "#bca4ff",
+    arcBurst: "#65ffbd",
+    novaLance: "#ff75ef",
+    enigma: "#c584ff"
+  });
+  const PICKUP_LABELS = Object.freeze({
+    shield: "S",
+    aegis: "G",
+    rapid: "R",
+    amplifier: "A",
+    repair: "+",
+    module: "M",
+    triShot: "3",
+    piercing: "P",
+    pulseCharge: "E",
+    arcBurst: "A",
+    novaLance: "N",
+    enigma: "?"
+  });
   const SCENE_KEYFRAMES = Object.freeze([
     Object.freeze({ depth: 0.08, hue: 205, bodies: Object.freeze([
       Object.freeze({ id: "earth", type: "earth", x: 0.88, y: 0.58, size: 0.62, alpha: 0.92, hue: 205 }),
@@ -1418,18 +1466,9 @@
         return;
       }
       const ctx = this.ctx;
-      const color = {
-        crystal: "#ff66dd",
-        volatile: "#ffb84d",
-        armored: "#a7b8c8",
-        titan: "#ffd166",
-        razor: "#7dffcf",
-        prismatic: "#b88cff",
-        monolith: "#6ea8ff",
-        auricColossus: "#ffd86b",
-        auricShard: asteroid.hazardVariant === "magnetic" ? "#72e6ff" : "#ffae57",
-        corona: "#ff754f"
-      }[asteroid.kind] || "#72dff3";
+      const color = asteroid.kind === "auricShard" && asteroid.hazardVariant === "magnetic"
+        ? "#72e6ff"
+        : ASTEROID_COLORS[asteroid.kind] || "#72dff3";
       ctx.save();
       ctx.translate(point.x, point.y);
       ctx.rotate(asteroid.rotation || 0);
@@ -1615,14 +1654,7 @@
       ctx.translate(point.x, point.y);
       const heading = Number.isFinite(alien.heading) ? alien.heading : Number.isFinite(alien.angle) ? alien.angle : 0;
       ctx.rotate(heading);
-      const color = {
-        bomber: "#ffd166",
-        carrier: "#ff5aa5",
-        broodCarrier: "#ff9f62",
-        striker: "#b68cff",
-        lancer: "#5fe5ff",
-        gunship: "#ff7b72"
-      }[alien.type] || "#62f7c8";
+      const color = ALIEN_COLORS[alien.type] || "#62f7c8";
       ctx.strokeStyle = color;
       ctx.fillStyle = "rgba(9,15,29,0.96)";
       ctx.lineWidth = 1.7;
@@ -2078,37 +2110,7 @@
     drawPickup(pickup, camera, time) {
       const point = this.worldToScreen(pickup.x, pickup.y, camera);
       if (!this.onScreen(point.x, point.y, 24)) return;
-      const colors = {
-        shield: "#55f5ff",
-        aegis: "#7bdcff",
-        rapid: "#ffd166",
-        amplifier: "#ffb45f",
-        repair: "#7dff9b",
-        module: "#ff4fd8",
-        moduleUpgrade: "#ff4fd8",
-        triShot: "#ff9a62",
-        piercing: "#ff6b7d",
-        pulseCharge: "#bca4ff",
-        arcBurst: "#65ffbd",
-        novaLance: "#ff75ef",
-        enigma: "#c584ff"
-      };
-      const labels = {
-        shield: "S",
-        aegis: "G",
-        rapid: "R",
-        amplifier: "A",
-        repair: "+",
-        module: "M",
-        moduleUpgrade: "M",
-        triShot: "3",
-        piercing: "P",
-        pulseCharge: "E",
-        arcBurst: "A",
-        novaLance: "N",
-        enigma: "?"
-      };
-      const color = colors[pickup.kind] || "#ffffff";
+      const color = PICKUP_COLORS[pickup.kind] || "#ffffff";
       const ctx = this.ctx;
       ctx.save();
       ctx.translate(point.x, point.y);
@@ -2153,7 +2155,7 @@
         ctx.fillStyle = color;
         ctx.font = "900 11px ui-sans-serif, system-ui, sans-serif";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(labels[pickup.kind] || "?", 0, 0.5);
+        ctx.fillText(PICKUP_LABELS[pickup.kind] || "?", 0, 0.5);
       }
       ctx.restore();
     }

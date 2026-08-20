@@ -47,7 +47,6 @@ function assertCapped(runtime, peaks) {
   for (const hazard of snapshot.stageHazards) {
     for (const key of ["timer", "angle"]) assert.ok(Number.isFinite(hazard[key]), `stageHazard.${key} is not finite`);
   }
-  assert.equal(snapshot.arena.shape, "field");
   for (const key of ["x", "y", "radius", "halfWidth", "halfHeight", "warning"]) {
     assert.ok(Number.isFinite(snapshot.arena[key]), `arena.${key} is not finite`);
   }
@@ -76,7 +75,6 @@ function stress(seed, seconds) {
   const asteroidKinds = new Set();
   const alienTypes = new Set();
   const hazardVariants = new Set();
-  const arenaShapes = new Set();
   const reflectionPhases = new Set();
   let shieldReactorActivated = false;
   let reflectionAccelerated = false;
@@ -135,7 +133,6 @@ function stress(seed, seconds) {
     }
     if (state.boss) {
       bossTypes.add(state.boss.type);
-      arenaShapes.add(state.arena.shape);
       if (state.boss.reflectionShield) {
         if (!reflectionAccelerated) {
           state.boss.reflectionShield.phase = "active";
@@ -156,7 +153,6 @@ function stress(seed, seconds) {
       if (asteroid.hazardVariant) hazardVariants.add(asteroid.hazardVariant);
     }
     for (const alien of state.aliens) alienTypes.add(alien.type);
-    if (state.arena.active) arenaShapes.add(state.arena.shape);
     if (state.boss && state.boss.reflectionShield) reflectionPhases.add(state.boss.reflectionShield.phase);
     for (const bullet of state.playerBullets) if (bullet.sourceModule) bulletSources.add(bullet.sourceModule);
     if (state.ship.weaponTimers.shieldReactor > 0) shieldReactorActivated = true;
@@ -184,7 +180,6 @@ function stress(seed, seconds) {
     asteroidKinds: Array.from(asteroidKinds).sort(),
     alienTypes: Array.from(alienTypes).sort(),
     hazardVariants: Array.from(hazardVariants).sort(),
-    arenaShapes: Array.from(arenaShapes).sort(),
     reflectionPhases: Array.from(reflectionPhases).sort(),
     shieldReactorActivated
   };
@@ -203,7 +198,6 @@ module.exports = function register(test) {
       assert.ok(run.alienTypes.includes(type), `stress run never exercised ${type}`);
     }
     assert.deepEqual(run.hazardVariants, ["explosive", "magnetic"]);
-    assert.deepEqual(run.arenaShapes, ["field"]);
     assert.ok(run.reflectionPhases.includes("active"), "stress run never exercised Leviathan reflection");
     assert.ok(run.runtime.game.state.stats.spawned > 100, "stress run did not exercise enough spawning");
     assert.ok(run.peaks.asteroids >= 3, "stress run never produced asteroid pressure");
@@ -233,7 +227,6 @@ module.exports = function register(test) {
     assert.deepEqual(first.asteroidKinds, second.asteroidKinds);
     assert.deepEqual(first.alienTypes, second.alienTypes);
     assert.deepEqual(first.hazardVariants, second.hazardVariants);
-    assert.deepEqual(first.arenaShapes, second.arenaShapes);
     assert.deepEqual(first.reflectionPhases, second.reflectionPhases);
     assert.equal(first.shieldReactorActivated, second.shieldReactorActivated);
     assert.equal(JSON.stringify(first.snapshot), JSON.stringify(second.snapshot));

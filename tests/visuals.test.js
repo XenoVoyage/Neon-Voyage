@@ -435,11 +435,19 @@ module.exports = function register(test) {
       assert.ok(declarationStart > 0 && declarationEnd > declarationStart, `${selector} compact rule is malformed`);
       return compact.slice(declarationStart, declarationEnd);
     };
+    const declarationsFor = (selector) => {
+      const declarations = [...compact.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .filter((match) => match[1].split(",").map((part) => part.trim()).includes(selector))
+        .map((match) => match[2]);
+      assert.ok(declarations.length > 0, `${selector} compact rule is missing`);
+      return declarations.join("\n");
+    };
     for (const selector of [
       ".is-touch-capable .record-readout",
-      ".is-touch-capable .objective-label"
+      ".is-touch-capable .objective-label",
+      ".is-touch-capable .loadout-readouts .module-heading"
     ]) {
-      const declarations = rule(selector);
+      const declarations = declarationsFor(selector);
       assert.match(declarations, /position:\s*absolute/);
       assert.match(declarations, /width:\s*1px/);
       assert.match(declarations, /height:\s*1px/);
@@ -530,5 +538,33 @@ module.exports = function register(test) {
     assert.ok(match, "menu record style is missing");
     assert.match(match[1], /color:\s*var\(--cyan(?:-strong)?\)/);
     assert.doesNotMatch(match[1], /var\(--gold\)/);
+  });
+
+  test("menu metadata remains legible against the menu background", () => {
+    const css = readProject("styles.css");
+    const root = css.match(/:root\s*\{([^}]*)\}/s);
+    const menu = css.match(/\.menu-meta\s*\{([^}]*)\}/s);
+    assert.ok(root && menu, "menu metadata styles are missing");
+
+    const variable = (name) => {
+      const match = root[1].match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, "i"));
+      assert.ok(match, `--${name} color is missing`);
+      return match[1];
+    };
+    const luminance = (hex) => {
+      const channels = hex.slice(1).match(/.{2}/g).map((channel) => parseInt(channel, 16) / 255);
+      const [red, green, blue] = channels.map((channel) => (
+        channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+      ));
+      return (0.2126 * red) + (0.7152 * green) + (0.0722 * blue);
+    };
+    const foreground = luminance(variable("ink-dim"));
+    const background = luminance(variable("void"));
+    const contrast = (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    const size = menu[1].match(/font-size:\s*([\d.]+)rem/);
+
+    assert.match(menu[1], /color:\s*var\(--ink-dim\)/);
+    assert.ok(size && Number(size[1]) >= 0.6, "menu metadata regressed below its legible size floor");
+    assert.ok(contrast >= 4.5, `menu metadata contrast ${contrast.toFixed(2)}:1 is below 4.5:1`);
   });
 };

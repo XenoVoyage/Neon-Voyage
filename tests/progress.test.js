@@ -63,6 +63,30 @@ function storedProgress(storage) {
   return JSON.parse(storage.get(PROGRESS_KEY));
 }
 
+function assertStoredLoadout(storage, stage, ship, context) {
+  const saved = storedProgress(storage).checkpoints[String(stage)];
+  assert.ok(saved, `${context} checkpoint ${stage} is missing`);
+  assert.deepEqual(saved.modules, Object.fromEntries(MODULE_IDS.map((id) => [id, ship.modules[id]])),
+    `${context} did not persist the rewarded modules`);
+  assert.deepEqual(saved.timers, Object.fromEntries(TIMER_IDS.map((id) => [id, ship[id]])),
+    `${context} did not persist the active weapon timers`);
+}
+
+function trackedStorage(progress) {
+  const values = new Map([[PROGRESS_KEY, JSON.stringify(progress)]]);
+  const writes = [];
+  return {
+    writes,
+    get: (key) => values.get(key),
+    getItem: (key) => values.get(key) || null,
+    setItem(key, value) {
+      writes.push(key);
+      values.set(key, String(value));
+    },
+    removeItem: (key) => values.delete(key)
+  };
+}
+
 function boot(options) {
   const settings = options || {};
   const browser = buildBrowser({
@@ -392,6 +416,115 @@ function register(test) {
     const acceptedClamp = boot({ storage: deathStorage });
     assert.equal(acceptedClamp.browser.elements.get("menu-high-score").textContent, "999999999",
       "clamped high score invalidated on reload");
+  });
+
+  test("each permanent module reward transaction writes one campaign checkpoint", () => {
+    const cacheStorage = trackedStorage(progressRecord(19, 19));
+    const cacheRun = boot({ storage: cacheStorage });
+    cacheRun.browser.elements.get("continue-button").click();
+    stageCards(cacheRun.browser)[18].click();
+    cacheStorage.writes.length = 0;
+    cacheRun.game.applyPickup(cacheRun.game.spawnPickup(0, 0, "module"));
+    assert.equal(cacheStorage.writes.filter((key) => key === PROGRESS_KEY).length, 1,
+      "a module cache wrote its checkpoint more than once");
+    assertStoredLoadout(cacheStorage, 19, cacheRun.game.state.ship, "module cache");
+
+    const milestoneStorage = trackedStorage(progressRecord(3, 3));
+    const milestoneRun = boot({ storage: milestoneStorage });
+    milestoneRun.browser.elements.get("continue-button").click();
+    stageCards(milestoneRun.browser)[2].click();
+    milestoneStorage.writes.length = 0;
+    finishCurrentStage(milestoneRun.game, milestoneRun.CONFIG.world.fixedStep);
+    assert.equal(milestoneStorage.writes.filter((key) => key === PROGRESS_KEY).length, 1,
+      "a milestone module reward and stage unlock did not share one checkpoint write");
+    assertStoredLoadout(milestoneStorage, 4, milestoneRun.game.state.ship, "milestone reward");
+
+    const enigmaStorage = trackedStorage(progressRecord(16, 16));
+    const enigmaRun = boot({ storage: enigmaStorage });
+    enigmaRun.browser.elements.get("continue-button").click();
+    stageCards(enigmaRun.browser)[15].click();
+    enigmaRun.game.setSeed(5511);
+    enigmaRun.game.applyPickup(enigmaRun.game.spawnPickup(0, 0, "enigma"));
+    const limit = Math.ceil(enigmaRun.CONFIG.powerups.enigma.slowdownSeconds / enigmaRun.CONFIG.world.fixedStep) + 2;
+    for (let frame = 0; frame < limit && enigmaRun.game.snapshot().enigma.phase !== "choosing"; frame += 1) {
+      enigmaRun.game.step(enigmaRun.CONFIG.world.fixedStep);
+    }
+    const permanentIndex = enigmaRun.game.snapshot().enigma.choices.findIndex((choice) => choice.kind === "module");
+    assert.ok(permanentIndex >= 0, "fixed Enigma seed did not offer a permanent module");
+    enigmaStorage.writes.length = 0;
+    enigmaRun.game.chooseEnhancement(permanentIndex);
+    assert.equal(enigmaStorage.writes.filter((key) => key === PROGRESS_KEY).length, 1,
+      "an Enigma module selection wrote its checkpoint more than once");
+    assertStoredLoadout(enigmaStorage, 16, enigmaRun.game.state.ship, "Enigma module reward");
+
+    for (const withEscort of [false, true]) {
+      const bossStorage = trackedStorage(progressRecord(10, 10));
+      const bossRun = boot({ storage: bossStorage });
+      bossRun.browser.elements.get("continue-button").click();
+      stageCards(bossRun.browser)[9].click();
+      const warningFrames = Math.ceil((bossRun.CONFIG.bossArena.warningSeconds + 0.1) /
+        bossRun.CONFIG.world.fixedStep);
+      for (let frame = 0; frame < warningFrames && !bossRun.game.state.boss; frame += 1) {
+        bossRun.game.step(bossRun.CONFIG.world.fixedStep);
+      }
+      assert.ok(bossRun.game.state.boss, "boss-core write test did not spawn Harrower");
+      bossRun.game.state.asteroids.length = 0;
+      bossRun.game.state.aliens.length = 0;
+      if (withEscort) {
+        bossRun.game.spawnAlien("scout", {
+          x: bossRun.game.state.ship.x + 120,
+          y: bossRun.game.state.ship.y,
+          health: 30,
+          required: false,
+          generation: bossRun.game.state.encounterData.generation,
+          noDrops: true
+        });
+      }
+      bossStorage.writes.length = 0;
+      bossRun.game.damageBoss(bossRun.game.state.boss.maxHealth * 10);
+      assert.equal(bossStorage.writes.filter((key) => key === PROGRESS_KEY).length, 1,
+        `a boss-core reward ${withEscort ? "with an escort" : "on a clear field"} wrote its checkpoint more than once`);
+      assertStoredLoadout(bossStorage, withEscort ? 10 : 11, bossRun.game.state.ship,
+        `boss-core reward ${withEscort ? "with an escort" : "on a clear field"}`);
+    }
+
+    const deferredStorage = trackedStorage(progressRecord(10, 10));
+    const deferredRun = boot({ storage: deferredStorage });
+    deferredRun.browser.elements.get("continue-button").click();
+    stageCards(deferredRun.browser)[9].click();
+    const warningFrames = Math.ceil((deferredRun.CONFIG.bossArena.warningSeconds + 0.1) /
+      deferredRun.CONFIG.world.fixedStep);
+    for (let frame = 0; frame < warningFrames && !deferredRun.game.state.boss; frame += 1) {
+      deferredRun.game.step(deferredRun.CONFIG.world.fixedStep);
+    }
+    assert.ok(deferredRun.game.state.boss, "deferred boss-core write test did not spawn Harrower");
+    deferredRun.game.state.asteroids.length = 0;
+    deferredRun.game.state.aliens.length = 0;
+    deferredRun.game.spawnAlien("scout", {
+      x: deferredRun.game.state.ship.x + 120,
+      y: deferredRun.game.state.ship.y,
+      health: 30,
+      required: false,
+      generation: deferredRun.game.state.encounterData.generation,
+      noDrops: true
+    });
+    deferredRun.game.setSeed(5511);
+    deferredRun.game.applyPickup(deferredRun.game.spawnPickup(0, 0, "enigma"));
+    const deferredLimit = Math.ceil(deferredRun.CONFIG.powerups.enigma.slowdownSeconds /
+      deferredRun.CONFIG.world.fixedStep) + 2;
+    for (let frame = 0; frame < deferredLimit && deferredRun.game.snapshot().enigma.phase !== "choosing"; frame += 1) {
+      deferredRun.game.step(deferredRun.CONFIG.world.fixedStep);
+    }
+    const deferredChoice = deferredRun.game.snapshot().enigma.choices.length ? 0 : -1;
+    assert.ok(deferredChoice >= 0, "deferred boss-core test did not enter an Enigma draft");
+    deferredRun.game.damageBoss(deferredRun.game.state.boss.maxHealth * 10);
+    assert.equal(deferredRun.game.state.encounterData.bossDefeated, true);
+    deferredRun.game.chooseEnhancement(deferredChoice);
+    deferredStorage.writes.length = 0;
+    deferredRun.game.step(deferredRun.CONFIG.world.fixedStep);
+    assert.equal(deferredStorage.writes.filter((key) => key === PROGRESS_KEY).length, 1,
+      "a deferred boss-core reward with an escort did not write exactly one checkpoint");
+    assertStoredLoadout(deferredStorage, 10, deferredRun.game.state.ship, "deferred boss-core reward with an escort");
   });
 
   test("New Game requires explicit confirmation, cancels safely, and erases only campaign data", () => {

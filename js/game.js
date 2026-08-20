@@ -24,6 +24,7 @@
     novaLanceTimer: 48
   });
   const MODULE_ORDER = Object.keys(CONFIG.weapons.modules);
+  const ENCOUNTER_COUNT = CONFIG.sector.encounters.length;
   const TEMPORARY_UPGRADE_ORDER = ["rapid", "triShot", "piercing", "arcBurst", "novaLance", "amplifier", "aegis"];
   const TEMPORARY_TIMER_BY_KIND = {
     rapid: "rapidTimer",
@@ -106,7 +107,7 @@
     restartButton: byId("restart-button"),
     finalScore: byId("final-score"),
     finalSector: byId("final-sector"),
-    finalWave: byId("final-wave"),
+    finalEncounter: byId("final-encounter"),
     finalCombo: byId("final-combo"),
     finalBosses: byId("final-bosses"),
     newRecord: byId("new-record"),
@@ -179,7 +180,7 @@
   }
 
   function validSchemaOneProgress(value) {
-    const maximum = Math.min(9, CONFIG.sector.encountersPerSector);
+    const maximum = Math.min(9, ENCOUNTER_COUNT);
     return exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage"]) && value.schema === 1 &&
       Number.isInteger(value.maxUnlockedStage) && value.maxUnlockedStage >= 1 && value.maxUnlockedStage <= maximum &&
       Number.isInteger(value.lastPlayedStage) && value.lastPlayedStage >= 1 && value.lastPlayedStage <= value.maxUnlockedStage;
@@ -201,7 +202,7 @@
   }
 
   function validSchemaTwoProgress(value) {
-    const legacyMaximum = Math.min(9, CONFIG.sector.encountersPerSector);
+    const legacyMaximum = Math.min(9, ENCOUNTER_COUNT);
     if (!exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage", "checkpoints"]) || value.schema !== 2 ||
         !Number.isInteger(value.maxUnlockedStage) || value.maxUnlockedStage < 1 || value.maxUnlockedStage > legacyMaximum ||
         !Number.isInteger(value.lastPlayedStage) || value.lastPlayedStage < 1 || value.lastPlayedStage > value.maxUnlockedStage) return false;
@@ -210,7 +211,7 @@
   }
 
   function validProgress(value) {
-    const maximum = CONFIG.sector.encountersPerSector;
+    const maximum = ENCOUNTER_COUNT;
     if (!exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage", "checkpoints"]) || value.schema !== 3 ||
         !Number.isInteger(value.maxUnlockedStage) || value.maxUnlockedStage < 1 || value.maxUnlockedStage > maximum ||
         !Number.isInteger(value.lastPlayedStage) || value.lastPlayedStage < 1 || value.lastPlayedStage > value.maxUnlockedStage) return false;
@@ -219,7 +220,7 @@
   }
 
   function newProgress(maxUnlockedStage, lastPlayedStage) {
-    const maximum = CONFIG.sector.encountersPerSector;
+    const maximum = ENCOUNTER_COUNT;
     const unlocked = clamp(Math.floor(Number(maxUnlockedStage) || 1), 1, maximum);
     const last = clamp(Math.floor(Number(lastPlayedStage) || 1), 1, unlocked);
     const checkpoints = {};
@@ -447,7 +448,7 @@
     effects: [],
     floaters: [],
     boss: null,
-    arena: { active: false, locked: false, warning: 0, shape: "field", x: 0, y: 0, radius: 320, halfWidth: 0, halfHeight: 0 },
+    arena: { active: false, locked: false, warning: 0, x: 0, y: 0, radius: 320, halfWidth: 0, halfHeight: 0 },
     combatField: { active: false, x: 0, y: 0, halfWidth: 0, halfHeight: 0 },
     sector: 1,
     encounter: 1,
@@ -487,8 +488,8 @@
   };
 
   function progressionStage() {
-    return state.sector > 1 ? CONFIG.sector.encountersPerSector :
-      clamp(Math.floor(Number(state.encounter) || 1), 1, CONFIG.sector.encountersPerSector);
+    return state.sector > 1 ? ENCOUNTER_COUNT :
+      clamp(Math.floor(Number(state.encounter) || 1), 1, ENCOUNTER_COUNT);
   }
 
   function currentDropBand() {
@@ -642,7 +643,7 @@
 
   // A checkpoint restores weapons only; every battlefield and survival value starts clean.
   function resetRun(startStage, savedLoadout) {
-    const initialStage = clamp(Math.floor(Number(startStage) || 1), 1, CONFIG.sector.encountersPerSector);
+    const initialStage = clamp(Math.floor(Number(startStage) || 1), 1, ENCOUNTER_COUNT);
     const loadout = cloneCheckpoint(savedLoadout);
     cancelUpgradeDraft();
     resetTransientInput();
@@ -683,7 +684,6 @@
       active: false,
       locked: false,
       warning: 0,
-      shape: "field",
       x: 0,
       y: 0,
       radius: 320,
@@ -837,7 +837,7 @@
     saveLocal();
     if (dom.finalScore) dom.finalScore.textContent = formatScore(state.score);
     if (dom.finalSector) dom.finalSector.textContent = String(state.sector);
-    if (dom.finalWave) dom.finalWave.textContent = String(state.encounter);
+    if (dom.finalEncounter) dom.finalEncounter.textContent = String(state.encounter);
     if (dom.finalCombo) dom.finalCombo.textContent = `×${state.bestCombo}`;
     if (dom.finalBosses) dom.finalBosses.textContent = String(state.bossesDefeated);
     show(dom.newRecord, highScore > oldHighScore);
@@ -968,8 +968,8 @@
   }
 
   function unlockNextStage(completedStage) {
-    const stage = clamp(Math.floor(Number(completedStage) || 1), 1, CONFIG.sector.encountersPerSector);
-    const nextStage = Math.min(CONFIG.sector.encountersPerSector, stage + 1);
+    const stage = clamp(Math.floor(Number(completedStage) || 1), 1, ENCOUNTER_COUNT);
+    const nextStage = Math.min(ENCOUNTER_COUNT, stage + 1);
     progress.maxUnlockedStage = Math.max(progress.maxUnlockedStage, nextStage);
     progress.lastPlayedStage = nextStage;
     progress.checkpoints[String(nextStage)] = checkpointFromShip(state.ship);
@@ -1621,7 +1621,6 @@
     state.arena.active = true;
     state.arena.locked = false;
     state.arena.warning = CONFIG.bossArena.warningSeconds;
-    state.arena.shape = "field";
     state.arena.x = state.combatField.x;
     state.arena.y = state.combatField.y;
     resizeArena();
@@ -2688,8 +2687,8 @@
   }
 
   function startCinematic(message) {
-    const nextEncounter = state.encounter < CONFIG.sector.encountersPerSector ? state.encounter + 1 : 1;
-    const nextSector = state.encounter < CONFIG.sector.encountersPerSector ? state.sector : state.sector + 1;
+    const nextEncounter = state.encounter < ENCOUNTER_COUNT ? state.encounter + 1 : 1;
+    const nextSector = state.encounter < ENCOUNTER_COUNT ? state.sector : state.sector + 1;
     const ship = state.ship;
     let directionX = ship.vx;
     let directionY = ship.vy;
@@ -2728,8 +2727,6 @@
       speed: CONFIG.cinematic.speed,
       anchorX,
       anchorY,
-      startX: ship.x,
-      startY: ship.y,
       entryX: ship.x,
       entryY: ship.y,
       fromEncounter: state.encounter,
@@ -2756,13 +2753,12 @@
     data.goalProgress = data.goalTarget;
     let rewardResult = null;
     const reward = data.spec.guaranteedReward;
-    if (reward && !data.guaranteedGranted &&
-        (reward === "moduleUpgrade" || reward.type === "moduleUpgrade")) {
+    if (reward && !data.guaranteedGranted && reward.type === "moduleUpgrade") {
       data.guaranteedGranted = true;
       rewardResult = grantModuleUpgrade(
         "ARMORY LINK",
-        typeof reward === "object" ? reward.module : null,
-        typeof reward === "object" ? reward.tiers : 1,
+        reward.module,
+        reward.tiers,
         false,
         false
       );
@@ -2780,7 +2776,7 @@
     const anchorX = cinematic.anchorX || 0;
     const anchorY = cinematic.anchorY || 0;
     clearCombatWorld();
-    if (state.encounter < CONFIG.sector.encountersPerSector) {
+    if (state.encounter < ENCOUNTER_COUNT) {
       state.encounter += 1;
     } else {
       state.sector += 1;
@@ -3415,6 +3411,7 @@
         const definition = CONFIG.bosses[state.encounterData.spec.bossType];
         finishEncounter(`${definition.label} defeated${rewardResult ? ` · ${rewardResult.summary}` : ""}`);
       } else if (rewardResult) {
+        saveCurrentStageCheckpoint();
         announce(`Capital ship down · ${rewardResult.summary} · clear the escorts`, 2);
       }
       return;
@@ -3754,6 +3751,7 @@
     if (encounterThreatsRemaining() === 0) {
       finishEncounter(`${CONFIG.bosses[boss.type].label} defeated${rewardResult ? ` · ${rewardResult.summary}` : ""}`);
     } else if (rewardResult) {
+      saveCurrentStageCheckpoint();
       announce(`Capital ship down · ${rewardResult.summary} · clear the escorts`, 2);
     } else {
       announce("Capital ship down — clear the escorts", 1.6);
@@ -4394,7 +4392,7 @@
     const key = upgradeChoiceElement("span", "upgrade-card-key", String(index + 1));
     key.setAttribute("aria-hidden", "true");
     kind.appendChild(key);
-    kind.appendChild(upgradeChoiceElement("span", "upgrade-card-kind-label",
+    kind.appendChild(upgradeChoiceElement("span", "",
       choice.kind === "module" ? "Permanent system" : choice.kind === "temporary" ? "Timed effect" : "Instant support"
     ));
     heading.appendChild(kind);
@@ -4471,7 +4469,6 @@
       state.ship.invulnerable,
       state.upgradeDraft.duration + CONFIG.powerups.enigma.resumeInvulnerability
     );
-    global.document.body?.classList.add("is-upgrade-draft");
     syncModePresentation();
     announce("Enigma signal · choose your evolution", state.upgradeDraft.duration + 0.4);
     state.flash = Math.max(state.flash, settings.reducedEffects ? 0.28 : 0.72);
@@ -4505,7 +4502,6 @@
     upgradeChoiceCanvases = [];
     if (dom.enigmaUpgradeGrid) dom.enigmaUpgradeGrid.textContent = "";
     if (dom.enigmaUpgradeStatus) dom.enigmaUpgradeStatus.textContent = "";
-    global.document.body?.classList.remove("is-upgrade-draft");
     syncModePresentation();
   }
 
@@ -4548,7 +4544,6 @@
     const choice = state.upgradeDraft.choices[choiceIndex];
     if (!choice) return false;
     const selectedButton = upgradeChoiceButtons[choiceIndex];
-    selectedButton?.classList.add("is-selected");
     selectedButton?.setAttribute("aria-pressed", "true");
     for (const button of upgradeChoiceButtons) button.disabled = true;
 
@@ -4561,7 +4556,6 @@
     state.upgradeDraft = idleUpgradeDraft();
     upgradeChoiceButtons = [];
     upgradeChoiceCanvases = [];
-    global.document.body?.classList.remove("is-upgrade-draft");
     resetTransientInput();
     gamepadRequiresNeutral = true;
     if (state.ship) state.ship.invulnerable = Math.max(state.ship.invulnerable, CONFIG.powerups.enigma.resumeInvulnerability);
@@ -4596,7 +4590,7 @@
     } else if (pickup.kind === "pulseCharge") {
       ship.pulse = Math.min(100, ship.pulse + CONFIG.powerups.pulseCharge.amount);
       showPowerup("VOID PULSE CHARGED");
-    } else if (pickup.kind === "module" || pickup.kind === "moduleUpgrade") {
+    } else if (pickup.kind === "module") {
       grantModuleUpgrade("MODULE CACHE", null, 1, false);
     }
     if (pickup.kind !== "enigma") saveCurrentStageCheckpoint();
@@ -4620,7 +4614,6 @@
       state.ship.hull = Math.min(state.ship.maxHull, state.ship.hull + 25);
       state.score += 500;
       if (shouldShowStatus !== false) showPowerup(`${source} // SYSTEM OVERFLOW`);
-      saveCurrentStageCheckpoint();
       return { moduleId: null, tier: 0, title: "System overflow", summary: "System overflow · +500 score", overflow: true };
     }
     const levels = Math.max(1, Math.floor(Number(tierCount) || 1));
@@ -4632,7 +4625,6 @@
     if (shouldAnnounce !== false) announce(summary, 1.7);
     audio.weaponSwitch();
     state.moduleSignature = "";
-    saveCurrentStageCheckpoint();
     return { moduleId: selected, tier: modules[selected], title: label, summary, overflow: false };
   }
 
@@ -4969,7 +4961,7 @@
     for (const id of equipped) {
       const tier = state.ship.modules[id] || 0;
       const slot = global.document.createElement("div");
-      slot.className = "module-slot is-equipped";
+      slot.className = "module-slot";
       slot.setAttribute("role", "listitem");
       const name = global.document.createElement("span");
       name.className = "module-name";
@@ -5286,7 +5278,7 @@
     state.presentation.gameoverRemaining = 0;
     setMode("playing");
     state.sector = clamp(Math.floor(Number(sector) || state.sector || 1), 1, 999);
-    state.encounter = clamp(Math.floor(Number(stage) || 1), 1, CONFIG.sector.encountersPerSector);
+    state.encounter = clamp(Math.floor(Number(stage) || 1), 1, ENCOUNTER_COUNT);
     clearCombatWorld();
     state.boss = null;
     state.arena.active = false;
