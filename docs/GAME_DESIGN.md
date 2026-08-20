@@ -54,7 +54,7 @@ Stages 1–5 form an accessible asteroid-and-anomaly opening; ordinary alien spa
 
 Movement is analog where the device supports it. Aim direction persists after release so the ship does not snap to an unrelated heading. Dash provides a short repositioning burst with a cooldown. Void Pulse is a charged local defense: it protects the nearby area but is not a screen-wide clear.
 
-Keyboard and mouse, gamepad, and touch share the same simulation actions. Mobile play uses landscape orientation and two independent floating sticks. The left half owns movement; the right half owns aim and automatic fire. Each enlarged stick begins under its thumb and follows only when that thumb moves beyond the configured radius, preserving analog deflection without leaving the control behind. Dash and Pulse occupy stable touch slots but appear and accept input only while ready. Touch ownership ends only through a matching terminal or a real browser lifecycle boundary, never through an inactivity timer.
+Keyboard and mouse, gamepad, and touch share the same simulation actions. Mobile play uses landscape orientation and two independent floating sticks. The left half owns movement; the right half owns aim and automatic fire. Each enlarged stick begins under its thumb and follows only when that thumb moves beyond the configured radius, preserving analog deflection without leaving the control behind. A right-stick touch held at neutral for 0.10 seconds locks the nearest actionable asteroid, spacecraft, or exposed boss target and reacquires only when that target is gone. Any manual deflection immediately latches manual aim for the rest of that pointer gesture, so returning the thumb to center cannot unexpectedly take control back. While either command ship's nodes survive, stationary auto-aim can select those nodes or another threat but not the damage-reduced body; the Leviathan's nodes additionally govern its reflector. Manual aim remains unrestricted. Dash and Pulse occupy stable touch slots but appear and accept input only while ready. Touch ownership and any auto-aim target end through the matching terminal or a real browser lifecycle boundary, never through an inactivity timer.
 
 Collecting an Enigma signal first neutralizes held input and eases the fixed-step simulation to zero over a short time fracture. Combat then remains fully suspended until the player selects one of three cards. Mouse, touch, number keys, and gamepad can make the choice; gameplay input and ordinary pause actions cannot bypass it. The ship remains protected through the slowdown and its return to combat.
 
@@ -68,7 +68,7 @@ Alien families have distinct staged roles: scouts strafe and fire, strikers tele
 
 The Harrower and Leviathan use distinct configured phase sets, silhouettes, attacks, and escorts inside the same responsive rectangular battlefield used by ordinary stages. Subtle edge cues preserve containment without a glowing boss-only circle. While any Leviathan shield node survives, its reflector cycles through warning, active, and cooldown phases. Direct player bullets that strike the active body deal only 25% damage and create bounded hostile reflections, while destroying all nodes disables that defense.
 
-A wave is complete only when all of its configured spawns are exhausted and the field is clean. Required objectives, optional hazards, fragments, carrier children, escorts, pending spawns, and hard-cull requeues all belong to that rule. Hyperspace never begins over a living encounter threat.
+A wave is complete only when all of its configured spawns are exhausted and the field is clean. Required objectives, optional hazards, fragments, carrier children, escorts, pending spawns, and hard-cull requeues all belong to that rule. Once the final encounter-owned threat is gone, the run enters a one-second locked clear presentation: combat, input, damage, rewards, and encounter advancement stay frozen while only bounded final effects and floaters finish. The existing 1.65-second hyperspace flight then begins with its established travel direction, ship anchor, scenery crossfade, and clean-world handoff. Hyperspace never begins over a living encounter threat.
 
 ## Weapons and progression
 
@@ -115,6 +115,12 @@ The voyage begins with recognizable Earth and Mars imagery, then moves through d
 
 The HUD prioritizes immediate survival information. Its permanent strip lists only equipped modules with their current Mk tier and activation marker; it never reserves large boxes for empty slots. A separate active-effects row appears only while temporary enhancements are running and gives each one a visible countdown. In compact touch landscape, each row collapses to one pointer-transparent accessible summary chip so movement and aim touches still reach the battlefield.
 
+The combat Canvas follows the actual game-shell layout rather than a competing browser-window height. When mobile browser chrome changes the visible layout, the top and bottom field cues, simulation bounds, HUD, and touch controls remain aligned. Device-pixel ratio changes only the bounded Canvas backing resolution, not its CSS footprint.
+
+The cyan/magenta aim reticle is a mouse/pen pointer cue and appears only while pointer aim is active. Touch input does not show a cursor target beneath the player's finger; a real pointer move may restore it on a hybrid device. Keyboard and gamepad aiming remain unchanged.
+
+Stage completion and defeat each get a short readable beat without adding another combat path. The clear presentation holds the completed field for one second before the existing hyperspace sequence. On lethal damage, the run becomes terminal immediately and the ship-destruction effects continue alone for 1.2 seconds; the game-over dialog remains hidden and unfocused until that burst finishes. No enemies, projectiles, pickups, rewards, director state, input, or random progression advance during either frozen presentation.
+
 Guided rockets, radial shots, Tesla arcs, orbit blades, player mines, tier-accurate Tractor Field arcs, shield pulses, warning beams, and reflected projectiles retain distinct restrained silhouettes. The Enigma chooser uses three wide cards when space permits, compacts for short landscape screens, and becomes a single column in narrow portrait layouts. Each actionable card owns a deterministic code-drawn micro-preview without adding a separate animation loop or asset. Dialog focus, full card labels, central announcements, keyboard shortcuts, and gamepad navigation preserve the same decision across input methods.
 
 Late stages and boss encounters add cached, configuration-driven nebula washes that crossfade with the existing scene handoff. Reduced-effects mode lowers their opacity and keeps them static.
@@ -128,7 +134,7 @@ Audio is synthesized locally and supports action rather than dominating it: shot
 - No endless spawning disguised as stage progression.
 - No online account, economy, advertisement, telemetry, or server-owned progress.
 - No unbounded procedural split tree, entity family, or effect system.
-- No automatic aim or control rule that takes ownership away from the player's current input.
+- No automatic aim may override active manual input. Stationary touch auto-aim is an explicit delayed hold gesture, and the first manual deflection owns the rest of that gesture.
 - No hidden combat advance while an Enigma choice is open, and no dismiss path that skips its required decision.
 - No scenery or interface flourish that obscures threats or reduces small-screen playability.
 - New systems should deepen the core loop before expanding the project's technical surface.

@@ -263,6 +263,21 @@ function buildBrowser(options) {
   }
 
   const windowListeners = new Map();
+  const visualViewportListeners = new Map();
+  const visualViewport = {
+    addEventListener(type, listener) {
+      if (!visualViewportListeners.has(type)) visualViewportListeners.set(type, []);
+      visualViewportListeners.get(type).push(listener);
+    },
+    removeEventListener(type, listener) {
+      if (!visualViewportListeners.has(type)) return;
+      visualViewportListeners.set(type,
+        visualViewportListeners.get(type).filter((candidate) => candidate !== listener));
+    },
+    dispatchEvent(event) {
+      for (const listener of visualViewportListeners.get(event.type) || []) listener.call(visualViewport, event);
+    }
+  };
   const NativeDate = Date;
   class FixedDate extends NativeDate {
     static now() { return Number.isFinite(settings.now) ? settings.now : 1700000000000; }
@@ -311,6 +326,7 @@ function buildBrowser(options) {
       getGamepads: () => []
     },
     screen: orientation ? { orientation } : {},
+    visualViewport: settings.visualViewport === false ? undefined : visualViewport,
     location: { href: "file:///Neon-Voyage/index.html", protocol: "file:" },
     performance: { now: () => now },
     Date: FixedDate,
@@ -349,6 +365,25 @@ function buildBrowser(options) {
     AudioContext: undefined,
     webkitAudioContext: undefined
   };
+  let shellBounds = settings.shellBounds || null;
+  if (shell) {
+    shell.getBoundingClientRect = () => {
+      const source = shellBounds || {
+        left: 0,
+        top: 0,
+        width: window.innerWidth,
+        height: window.innerHeight
+      };
+      const left = Number.isFinite(Number(source.left)) ? Number(source.left) : 0;
+      const top = Number.isFinite(Number(source.top)) ? Number(source.top) : 0;
+      const width = Number.isFinite(Number(source.width)) ? Number(source.width) : 0;
+      const height = Number.isFinite(Number(source.height)) ? Number(source.height) : 0;
+      return { left, top, width, height, right: left + width, bottom: top + height };
+    };
+    shell.setBoundingClientRect = (bounds) => {
+      shellBounds = Object.assign({}, shell.getBoundingClientRect(), bounds || {});
+    };
+  }
   window.window = window;
   window.self = window;
   window.globalThis = window;

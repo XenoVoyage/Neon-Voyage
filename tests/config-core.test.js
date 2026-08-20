@@ -14,9 +14,10 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.15c configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.15c");
-    assert.ok(CONFIG.presentation.gameoverEffectDuration > 0 && CONFIG.presentation.gameoverEffectDuration <= 1);
+  test("Neon Voyage v2026.8.20 configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.20");
+    assert.ok(CONFIG.presentation.gameoverEffectDuration >= 1 && CONFIG.presentation.gameoverEffectDuration <= 2);
+    assert.ok(CONFIG.mobileControls.autoAimHoldSeconds > 0 && CONFIG.mobileControls.autoAimHoldSeconds <= 0.25);
     collectFrozen(CONFIG, new Set());
   });
 
@@ -165,6 +166,7 @@ module.exports = function register(test) {
 
   test("hyperspace configuration is finite, directional, and fast", () => {
     const cinematic = CONFIG.cinematic;
+    assert.ok(cinematic.clearHoldSeconds >= 0.5 && cinematic.clearHoldSeconds <= 2);
     assert.ok(cinematic.duration > 0 && cinematic.duration <= 3);
     assert.ok(Number.isFinite(cinematic.directionX) && Number.isFinite(cinematic.directionY));
     assert.ok(Math.hypot(cinematic.directionX, cinematic.directionY) > 0);

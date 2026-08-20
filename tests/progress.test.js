@@ -682,14 +682,30 @@ function register(test) {
     game.step(CONFIG.world.fixedStep);
     assert.equal(game.state.mode, "gameover");
     assert.equal(canvas.getAttribute("tabindex"), "-1");
-    assert.equal(browser.document.activeElement, restart);
+    assert.equal(game.state.presentation.gameoverPending, true);
+    assert.equal(browser.elements.get("gameover-overlay").hasAttribute("inert"), true,
+      "game-over overlay became interactive before the death presentation finished");
+    assert.equal(browser.elements.get("gameover-overlay").getAttribute("aria-hidden"), "true");
+    assert.equal(browser.elements.get("hud").classList.contains("is-hidden"), false,
+      "HUD disappeared before the death presentation finished");
+    assert.equal(browser.document.activeElement, canvas, "hidden Restart action took focus during the death presentation");
     assert.ok(game.state.shake > 0 && game.state.flash > 0);
     const frozenTime = game.state.time;
     const frozenPosition = { x: game.state.ship.x, y: game.state.ship.y };
-    browser.pumpFrames(70, 1000 / 60);
+    const deathEffect = game.state.effects[game.state.effects.length - 1];
+    const deathEffectLife = deathEffect.life;
+    browser.pumpFrames(20, 1000 / 60);
     assert.equal(game.state.mode, "gameover");
+    assert.equal(game.state.presentation.gameoverPending, true);
     assert.equal(game.state.time, frozenTime, "game-over presentation advanced simulation time");
     assert.deepEqual({ x: game.state.ship.x, y: game.state.ship.y }, frozenPosition);
+    assert.ok(deathEffect.life < deathEffectLife, "bounded death particles did not animate while combat stayed frozen");
+    browser.pumpFrames(Math.ceil((CONFIG.presentation.gameoverEffectDuration + 0.2) * 60), 1000 / 60);
+    assert.equal(game.state.presentation.gameoverPending, false);
+    assert.equal(browser.elements.get("gameover-overlay").hasAttribute("inert"), false);
+    assert.equal(browser.elements.get("gameover-overlay").getAttribute("aria-hidden"), "false");
+    assert.equal(browser.elements.get("hud").classList.contains("is-hidden"), true);
+    assert.equal(browser.document.activeElement, restart);
     assert.equal(game.state.shake, 0);
     assert.equal(game.state.flash, 0);
 
@@ -710,10 +726,13 @@ function register(test) {
       collisionGrace: 0
     });
     game.step(CONFIG.world.fixedStep);
+    assert.equal(game.state.presentation.gameoverPending, true);
     assert.ok(game.state.shake > 0 && game.state.flash > 0);
 
     browser.elements.get("menu-button").click();
     assert.equal(game.state.mode, "menu");
+    assert.equal(game.state.presentation.gameoverPending, false);
+    assert.equal(game.state.presentation.gameoverRemaining, 0);
     assert.equal(game.state.shake, 0);
     assert.equal(game.state.flash, 0);
     assert.equal(browser.document.activeElement, start);

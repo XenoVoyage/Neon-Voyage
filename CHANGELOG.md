@@ -2,6 +2,23 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.20] — 2026-08-20
+
+### Added
+
+- Added a stationary touch-aim gesture: holding the right stick neutral for 0.10 seconds locks the nearest actionable threat, reacquires when it is gone, and yields to manual aim for the rest of the gesture as soon as the thumb deflects.
+
+### Changed
+
+- Added a one-second locked stage-clear beat that preserves bounded final effects before the existing unchanged 1.65-second hyperspace flight begins.
+- Let the player-destruction burst finish for 1.2 seconds before revealing and focusing the game-over dialog, while the run remains terminal and combat stays frozen from the lethal hit.
+- Limited the aiming reticle to active mouse or pen aim so touch players no longer see a cursor target beneath their finger.
+
+### Fixed
+
+- Made the rendered combat field follow the actual game-shell layout through mobile browser-toolbar and viewport changes, keeping its top and bottom boundaries aligned with the responsive HUD.
+- Kept touch auto-aim on actionable boss nodes while a command ship's body remains damage-reduced, without changing manual aim or desktop/gamepad control.
+
 ## [v2026.8.15c] — 2026-08-15
 
 ### Changed

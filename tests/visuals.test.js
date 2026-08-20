@@ -1,7 +1,7 @@
 "use strict";
 
 const { assert, vm, readProject, approximately } = require("./_harness");
-const { buildBrowser } = require("./_browser-harness");
+const { buildBrowser, loadRuntimeScripts } = require("./_browser-harness");
 
 function loadRenderer() {
   return loadVisualRuntime().window.ND.RenderDebug;
@@ -44,6 +44,119 @@ function recordingCanvas() {
 }
 
 module.exports = function register(test) {
+  test("renderer follows the game shell through dynamic viewport changes", () => {
+    const browser = buildBrowser({
+      now: 1700000000000,
+      shellBounds: { left: 0, top: 0, width: 844, height: 390 }
+    });
+    browser.window.innerWidth = 844;
+    browser.window.innerHeight = 540;
+    browser.window.devicePixelRatio = 2;
+    loadRuntimeScripts(browser);
+    browser.document.readyState = "interactive";
+    browser.emit(browser.document, "DOMContentLoaded");
+    const canvas = browser.elements.get("game");
+    const shell = browser.elements.get("game-shell");
+    const game = browser.window.ND.game;
+    const CONFIG = browser.window.ND.CONFIG;
+    game.start();
+
+    assert.deepEqual([canvas.width, canvas.height], [1688, 780],
+      "renderer backing store followed the window instead of the shorter shell");
+    assert.equal(canvas.style.width, undefined, "renderer overrode the canvas CSS width");
+    assert.equal(canvas.style.height, undefined, "renderer overrode the canvas CSS height");
+    assert.equal(game.state.combatField.halfWidth,
+      Math.max(CONFIG.combatField.minHalfWidth, 844 * CONFIG.combatField.halfWidthViewportRatio));
+    assert.equal(game.state.combatField.halfHeight,
+      Math.max(CONFIG.combatField.minHalfHeight, 390 * CONFIG.combatField.halfHeightViewportRatio));
+
+    shell.setBoundingClientRect({ width: 667, height: 375 });
+    browser.window.innerWidth = 667;
+    browser.window.innerHeight = 510;
+    browser.window.visualViewport.dispatchEvent({ type: "resize" });
+
+    assert.deepEqual([canvas.width, canvas.height], [1334, 750],
+      "renderer backing store did not follow the resized shell");
+    assert.equal(game.state.combatField.halfWidth,
+      Math.max(CONFIG.combatField.minHalfWidth, 667 * CONFIG.combatField.halfWidthViewportRatio));
+    assert.equal(game.state.combatField.halfHeight,
+      Math.max(CONFIG.combatField.minHalfHeight, 375 * CONFIG.combatField.halfHeightViewportRatio));
+  });
+
+  test("reticle renders only for an active pointer aim", () => {
+    const browser = loadVisualRuntime();
+    const canvas = browser.elements.get("game");
+    const context = canvas.getContext("2d");
+    const renderer = new browser.window.ND.Renderer(canvas);
+    const state = {
+      mode: "playing",
+      time: 3,
+      aimWorld: { x: 20, y: -12 },
+      camera: { x: 0, y: 0 }
+    };
+    let arcs = 0;
+    let dots = 0;
+    context.arc = () => { arcs += 1; };
+    context.fillRect = () => { dots += 1; };
+
+    renderer.drawReticle(state, false);
+    assert.equal(arcs, 0, "touch/neutral aim drew reticle arcs");
+    assert.equal(dots, 0, "touch/neutral aim drew the reticle dot");
+
+    renderer.drawReticle(state, true);
+    assert.equal(arcs, 4, "active pointer aim did not draw the complete reticle");
+    assert.equal(dots, 1, "active pointer aim did not draw the reticle dot");
+
+    state.mode = "transition";
+    renderer.drawReticle(state, true);
+    assert.equal(arcs, 4, "non-playing mode drew a reticle");
+    assert.equal(dots, 1, "non-playing mode drew a reticle dot");
+  });
+
+  test("pending game over renders death effects without ship-owned visuals", () => {
+    const browser = buildBrowser({ now: 1700000000000 });
+    loadRuntimeScripts(browser);
+    browser.document.readyState = "interactive";
+    browser.emit(browser.document, "DOMContentLoaded");
+    const canvas = browser.elements.get("game");
+    const game = browser.window.ND.game;
+    const renderer = new browser.window.ND.Renderer(canvas);
+    game.start();
+    const state = game.state;
+    for (const name of ["pickups", "mines", "asteroids", "aliens", "enemyBullets", "playerBullets", "floaters"]) {
+      state[name].length = 0;
+    }
+    state.boss = null;
+    state.shake = 0;
+    state.flash = 0;
+    state.presentation.gameoverPending = true;
+    state.mode = "gameover";
+
+    const shipOwnedCalls = [];
+    const effectLayers = [];
+    renderer.drawBackground = () => {};
+    renderer.drawCombatField = () => {};
+    renderer.drawPlayerFields = () => { shipOwnedCalls.push("fields"); };
+    renderer.drawDrones = () => { shipOwnedCalls.push("drones"); };
+    renderer.drawShip = () => { shipOwnedCalls.push("ship"); };
+    renderer.drawOrbitBlades = () => { shipOwnedCalls.push("blades"); };
+    renderer.drawReticle = () => { shipOwnedCalls.push("reticle"); };
+    renderer.drawEffects = (_effects, _camera, layer) => { effectLayers.push(layer); };
+    renderer.drawTimeFracture = () => {};
+
+    renderer.render(state, 3, true);
+    assert.deepEqual(shipOwnedCalls, [], "pending defeat drew ship-owned presentation");
+    assert.deepEqual(effectLayers, ["back", "front"], "pending defeat did not retain both death-effect layers");
+
+    state.presentation.gameoverPending = false;
+    state.mode = "playing";
+    effectLayers.length = 0;
+    renderer.render(state, 3, true);
+    assert.deepEqual(shipOwnedCalls, ["fields", "drones", "ship", "blades", "reticle"],
+      "positive control did not exercise every ship-owned renderer path");
+    assert.deepEqual(effectLayers, ["back", "front"]);
+  });
+
   test("normal stars remain point-only regardless of ship angle and velocity", () => {
     const debug = loadRenderer();
     assert.ok(debug && typeof debug.cinematicProfile === "function");
@@ -232,6 +345,7 @@ module.exports = function register(test) {
     assert.ok(debug && typeof debug.cinematicProfile === "function");
     const activeCinematic = {
       active: true,
+      phase: "travel",
       duration: 2,
       elapsed: 1,
       progress: 0.5,
@@ -249,6 +363,13 @@ module.exports = function register(test) {
     assert.equal(inactive.density, 0);
     assert.equal(inactive.lengthScale, 0);
     assert.equal(inactive.speed, 0);
+
+    const clear = debug.cinematicProfile({
+      mode: "transition",
+      cinematic: { ...activeCinematic, phase: "clear" }
+    }, false);
+    assert.equal(clear.streaks, false, "the stage-clear hold rendered hyperspace streaks");
+    assert.equal(clear.intensity, 0);
 
     const full = debug.cinematicProfile({ mode: "transition", cinematic: activeCinematic }, false);
     assert.equal(full.streaks, true);
@@ -269,7 +390,7 @@ module.exports = function register(test) {
 
     const bounded = debug.cinematicProfile({
       mode: "transition",
-      cinematic: { active: true, duration: 0, elapsed: Infinity, progress: 99, directionX: 0, directionY: 0, speed: 999999 }
+      cinematic: { active: true, phase: "travel", duration: 0, elapsed: Infinity, progress: 99, directionX: 0, directionY: 0, speed: 999999 }
     }, false);
     assert.equal(bounded.progress, 1);
     assert.ok(bounded.intensity >= 0 && bounded.intensity <= 1);

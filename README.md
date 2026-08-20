@@ -1,6 +1,6 @@
 # Neon Voyage
 
-[![Version v2026.8.15c](https://img.shields.io/badge/version-v2026.8.15c-63f7f0)](CHANGELOG.md)
+[![Version v2026.8.20](https://img.shields.io/badge/version-v2026.8.20-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
@@ -32,7 +32,7 @@ Neon Voyage is a fast, fixed-screen space shooter about leaving Earth, crossing 
 | Void Pulse | `E` | Tertiary / Pulse |
 | Pause | `P` or `Esc` | Menu / Pause |
 
-On phones and tablets, play in landscape and touch either half of the battlefield to place its movement or aim stick. The larger floating sticks follow each thumb when it moves beyond their radius; Dash and Pulse appear only while ready. Compact touch layouts condense owned systems and active timers into readable summary chips so the controls stay clear.
+On phones and tablets, play in landscape and touch either half of the battlefield to place its movement or aim stick. The larger floating sticks follow each thumb when it moves beyond their radius. Drag the aim stick for manual fire, or hold it still briefly to target the nearest threat; Dash and Pulse appear only while ready. Compact touch layouts condense owned systems and active timers into readable summary chips so the controls stay clear.
 
 ## The voyage
 
