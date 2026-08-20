@@ -7,7 +7,7 @@ This document is the current-state handoff. It records project maturity and open
 | Area | Status |
 | --- | --- |
 | Runtime | Seven-stage browser game; protected `main` publishes to Pages after audit |
-| Current runtime version | `v2026.8.20h` in the source checkpoint; Pages follows successful `main` deployments |
+| Current runtime version | `v2026.8.21` in the source checkpoint; Pages follows successful `main` deployments |
 | Hosting | Direct `file://` launch and GitHub Pages repository subpath |
 | Dependencies and build | No runtime dependencies and no build step |
 | Saved data | Unchanged local keys; schema-4 seven-stage progress with exact schema-3/schema-2/schema-1 migration and bounded stacking checkpoint loadouts |
@@ -49,7 +49,7 @@ See [`GAME_DESIGN.md`](GAME_DESIGN.md) for intended experience and [`ARCHITECTUR
 
 ## Publication status
 
-`v2026.8.20h` is the current runtime label. A local label, changelog heading, Pages deployment, or version badge does not by itself prove that a matching immutable tag and formal GitHub Release exist; publication status must be confirmed from GitHub.
+`v2026.8.21` is the current runtime label. A local label, changelog heading, Pages deployment, or version badge does not by itself prove that a matching immutable tag and formal GitHub Release exist; publication status must be confirmed from GitHub.
 
 Creating or backfilling a tag is an explicit publication action. Do not do it during ordinary documentation maintenance, and never move a published tag.
 

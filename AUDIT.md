@@ -1,6 +1,6 @@
-# Neon Voyage v2026.8.20h — source audit
+# Neon Voyage v2026.8.21 — source audit
 
-- Audited: 2026-08-20
+- Audited: 2026-08-21
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
 - Result: **PASS — 188/188 automated source checks**
 
@@ -17,7 +17,7 @@ Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins onl
 - Saved-data change in this checkpoint: **compatible schema-3/schema-2/schema-1 migration into seven bounded checkpoints**
 - License: MIT
 
-## v2026.8.20h verified changes
+## v2026.8.21 verified changes
 
 Source inspection, deterministic progression/combat/renderer regressions, the browser harness, the complete Stage 1–7 weapon journey, and the frozen full-suite gate establish these implemented contracts.
 
@@ -210,7 +210,7 @@ The following properties were observed in the prior frozen `v2026.8.15c` audit (
 
 The frozen run registered and passed 188 checks across configuration/core (13), offline/repository (16), browser VM (4), progress (18), mobile input (46), gameplay (70), visuals (19), and stress (2).
 
-Current `v2026.8.20h` coverage adds the seven-stage journey, schema-3 compaction, earlier alien and module variety, higher/longer rewards, Thruster Surge, asteroid-only Pulse attraction, finite crystal shrapnel, semantic pickup presentation, restrained fractures, damaged-ship effects, and desktop action hints while retaining expanded-field containment, bounded camera follow, capped clustered off-screen cues, queued quick-tap fire, complete mapped renderer ownership, bounded audio vocabulary, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
+Current `v2026.8.21` coverage adds the seven-stage journey, schema-3 compaction, earlier alien and module variety, higher/longer rewards, Thruster Surge, asteroid-only Pulse attraction, finite crystal shrapnel, semantic pickup presentation, restrained fractures, damaged-ship effects, and desktop action hints while retaining expanded-field containment, bounded camera follow, capped clustered off-screen cues, queued quick-tap fire, complete mapped renderer ownership, bounded audio vocabulary, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
 
 Retained `v2026.8.20` deterministic coverage exercises shell/viewport disagreement and dynamic resizing; pointer-only reticle rendering; death-effect rendering without ship-owned visuals; clear-versus-travel presentation; terminal-but-delayed game-over focus and effect timing; delayed stationary target acquisition, deterministic tie order, bounded turn and fire; target lock and reacquisition; touch and hybrid-manual takeover; both command ships' live-node protection; and same-landscape orientation cleanup.
 
