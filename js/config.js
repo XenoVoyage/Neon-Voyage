@@ -89,7 +89,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.15c",
+    version: "v2026.8.20",
 
     world: {
       fixedStep: 1 / 60,
@@ -112,7 +112,8 @@
       aimCurve: 1.25,
       aimMaxOutput: 1,
       aimFireThreshold: 0.12,
-      aimTurnRate: 7.2
+      aimTurnRate: 7.2,
+      autoAimHoldSeconds: 0.1
     },
 
     camera: {
@@ -123,7 +124,7 @@
     },
 
     presentation: {
-      gameoverEffectDuration: 0.75
+      gameoverEffectDuration: 1.2
     },
 
     combatField: {
@@ -149,6 +150,7 @@
     },
 
     cinematic: {
+      clearHoldSeconds: 1,
       duration: 1.65,
       directionX: 0,
       directionY: -1,

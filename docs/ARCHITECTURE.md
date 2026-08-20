@@ -14,6 +14,8 @@ Neon Voyage is a static browser game built from one HTML document, one styleshee
 
 Browser events write input intent. `js/game.js` consumes that intent in a 60 Hz fixed-step update with at most five catch-up steps per animation frame. Normal play uses the complete fixed delta. An Enigma draft deterministically tapers the simulation delta during its short slowdown and then supplies zero simulation time while the three-card choice is open. The renderer and accessible DOM continue presenting frames and status without advancing combat. Simulation state does not depend on render timing.
 
+The renderer's CSS-space width and height come from the live `#game-shell` layout rectangle, including mobile browser-toolbar and `visualViewport` changes. Device-pixel ratio affects only the capped Canvas backing store. The renderer does not assign competing inline CSS dimensions from `window.innerWidth` or `window.innerHeight`.
+
 ```mermaid
 flowchart LR
     Input[Browser input] --> Intent[Input intent]
@@ -42,6 +44,10 @@ Exact product behavior belongs in [`GAME_DESIGN.md`](GAME_DESIGN.md); exact tuni
 
 `js/game.js` owns one plain-object live state. Entity collections are mutated only through the fixed-step path and cleaned against the caps in `CONFIG.caps`. Encounter queues carry required, optional, descendant, carrier-lineage, and hard-cull-requeued threats until the field is truly clear. Permanent-module cadence, orbit contacts, player mines, shield recovery, pickup attraction, temporary-effect timers, asteroid hazards, alien attack phases, and boss reflection all advance only through the same fixed-step path. `state.upgradeDraft` owns the finite `idle` → `slowing` → `choosing` Enigma sequence, its deterministic choices, focus index, and time scale.
 
+Stage handoff is one existing cinematic state with two explicit phases. `clear` holds the completed encounter for `CONFIG.cinematic.clearHoldSeconds`, keeps input and combat neutral, and advances/cleans only the already bounded final effects and floaters. `travel` then runs the unchanged `CONFIG.cinematic.duration` hyperspace motion, scene crossfade, screen-anchor preservation, and final `advanceEncounter()` handoff. Encounter numbers, combat collections, random progression, and rewards cannot advance during the clear hold.
+
+Lethal damage sets logical `gameover` mode immediately so same-step collision, reward, score, checkpoint, and input guards remain terminal. `state.presentation.gameoverPending` delays only the DOM projection: the HUD remains visible, the game-over overlay stays inert and unfocused, and a capped frame-time presentation path advances existing death particles plus shake/flash decay for `CONFIG.presentation.gameoverEffectDuration`. No world, projectile, pickup, director, audio cadence, or random state advances. When the timer reaches zero, the overlay becomes active and its primary action receives focus.
+
 Reward eligibility has one runtime path. `progressionStage()` selects the current authored stage and treats later sectors as the final band; `currentDropBand()` selects one of the six frozen configuration bands; `contentUnlocked()` applies stage gates; and `rewardableModuleIds()` intersects the unlocked catalog with the band's tier ceiling. Natural drops, Enigma permanent cards, module caches, milestones, and boss cores use those boundaries rather than maintaining separate hidden catalogs.
 
 Threat counterplay is similarly state-owned and config-driven. Auric descendants retain their explosive/magnetic variant and split generation through requeues. Corona hazards retain cooldown/warning/active timers and beam angle. Gunships own warning/active/cooldown laser state. Brood Carriers retain their living-child lineage across requeues. Mixed-kind wave groups build a seeded balanced bag without changing their authored count or the number of random draws. The configured `bossType` selects Harrower or Leviathan behavior; both reuse the responsive combat-field geometry, and the Leviathan's reflection object remains active only while shield nodes survive.
@@ -59,7 +65,9 @@ Collecting Enigma generates three seeded, non-duplicated eligible choices before
 
 The HUD remains a projection of live state. Shield reserve is hidden at zero and exposes the configured 60-point maximum when charged. Desktop rows expose equipped systems and individual timed countdowns; compact touch CSS displays one accessible summary per row and makes both rows pointer-transparent so they cannot intercept movement or aim starts. Touch-stick bases move only by drag overshoot while retaining their original pointer-ID role; shared Dash and Pulse readiness predicates gate both simulation input and the accessible touch-button projection.
 
-`js/render.js` builds encounter gradients only on renderer resize. Late-stage intensity derives from encounter progression, boss washes derive from configured `bossType`, and both crossfade with the same scene-handoff weights. Reduced effects use lower static opacity. Tractor arcs read the exact equipped-tier range; subtle field cues read the shared combat-field bounds; telegraphs read the runtime warning/active objects; and Leviathan reflection reads the node-dependent shield object defensively.
+The right touch stick has one finite gesture state. It starts pending at neutral, becomes auto-aim only after `CONFIG.mobileControls.autoAimHoldSeconds`, and retains one target until that target is no longer actionable. It then reuses the bounded nearest-target scan to reacquire. Any shaped manual deflection latches manual aim until the matching release/cancel/cleanup; returning to center cannot re-enter auto-aim in the same gesture. The auto-aim eligibility predicate excludes either command-ship body while live nodes reduce its damage, but leaves those nodes and other threats eligible; Leviathan reflection remains a separate node-dependent defense. Every existing pointer-capture, pause, orientation, visibility, page-lifecycle, and mode cleanup clears the timer, latch, target, and fire intent together. Mouse, keyboard, and gamepad paths do not read this gesture state.
+
+`js/render.js` builds stars and encounter gradients only when the shell-owned renderer size changes. Late-stage intensity derives from encounter progression, boss washes derive from configured `bossType`, and both crossfade with the same scene-handoff weights. Reduced effects use lower static opacity. Tractor arcs read the exact equipped-tier range; subtle field cues read the shared combat-field bounds; telegraphs read the runtime warning/active objects; and Leviathan reflection reads the node-dependent shield object defensively. The cyan/magenta reticle draws only when `js/game.js` projects active mouse/pen pointer aim; touch and neutral aim do not render it, and a later pointer move can restore it on a hybrid device.
 
 ## Large-file routing
 
@@ -68,9 +76,9 @@ The HUD remains a projection of live state. Shield reserve is hidden at zero and
 | Responsibility | Main functions or state |
 | --- | --- |
 | Save compatibility | `validSave`, strict schema-3 checkpoint/progress validators, schema-2/schema-1 migration, `saveLocal`, `saveProgress` |
-| Modes and UI ownership | overlay/dialog helpers, Enigma card/preview/focus flow, run start/restart/menu flow, progress grid, shield readout, equipped-module strip, timed-effect countdowns, and compact summaries |
-| Input lifecycle | keyboard, pointer, touch-stick, gamepad, orientation, visibility cleanup |
-| Encounter lifecycle | combat-field setup, queues, waves, hyperspace, stage advancement |
+| Modes and UI ownership | overlay/dialog helpers, delayed game-over projection/focus, Enigma card/preview/focus flow, run start/restart/menu flow, progress grid, shield readout, equipped-module strip, timed-effect countdowns, and compact summaries |
+| Input lifecycle | keyboard, pointer-only reticle intent, pending/manual/auto touch-aim gesture, gamepad, orientation, visibility cleanup |
+| Encounter lifecycle | combat-field setup, queues, waves, clear/travel cinematic phases, stage advancement |
 | Combat | ship/weapons, passive cadence/ranges, spawns, evolved hazard and alien state machines, shared boss fields/reflection, collisions, damage, gated pickups, temporary stacking, and bounded module rewards |
 | Bounded cleanup | effects, hard-cull requeue, collection cleanup, camera, origin rebasing |
 | Verification surface | `ND.game`, deterministic debug controls, snapshot, fixed-step `frame` loop |

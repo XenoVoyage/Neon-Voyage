@@ -208,7 +208,8 @@
 
   function cinematicProfile(state, reducedEffects) {
     const cinematic = state && state.cinematic;
-    const active = Boolean(state && state.mode === "transition" && cinematic && cinematic.active);
+    const active = Boolean(state && state.mode === "transition" && cinematic &&
+      cinematic.active && cinematic.phase === "travel");
     if (!active) {
       return {
         streaks: false,
@@ -713,15 +714,28 @@
     }
 
     resize() {
-      this.width = Math.max(1, global.innerWidth || this.canvas.clientWidth || 1280);
-      this.height = Math.max(1, global.innerHeight || this.canvas.clientHeight || 720);
+      const shell = global.document && typeof global.document.getElementById === "function"
+        ? global.document.getElementById("game-shell")
+        : null;
+      const layoutOwner = shell || this.canvas.parentElement || this.canvas;
+      const bounds = layoutOwner && typeof layoutOwner.getBoundingClientRect === "function"
+        ? layoutOwner.getBoundingClientRect()
+        : null;
+      const layoutWidth = bounds && Number(bounds.width);
+      const layoutHeight = bounds && Number(bounds.height);
+      this.width = Math.max(1,
+        Number.isFinite(layoutWidth) && layoutWidth > 0
+          ? layoutWidth
+          : Number(layoutOwner && layoutOwner.clientWidth) || Number(this.canvas.clientWidth) || Number(global.innerWidth) || 1280);
+      this.height = Math.max(1,
+        Number.isFinite(layoutHeight) && layoutHeight > 0
+          ? layoutHeight
+          : Number(layoutOwner && layoutOwner.clientHeight) || Number(this.canvas.clientHeight) || Number(global.innerHeight) || 720);
       const requested = Math.min(global.devicePixelRatio || 1, 2);
       const pixelCap = Math.sqrt(5200000 / Math.max(1, this.width * this.height));
       this.dpr = Math.max(0.25, Math.min(requested, pixelCap));
       this.canvas.width = Math.max(1, Math.floor(this.width * this.dpr));
       this.canvas.height = Math.max(1, Math.floor(this.height * this.dpr));
-      this.canvas.style.width = `${this.width}px`;
-      this.canvas.style.height = `${this.height}px`;
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
       this.buildStars();
       this.buildEncounterWashes();
@@ -847,7 +861,7 @@
       return x + radius > -120 && x - radius < this.width + 120 && y + radius > -120 && y - radius < this.height + 120;
     }
 
-    render(state, time) {
+    render(state, time, pointerAimActive) {
       const ctx = this.ctx;
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
       this.reduced = Boolean(state.settings && state.settings.reducedEffects);
@@ -858,6 +872,7 @@
         return;
       }
 
+      const shipPresentationVisible = !(state.presentation && state.presentation.gameoverPending);
       const shake = this.reduced || cinematic.streaks
         ? 0
         : clamp(Number(state.shake) || 0, 0, CONFIG.camera.maxShake);
@@ -866,7 +881,7 @@
       if (!cinematic.streaks) {
         this.drawCombatField(state, time);
         this.drawEffects(state.effects, state.camera, "back");
-        this.drawPlayerFields(state, time);
+        if (shipPresentationVisible) this.drawPlayerFields(state, time);
         for (const pickup of state.pickups) this.drawPickup(pickup, state.camera, time);
         for (const mine of state.mines) this.drawMine(mine, state.camera, time);
         for (const asteroid of state.asteroids) this.drawAsteroid(asteroid, state.camera, time);
@@ -874,14 +889,14 @@
         if (state.boss) this.drawBoss(state.boss, state.camera, time);
         this.drawProjectiles(state.enemyBullets, state.camera, true);
         this.drawProjectiles(state.playerBullets, state.camera, false);
-        this.drawDrones(state);
+        if (shipPresentationVisible) this.drawDrones(state);
       }
-      this.drawShip(state.ship, state.camera, time, cinematic.streaks, state);
+      if (shipPresentationVisible) this.drawShip(state.ship, state.camera, time, cinematic.streaks, state);
       if (!cinematic.streaks) {
-        this.drawOrbitBlades(state);
+        if (shipPresentationVisible) this.drawOrbitBlades(state);
         this.drawEffects(state.effects, state.camera, "front");
         this.drawFloaters(state.floaters, state.camera);
-        this.drawReticle(state);
+        if (shipPresentationVisible) this.drawReticle(state, pointerAimActive);
       }
       ctx.restore();
 
@@ -2227,8 +2242,8 @@
       ctx.restore();
     }
 
-    drawReticle(state) {
-      if (state.mode !== "playing" || !state.aimWorld) return;
+    drawReticle(state, pointerAimActive) {
+      if (!pointerAimActive || state.mode !== "playing" || !state.aimWorld) return;
       const point = this.worldToScreen(state.aimWorld.x, state.aimWorld.y, state.camera);
       const ctx = this.ctx;
       ctx.save();

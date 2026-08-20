@@ -303,7 +303,10 @@
       activeId: null,
       originX: 0,
       originY: 0,
-      captureTracked: false
+      captureTracked: false,
+      aimMode: "idle",
+      autoAimElapsed: 0,
+      autoAimTarget: null
     }
   };
   const notedTouchEvents = new WeakSet();
@@ -312,7 +315,6 @@
   let orientationBlocked = false;
   let campaignProgressEligible = false;
   let gamepadRequiresNeutral = false;
-  let gameoverEffectRemaining = 0;
   let gameoverInitialShake = 0;
   let gameoverInitialFlash = 0;
   let presentedMode = null;
@@ -452,6 +454,9 @@
     encounterData: null,
     cinematic: {
       active: false,
+      phase: "idle",
+      clearElapsed: 0,
+      clearDuration: CONFIG.cinematic.clearHoldSeconds,
       elapsed: 0,
       duration: CONFIG.cinematic.duration,
       progress: 0,
@@ -462,6 +467,10 @@
       toEncounter: 1,
       fromSector: 1,
       toSector: 1
+    },
+    presentation: {
+      gameoverPending: false,
+      gameoverRemaining: 0
     },
     score: 0,
     combo: 1,
@@ -585,6 +594,7 @@
 
   function focusPrimaryModeAction(mode) {
     if (orientationBlocked || touchCapable && isPortraitViewport() || anyDialogOpen()) return;
+    if (mode === "gameover" && state.presentation.gameoverPending) return;
     const target = mode === "menu" ? dom.startButton : mode === "paused" ? dom.resumeButton : mode === "gameover" ? dom.restartButton : null;
     target?.focus({ preventScroll: true });
   }
@@ -603,10 +613,11 @@
   function syncModePresentation() {
     const mode = state.mode;
     const upgradeBlocksPlay = state.upgradeDraft.phase !== "idle";
+    const gameoverPending = mode === "gameover" && state.presentation.gameoverPending;
     setOverlayState(dom.menuOverlay, mode === "menu");
     setOverlayState(dom.pauseOverlay, mode === "paused");
-    setOverlayState(dom.gameoverOverlay, mode === "gameover");
-    const inRun = mode === "playing" || mode === "transition" || mode === "paused";
+    setOverlayState(dom.gameoverOverlay, mode === "gameover" && !gameoverPending);
+    const inRun = mode === "playing" || mode === "transition" || mode === "paused" || gameoverPending;
     show(dom.hud, inRun);
     show(dom.meters, inRun);
     show(dom.pauseButton, !upgradeBlocksPlay && (mode === "playing" || mode === "transition"));
@@ -684,6 +695,8 @@
     state.encounter = initialStage;
     state.encounterData = null;
     state.cinematic.active = false;
+    state.cinematic.phase = "idle";
+    state.cinematic.clearElapsed = 0;
     state.cinematic.elapsed = 0;
     state.cinematic.progress = 0;
     state.score = 0;
@@ -693,7 +706,8 @@
     state.bossesDefeated = 0;
     state.shake = 0;
     state.flash = 0;
-    gameoverEffectRemaining = 0;
+    state.presentation.gameoverPending = false;
+    state.presentation.gameoverRemaining = 0;
     gameoverInitialShake = 0;
     gameoverInitialFlash = 0;
     state.powerupTextTimer = 0;
@@ -764,7 +778,8 @@
     saveCurrentStageCheckpoint();
     state.shake = 0;
     state.flash = 0;
-    gameoverEffectRemaining = 0;
+    state.presentation.gameoverPending = false;
+    state.presentation.gameoverRemaining = 0;
     gameoverInitialShake = 0;
     gameoverInitialFlash = 0;
     state.ship = null;
@@ -826,9 +841,11 @@
     if (dom.finalCombo) dom.finalCombo.textContent = `×${state.bestCombo}`;
     if (dom.finalBosses) dom.finalBosses.textContent = String(state.bossesDefeated);
     show(dom.newRecord, highScore > oldHighScore);
-    gameoverEffectRemaining = CONFIG.presentation.gameoverEffectDuration;
+    state.presentation.gameoverPending = true;
+    state.presentation.gameoverRemaining = CONFIG.presentation.gameoverEffectDuration;
     gameoverInitialShake = Math.max(0, state.shake);
     gameoverInitialFlash = Math.max(0, state.flash);
+    resetTransientInput();
     setMode("gameover");
     updateUI(true);
   }
@@ -1254,9 +1271,15 @@
       CONFIG.mobileControls.aimCurve,
       CONFIG.mobileControls.aimMaxOutput
     );
+    const magnitude = Math.hypot(response.x, response.y);
+    if (magnitude > TOUCH_INPUT_EPSILON) {
+      stick.aimMode = "manual";
+      stick.autoAimElapsed = 0;
+      stick.autoAimTarget = null;
+    }
     input.touchAimX = response.x;
     input.touchAimY = response.y;
-    input.touchFire = Math.hypot(response.x, response.y) > CONFIG.mobileControls.aimFireThreshold;
+    input.touchFire = magnitude > CONFIG.mobileControls.aimFireThreshold;
   }
 
   function beginTouchStick(event) {
@@ -1276,6 +1299,9 @@
     else {
       input.touchAimX = input.touchAimY = 0;
       input.touchFire = false;
+      stick.aimMode = "pending";
+      stick.autoAimElapsed = 0;
+      stick.autoAimTarget = null;
     }
     placeTouchStick(stick, event.clientX, event.clientY, bounds);
     try {
@@ -1316,6 +1342,9 @@
     else {
       input.touchAimX = input.touchAimY = 0;
       input.touchFire = false;
+      stick.aimMode = "idle";
+      stick.autoAimElapsed = 0;
+      stick.autoAimTarget = null;
     }
   }
 
@@ -1359,13 +1388,22 @@
     input.pointerFire = false;
   }
 
-  global.addEventListener("resize", () => {
+  function handleViewportResize() {
     renderer.resize();
     if (state.combatField.active) resizeCombatField();
     if (state.arena.active) resizeArena();
     updateOrientationState();
-  });
-  global.addEventListener("orientationchange", updateOrientationState);
+  }
+
+  function handleOrientationChange() {
+    clearTouchSticks();
+    input.pointerFire = false;
+    handleViewportResize();
+  }
+
+  global.addEventListener("resize", handleViewportResize);
+  global.visualViewport?.addEventListener("resize", handleViewportResize);
+  global.addEventListener("orientationchange", handleOrientationChange);
   global.addEventListener("pointerdown", noteTouchInteraction, { capture: true, passive: true });
   global.addEventListener("pointermove", (event) => {
     if (event.pointerType === "touch" && !handledTouchMoves.has(event)) updateTouchStick(event);
@@ -1601,7 +1639,49 @@
     return length > 1 ? { x: x / length, y: y / length } : { x, y };
   }
 
-  function readAim(ship) {
+  function bossHasLivingNodes() {
+    const nodes = state.boss && state.boss.nodes;
+    if (!nodes) return false;
+    for (const node of nodes) if (!node.dead && Number(node.health) > 0) return true;
+    return false;
+  }
+
+  function touchAutoAimEligible(target) {
+    if (!target || target.dead || !Number.isFinite(Number(target.x)) || !Number.isFinite(Number(target.y)) ||
+        !Number.isFinite(Number(target.health)) || Number(target.health) <= 0) return false;
+    return target !== state.boss || !bossHasLivingNodes();
+  }
+
+  function touchAutoAimTargetValid(target) {
+    if (!target || target.dead || !Number.isFinite(Number(target.x)) || !Number.isFinite(Number(target.y)) ||
+        !Number.isFinite(Number(target.health)) || Number(target.health) <= 0) return false;
+    if (state.asteroids.includes(target) || state.aliens.includes(target)) return true;
+    if (!state.boss || state.boss.dead) return false;
+    if (target === state.boss) return touchAutoAimEligible(target);
+    return Boolean(state.boss.nodes && state.boss.nodes.includes(target));
+  }
+
+  function updateTouchAutoAim(dt, ship) {
+    const stick = touchSticks.aim;
+    if (stick.activeId === null || stick.aimMode === "idle" || stick.aimMode === "manual") return null;
+    if (stick.aimMode === "pending") {
+      const delay = Math.max(0, Number(CONFIG.mobileControls.autoAimHoldSeconds) || 0);
+      stick.autoAimElapsed = Math.min(delay, stick.autoAimElapsed + dt);
+      if (stick.autoAimElapsed < delay) return null;
+      stick.aimMode = "auto";
+    }
+    if (!touchAutoAimTargetValid(stick.autoAimTarget)) {
+      stick.autoAimTarget = nearestTarget(
+        ship.x,
+        ship.y,
+        Number.POSITIVE_INFINITY,
+        touchAutoAimEligible
+      );
+    }
+    return touchAutoAimTargetValid(stick.autoAimTarget) ? stick.autoAimTarget : null;
+  }
+
+  function readAim(ship, autoAimTarget) {
     const touchAimOwned = !touchCapable || touchSticks.aim.activeId !== null;
     const touchLength = touchAimOwned ? Math.hypot(input.touchAimX, input.touchAimY) : 0;
     if (touchLength > TOUCH_INPUT_EPSILON) {
@@ -1623,14 +1703,25 @@
       state.aimWorld.y = input.pointerY - renderer.height / 2 + state.camera.y;
       return Math.atan2(state.aimWorld.y - ship.y, state.aimWorld.x - ship.x);
     }
+    if (autoAimTarget) {
+      state.aimWorld.x = autoAimTarget.x;
+      state.aimWorld.y = autoAimTarget.y;
+      return Math.atan2(autoAimTarget.y - ship.y, autoAimTarget.x - ship.x);
+    }
     state.aimWorld.x = ship.x + Math.cos(ship.angle) * 400;
     state.aimWorld.y = ship.y + Math.sin(ship.angle) * 400;
     return ship.angle;
   }
 
-  function shouldFire() {
+  function nonTouchManualAimActive() {
+    const x = (input.keys.l ? 1 : 0) - (input.keys.j ? 1 : 0) + input.gamepadAimX;
+    const y = (input.keys.k ? 1 : 0) - (input.keys.i ? 1 : 0) + input.gamepadAimY;
+    return Math.hypot(x, y) > 0.14 || input.pointerActive;
+  }
+
+  function shouldFire(autoAimTarget) {
     const touchFire = touchSticks.aim.activeId !== null && input.touchFire;
-    return Boolean(input.keys.space || input.pointerFire || touchFire || input.gamepadFire);
+    return Boolean(input.keys.space || input.pointerFire || touchFire || autoAimTarget || input.gamepadFire);
   }
 
   function constrainShipToCombatField(ship) {
@@ -1703,11 +1794,16 @@
   function updateShip(dt) {
     const ship = state.ship;
     const move = readMovement();
-    const aim = readAim(ship);
+    const autoAimTarget = updateTouchAutoAim(dt, ship);
     const touchAimMagnitude = touchSticks.aim.activeId !== null || !touchCapable ?
       Math.hypot(input.touchAimX, input.touchAimY) : 0;
-    if (touchAimMagnitude > TOUCH_INPUT_EPSILON) {
-      const turnScale = clamp(touchAimMagnitude / Math.max(TOUCH_INPUT_EPSILON, CONFIG.mobileControls.aimMaxOutput), 0, 1);
+    const appliedAutoAimTarget = autoAimTarget && touchAimMagnitude <= TOUCH_INPUT_EPSILON && !nonTouchManualAimActive()
+      ? autoAimTarget
+      : null;
+    const aim = readAim(ship, appliedAutoAimTarget);
+    if (touchAimMagnitude > TOUCH_INPUT_EPSILON || appliedAutoAimTarget) {
+      const turnScale = appliedAutoAimTarget ? 1 :
+        clamp(touchAimMagnitude / Math.max(TOUCH_INPUT_EPSILON, CONFIG.mobileControls.aimMaxOutput), 0, 1);
       const maximumTurn = CONFIG.mobileControls.aimTurnRate * turnScale * dt;
       const turn = clamp(Core.angleDelta(ship.angle, aim), -maximumTurn, maximumTurn);
       ship.angle += turn;
@@ -1759,7 +1855,7 @@
       state.aimWorld.x = ship.x + Math.cos(ship.angle) * 400;
       state.aimWorld.y = ship.y + Math.sin(ship.angle) * 400;
     }
-    if (shouldFire()) fireModules(dt);
+    if (shouldFire(appliedAutoAimTarget)) fireModules(dt);
     else tickWeaponTimers(dt);
     updateDrones(dt);
     updateOrbitBlades(dt);
@@ -2575,14 +2671,16 @@
     }
   }
 
-  function clearCombatWorld() {
+  function clearCombatWorld(preservePresentation) {
     for (const name of THREAT_ARRAYS) state[name].length = 0;
     state.playerBullets.length = 0;
     state.enemyBullets.length = 0;
     state.mines.length = 0;
     state.pickups.length = 0;
-    state.effects.length = 0;
-    state.floaters.length = 0;
+    if (!preservePresentation) {
+      state.effects.length = 0;
+      state.floaters.length = 0;
+    }
     if (state.ship) {
       state.ship.drones.length = 0;
       state.ship.orbitBlades.length = 0;
@@ -2610,15 +2708,18 @@
     directionY /= directionLength;
     const anchorX = ship.x - state.camera.x;
     const anchorY = ship.y - state.camera.y;
-    clearCombatWorld();
+    const clearDuration = Math.max(0, Number(CONFIG.cinematic.clearHoldSeconds) || 0);
+    clearCombatWorld(true);
     resetTransientInput();
     state.boss = null;
     state.arena.active = false;
     state.arena.locked = false;
     state.arena.warning = 0;
-    state.combatField.active = false;
     state.cinematic = {
       active: true,
+      phase: "clear",
+      clearElapsed: 0,
+      clearDuration,
       elapsed: 0,
       duration: CONFIG.cinematic.duration,
       progress: 0,
@@ -2636,14 +2737,15 @@
       fromSector: state.sector,
       toSector: nextSector
     };
-    ship.invulnerable = Math.max(ship.invulnerable, CONFIG.cinematic.duration + CONFIG.cinematic.exitInvulnerability);
-    ship.vx = directionX * state.cinematic.speed;
-    ship.vy = directionY * state.cinematic.speed;
+    ship.invulnerable = Math.max(ship.invulnerable,
+      clearDuration + CONFIG.cinematic.duration + CONFIG.cinematic.exitInvulnerability);
+    ship.vx = 0;
+    ship.vy = 0;
     ship.angle = Math.atan2(directionY, directionX);
     ship.dashTime = 0;
-    ship.engine = 1.6;
+    ship.engine = 0;
     setMode("transition");
-    announce(message || "Stage clear", Math.min(1.45, CONFIG.cinematic.duration));
+    announce(message || "Stage clear", Math.max(0.5, clearDuration));
   }
 
   function finishEncounter(message) {
@@ -2699,18 +2801,54 @@
     cinematic.entryX = shipX;
     cinematic.entryY = shipY;
     state.cinematic.active = false;
+    state.cinematic.phase = "idle";
     state.cinematic.progress = 1;
     resetTransientInput();
     setMode("playing");
     beginEncounter();
   }
 
+  function beginCinematicTravel() {
+    const cinematic = state.cinematic;
+    const ship = state.ship;
+    clearCombatWorld();
+    resetTransientInput();
+    state.boss = null;
+    state.arena.active = false;
+    state.arena.locked = false;
+    state.arena.warning = 0;
+    state.combatField.active = false;
+    cinematic.phase = "travel";
+    cinematic.elapsed = 0;
+    cinematic.progress = 0;
+    ship.vx = cinematic.directionX * cinematic.speed;
+    ship.vy = cinematic.directionY * cinematic.speed;
+    ship.angle = Math.atan2(cinematic.directionY, cinematic.directionX);
+    ship.dashTime = 0;
+    ship.engine = 1.6;
+    ship.invulnerable = Math.max(ship.invulnerable,
+      cinematic.duration + CONFIG.cinematic.exitInvulnerability);
+  }
+
   function updateCinematic(dt) {
     const cinematic = state.cinematic;
     if (!cinematic.active) return;
+    const ship = state.ship;
+    if (cinematic.phase === "clear") {
+      cinematic.clearElapsed = Math.min(cinematic.clearDuration, cinematic.clearElapsed + dt);
+      ship.vx = 0;
+      ship.vy = 0;
+      ship.engine = 0;
+      ship.dashTime = 0;
+      ship.invulnerable = Math.max(ship.invulnerable,
+        cinematic.clearDuration - cinematic.clearElapsed + cinematic.duration + CONFIG.cinematic.exitInvulnerability);
+      updatePresentationEffects(dt, true);
+      cleanupPresentationEffects(true);
+      if (cinematic.clearElapsed >= cinematic.clearDuration) beginCinematicTravel();
+      return;
+    }
     cinematic.elapsed = Math.min(cinematic.duration, cinematic.elapsed + dt);
     cinematic.progress = clamp(cinematic.elapsed / Math.max(CONFIG.world.fixedStep, cinematic.duration), 0, 1);
-    const ship = state.ship;
     ship.vx = cinematic.directionX * cinematic.speed;
     ship.vy = cinematic.directionY * cinematic.speed;
     ship.x += ship.vx * dt;
@@ -3622,11 +3760,11 @@
     }
   }
 
-  function nearestTarget(x, y, range) {
+  function nearestTarget(x, y, range, eligible) {
     let best = null;
     let bestSquared = range * range;
     const consider = (target) => {
-      if (!target || target.dead) return;
+      if (!target || target.dead || (eligible && !eligible(target))) return;
       const squared = distanceSquared(x, y, target.x, target.y);
       if (squared < bestSquared) {
         best = target;
@@ -4078,6 +4216,7 @@
     if (ship.hull <= 0) {
       ship.hull = 0;
       burst(ship.x, ship.y, "#ffffff", settings.reducedEffects ? 34 : 80, 2.4);
+      audio.explode(true);
       endRun();
     }
     return true;
@@ -4564,7 +4703,7 @@
     });
   }
 
-  function updateEffects(dt) {
+  function updatePresentationEffects(dt, includeFloaters) {
     for (const effect of state.effects) {
       effect.x += effect.vx * dt;
       effect.y += effect.vy * dt;
@@ -4577,12 +4716,27 @@
       }
       if (effect.life <= 0) effect.dead = true;
     }
-    for (const floater of state.floaters) {
-      floater.x += floater.vx * dt;
-      floater.y += floater.vy * dt;
-      floater.life -= dt;
-      if (floater.life <= 0) floater.dead = true;
+    if (includeFloaters) {
+      for (const floater of state.floaters) {
+        floater.x += floater.vx * dt;
+        floater.y += floater.vy * dt;
+        floater.life -= dt;
+        if (floater.life <= 0) floater.dead = true;
+      }
     }
+  }
+
+  function cleanupPresentationEffects(includeFloaters) {
+    Core.cleanupCapped(state.effects, (item) => !item.dead && Number.isFinite(item.x) && Number.isFinite(item.y),
+      settings.reducedEffects ? CONFIG.caps.reducedParticles : CONFIG.caps.particles);
+    if (includeFloaters) {
+      Core.cleanupCapped(state.floaters, (item) => !item.dead && Number.isFinite(item.x) && Number.isFinite(item.y),
+        CONFIG.caps.floaters);
+    }
+  }
+
+  function updateEffects(dt) {
+    updatePresentationEffects(dt, true);
     for (const pickup of state.pickups) {
       pickup.x += pickup.vx * dt;
       pickup.y += pickup.vy * dt;
@@ -4905,7 +5059,9 @@
   function objectiveText() {
     const data = state.encounterData;
     if (!data) return "Stand by";
-    if (state.mode === "transition" && state.cinematic.active) return `Transit ${Math.round(state.cinematic.progress * 100)}%`;
+    if (state.mode === "transition" && state.cinematic.active) {
+      return state.cinematic.phase === "travel" ? `Transit ${Math.round(state.cinematic.progress * 100)}%` : "Stage clear";
+    }
     if (data.spec.bossType) {
       if (state.arena.warning > 0) return `Capital ship arrives in ${state.arena.warning.toFixed(1)}s`;
       if (data.bossDefeated) return `Clear remaining threats · ${encounterThreatsRemaining()}`;
@@ -5066,6 +5222,7 @@
         lastDeathCause: state.encounterData.lastDeathCause
       } : null,
       cinematic: { ...state.cinematic },
+      presentation: { ...state.presentation },
       enigma: {
         phase: state.upgradeDraft.phase,
         elapsed: state.upgradeDraft.elapsed,
@@ -5124,6 +5281,9 @@
     campaignProgressEligible = false;
     if (!state.ship) resetRun();
     state.cinematic.active = false;
+    state.cinematic.phase = "idle";
+    state.presentation.gameoverPending = false;
+    state.presentation.gameoverRemaining = 0;
     setMode("playing");
     state.sector = clamp(Math.floor(Number(sector) || state.sector || 1), 1, 999);
     state.encounter = clamp(Math.floor(Number(stage) || 1), 1, CONFIG.sector.encountersPerSector);
@@ -5184,6 +5344,10 @@
       get aimPointerId() { return touchSticks.aim.activeId; },
       get moveOrigin() { return { x: touchSticks.move.originX, y: touchSticks.move.originY }; },
       get aimOrigin() { return { x: touchSticks.aim.originX, y: touchSticks.aim.originY }; },
+      get aimMode() { return touchSticks.aim.aimMode; },
+      get autoAimElapsed() { return touchSticks.aim.autoAimElapsed; },
+      get autoAimTarget() { return touchSticks.aim.autoAimTarget; },
+      get autoAimTargetId() { return touchSticks.aim.autoAimTarget && touchSticks.aim.autoAimTarget.id || null; },
       clearTouchSticks,
       updateOrientationState
     })
@@ -5191,15 +5355,20 @@
   ND.game = debugApi;
 
   function updateGameoverPresentation(dt) {
-    if (state.mode !== "gameover" || gameoverEffectRemaining <= 0) return;
+    if (state.mode !== "gameover" || !state.presentation.gameoverPending) return;
     const duration = Math.max(CONFIG.world.fixedStep, CONFIG.presentation.gameoverEffectDuration);
-    gameoverEffectRemaining = Math.max(0, gameoverEffectRemaining - dt);
-    const ratio = gameoverEffectRemaining / duration;
+    state.presentation.gameoverRemaining = Math.max(0, state.presentation.gameoverRemaining - dt);
+    updatePresentationEffects(dt, false);
+    cleanupPresentationEffects(false);
+    const ratio = state.presentation.gameoverRemaining / duration;
     state.shake = gameoverInitialShake * ratio;
     state.flash = gameoverInitialFlash * ratio;
-    if (gameoverEffectRemaining === 0) {
+    if (state.presentation.gameoverRemaining === 0) {
+      state.presentation.gameoverPending = false;
       state.shake = 0;
       state.flash = 0;
+      syncModePresentation();
+      focusPrimaryModeAction("gameover");
     }
   }
 
@@ -5238,7 +5407,7 @@
       accumulator = 0;
       if (state.mode === "gameover") updateGameoverPresentation(frameDelta);
     }
-    renderer.render(state, seconds);
+    renderer.render(state, seconds, input.pointerActive);
     renderUpgradeChoicePreviews(seconds);
     global.requestAnimationFrame(frame);
   }

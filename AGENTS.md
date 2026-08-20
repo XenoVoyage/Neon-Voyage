@@ -34,6 +34,7 @@ Use `CONTRIBUTING.md` as the short public entrypoint, not as a substitute for th
 - Keep the restrictive Content Security Policy and repository-local relative resources.
 - Use a fixed time step with bounded catch-up. Every collection and repeating effect needs a real enforced cap and deterministic cleanup.
 - Preserve keyboard, mouse, touch, and gamepad access; dialog focus, live status, reduced effects, and pause behavior are product requirements.
+- Size the Canvas simulation and DPR-scaled backing store from the live `#game-shell` layout box. Browser viewport metrics may differ from that box when mobile browser chrome changes; do not make `window.innerHeight` a second layout owner or write inline Canvas CSS dimensions from renderer state.
 
 ## 4. Code quality
 
@@ -65,11 +66,13 @@ Put new logic in the file that already owns its responsibility. Generalize only 
 
 - The twenty-stage journey is finite and config-driven, with authored boss encounters at Stages 10 and 20. Do not hardcode stage-specific behavior that the stage and wave data can express.
 - A stage clears only after its authored spawns, pending/requeued threats, required objectives, descendants, optional hazards, carrier children, and boss escorts are gone.
-- Hyperspace is finite, locks gameplay input, cleans old combat state, and preserves the ship's screen anchor and travel direction.
+- A completed stage first enters a finite, input-locked clear presentation that may advance only bounded final effects. It then enters the existing finite hyperspace sequence, cleans old combat state, and preserves the ship's screen anchor and travel direction.
 - Asteroids are ballistic hazards. Asteroid pairs bounce without damaging one another; genuine asteroid-to-alien impacts remain reward-free.
 - Split trees and hard-cull requeues preserve objective ownership and finite state. They must never duplicate, drop, or silently resolve a threat.
 - Campaign checkpoints store bounded weapon loadouts for earned stages, not live battlefield state. Continue starts a fresh Sector 1 field; New Game confirms before replacing campaign progress.
-- Touch sticks are independent, radial, dynamically placed with bounded floating follow, and pointer-ID owned. Every terminal, capture-loss, visibility, pause, orientation, or page-lifecycle path must return input to neutral without timing out a deliberate stationary hold.
+- Touch sticks are independent, radial, dynamically placed with bounded floating follow, and pointer-ID owned. A stationary right-stick hold may acquire the nearest actionable threat only after its configured delay; any manual deflection latches manual aim for that entire gesture, and live command-ship nodes keep their damage-reduced body out of touch auto-aim eligibility. Every terminal, capture-loss, visibility, pause, orientation, or page-lifecycle path must return input to neutral and clear auto-aim ownership without timing out a deliberate stationary hold.
+- The aiming reticle belongs to active mouse or pen pointer aim. Touch input must not expose a cursor target, and a later pointer move on a hybrid device may restore it.
+- Lethal damage makes the run terminal immediately. Combat, input, rewards, and random progression stay frozen while only bounded death effects finish; the game-over dialog and focus appear after that finite presentation.
 - Automatic spawns account for full radii, field containment, nearby threats, and safe contact time. Unsafe spawns remain pending instead of being forced or discarded.
 
 See `docs/GAME_DESIGN.md` for product intent and `tests/README.md` for the stable verification map. Exact tuning belongs only in `js/config.js`.

@@ -92,6 +92,25 @@ function advanceEnigmaToChoice(game, CONFIG) {
   assert.equal(game.snapshot().enigma.phase, "choosing");
 }
 
+function advanceTouchAutoAim(game, CONFIG) {
+  const limit = Math.ceil(CONFIG.mobileControls.autoAimHoldSeconds / CONFIG.world.fixedStep) + 2;
+  for (let frame = 0; frame < limit && game.mobile.aimMode !== "auto"; frame += 1) {
+    game.step(CONFIG.world.fixedStep);
+  }
+  assert.equal(game.mobile.aimMode, "auto", "stationary aim did not activate after its configured hold");
+}
+
+function clearTouchTestBattlefield(game) {
+  for (const name of ["asteroids", "aliens", "playerBullets", "enemyBullets", "mines", "pickups", "effects", "floaters"]) {
+    game.state[name].length = 0;
+  }
+  game.state.boss = null;
+  game.state.ship.vx = 0;
+  game.state.ship.vy = 0;
+  game.state.ship.weaponTimers.pulse = 0;
+  game.input.pointerActive = false;
+}
+
 module.exports = function register(test) {
   test("mobile stick response is radial, symmetric, bounded, and configuration-driven", () => {
     const { browser, game, CONFIG } = bootMobile();
@@ -106,7 +125,8 @@ module.exports = function register(test) {
         aimCurve: 1.25,
         aimMaxOutput: 1,
         aimFireThreshold: 0.12,
-        aimTurnRate: 7.2
+        aimTurnRate: 7.2,
+        autoAimHoldSeconds: 0.1
       }
     );
 
@@ -331,6 +351,202 @@ module.exports = function register(test) {
     const heading = game.state.ship.angle;
     game.step(CONFIG.world.fixedStep);
     approximately(game.state.ship.angle, heading, 1e-9, "released hybrid touch aim snapped back to mouse");
+
+    browser.emit(browser.elements.get("game"), "pointermove", {
+      pointerId: 2,
+      pointerType: "mouse",
+      clientX: 640,
+      clientY: 180
+    });
+    assert.equal(game.input.pointerActive, true, "later mouse aim did not restore the pointer-only reticle intent");
+  });
+
+  test("fresh hybrid pointer aim overrides a stationary touch lock without inheriting auto fire", () => {
+    const { browser, game, CONFIG } = bootMobile({ maxTouchPoints: 5 });
+    const canvas = browser.elements.get("game");
+    game.start();
+    clearTouchTestBattlefield(game);
+    const target = game.spawnAsteroid("rock", {
+      x: -320, y: 0, velocityAngle: 0, speed: 0, health: 500,
+      required: false, noDrops: true, collisionGrace: Infinity
+    });
+    rawPointer(browser, canvas, "pointerdown", 23, 700, 200);
+    advanceTouchAutoAim(game, CONFIG);
+    assert.equal(game.mobile.autoAimTarget, target);
+
+    game.state.playerBullets.length = 0;
+    game.state.ship.weaponTimers.pulse = 0;
+    browser.emit(canvas, "pointermove", {
+      pointerId: 2,
+      pointerType: "mouse",
+      clientX: 820,
+      clientY: 195
+    });
+    assert.equal(game.input.pointerActive, true);
+    game.step(CONFIG.world.fixedStep);
+
+    const pointerHeading = Math.atan2(
+      game.state.aimWorld.y - game.state.ship.y,
+      game.state.aimWorld.x - game.state.ship.x
+    );
+    approximately(game.state.ship.angle, pointerHeading, 1e-9,
+      "active pointer aim yielded to the stationary touch target");
+    assert.equal(game.state.playerBullets.length, 0,
+      "stationary touch auto fire leaked into active manual pointer aim");
+    assert.equal(game.mobile.autoAimTarget, target, "manual pointer aim discarded the bounded touch lock");
+    rawPointer(browser, browser.window, "pointerup", 23, 700, 200);
+  });
+
+  test("stationary touch aim waits, then turns and fires at the deterministic nearest threat", () => {
+    const { browser, game, CONFIG, Core } = bootMobile();
+    const canvas = browser.elements.get("game");
+    game.start();
+    clearTouchTestBattlefield(game);
+    game.state.ship.angle = Math.PI / 2;
+    const asteroid = game.spawnAsteroid("rock", {
+      x: 240, y: 0, velocityAngle: 0, speed: 0, health: 500,
+      required: false, noDrops: true, collisionGrace: Infinity
+    });
+    const alien = game.spawnAlien("scout", {
+      x: -240, y: 0, health: 500, required: false, noDrops: true
+    });
+    alien.speed = 0;
+    alien.vx = alien.vy = 0;
+    alien.cooldown = Infinity;
+
+    rawPointer(browser, canvas, "pointerdown", 301, 700, 200);
+    let elapsed = 0;
+    while (elapsed + CONFIG.world.fixedStep < CONFIG.mobileControls.autoAimHoldSeconds - 1e-9) {
+      game.step(CONFIG.world.fixedStep);
+      elapsed += CONFIG.world.fixedStep;
+    }
+    assert.equal(game.mobile.aimMode, "pending");
+    assert.equal(game.mobile.autoAimTarget, null);
+    assert.equal(game.state.playerBullets.length, 0, "stationary touch fired before the configured delay");
+    approximately(game.state.ship.angle, Math.PI / 2, 1e-9, "pending touch changed heading");
+
+    const previousAngle = game.state.ship.angle;
+    advanceTouchAutoAim(game, CONFIG);
+    assert.equal(game.mobile.autoAimTarget, asteroid,
+      "equal-distance insertion order did not prefer the asteroid scan before the alien scan");
+    assert.equal(game.input.touchFire, false, "derived auto fire polluted manual touch intent");
+    const turn = Math.abs(Core.angleDelta(previousAngle, game.state.ship.angle));
+    assert.ok(turn > 0 && turn <= CONFIG.mobileControls.aimTurnRate * CONFIG.world.fixedStep + 1e-9,
+      "stationary auto aim snapped or failed to turn");
+    assert.ok(game.state.playerBullets.length > 0, "stationary auto aim did not use the existing fire cadence");
+    rawPointer(browser, browser.window, "pointerup", 301, 700, 200);
+    assert.equal(game.mobile.aimMode, "idle");
+  });
+
+  test("stationary touch aim waits for a target, keeps its lock, and reacquires after culling", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    game.start();
+    clearTouchTestBattlefield(game);
+    game.state.ship.angle = 0.4;
+    rawPointer(browser, canvas, "pointerdown", 302, 700, 200);
+    advanceTouchAutoAim(game, CONFIG);
+    assert.equal(game.mobile.autoAimTarget, null);
+    assert.equal(game.state.playerBullets.length, 0, "targetless stationary hold fired");
+    approximately(game.state.ship.angle, 0.4, 1e-9, "targetless stationary hold changed heading");
+
+    const locked = game.spawnAsteroid("rock", {
+      x: 270, y: 0, velocityAngle: 0, speed: 0, health: 500,
+      required: false, noDrops: true, collisionGrace: Infinity
+    });
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(game.mobile.autoAimTarget, locked, "a later threat was not acquired");
+    const closer = game.spawnAsteroid("crystal", {
+      x: 120, y: 0, velocityAngle: 0, speed: 0, health: 500,
+      required: false, noDrops: true, collisionGrace: Infinity
+    });
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(game.mobile.autoAimTarget, locked, "a new closer threat caused target jitter");
+    locked.dead = true;
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(game.mobile.autoAimTarget, closer, "dead/hard-culled target was not reacquired");
+    rawPointer(browser, browser.window, "pointercancel", 302, 700, 200);
+    assert.equal(game.mobile.autoAimTarget, null);
+  });
+
+  test("touch deadzone jitter preserves auto aim while directional movement latches manual for the gesture", () => {
+    const { browser, game, CONFIG } = bootMobile();
+    const canvas = browser.elements.get("game");
+    game.start();
+    clearTouchTestBattlefield(game);
+    const target = game.spawnAsteroid("rock", {
+      x: 250, y: 0, velocityAngle: 0, speed: 0, health: 500,
+      required: false, noDrops: true, collisionGrace: Infinity
+    });
+    const originX = 700;
+    const originY = 200;
+    rawPointer(browser, canvas, "pointerdown", 303, originX, originY);
+    rawPointer(browser, canvas, "pointermove", 303, originX + CONFIG.mobileControls.stickRadius * 0.1, originY);
+    advanceTouchAutoAim(game, CONFIG);
+    assert.equal(game.mobile.autoAimTarget, target);
+    assert.equal(game.mobile.aimMode, "auto", "deadzone jitter cancelled stationary auto aim");
+
+    rawPointer(browser, canvas, "pointermove", 303, originX, originY - CONFIG.mobileControls.stickRadius * 0.5);
+    assert.equal(game.mobile.aimMode, "manual");
+    assert.equal(game.mobile.autoAimTarget, null, "manual takeover retained the automatic target");
+    rawPointer(browser, canvas, "pointermove", 303, originX, originY);
+    assert.equal(game.input.touchAimX, 0);
+    assert.equal(game.input.touchAimY, 0);
+    assert.equal(game.input.touchFire, false);
+    for (let frame = 0; frame < 20; frame += 1) game.step(CONFIG.world.fixedStep);
+    assert.equal(game.mobile.aimMode, "manual", "centering a manual gesture reactivated auto aim");
+    assert.equal(game.mobile.autoAimTarget, null);
+    rawPointer(browser, browser.window, "pointerup", 303, originX, originY);
+  });
+
+  test("touch auto aim selects live boss nodes before an eligible command-ship body", () => {
+    for (const [stage, type, pointerId] of [[10, "harrower", 304], [20, "leviathan", 305]]) {
+      const { browser, game, CONFIG } = bootMobile();
+      const canvas = browser.elements.get("game");
+      game.start();
+      game.setStage(stage, 1);
+      game.state.arena.warning = CONFIG.world.fixedStep * 0.5;
+      game.step(CONFIG.world.fixedStep);
+      const boss = game.state.boss;
+      assert.ok(boss && boss.type === type && boss.nodes.length > 0);
+      boss.attackTimer = Infinity;
+      boss.secondaryTimer = Infinity;
+      if (boss.reflectionShield) {
+        boss.reflectionShield.phase = "active";
+        boss.reflectionShield.active = true;
+      }
+      rawPointer(browser, canvas, "pointerdown", pointerId, 700, 200);
+      advanceTouchAutoAim(game, CONFIG);
+      assert.ok(boss.nodes.includes(game.mobile.autoAimTarget),
+        `${type} automatic touch aim selected its damage-reduced body before a live node`);
+      for (const node of boss.nodes) node.health = 0;
+      game.step(CONFIG.world.fixedStep);
+      assert.equal(game.mobile.autoAimTarget, boss,
+        `${type} body did not become eligible after every node was destroyed`);
+      rawPointer(browser, browser.window, "pointerup", pointerId, 700, 200);
+    }
+  });
+
+  test("same-landscape orientation changes neutralize a pending or locked touch aim", () => {
+    for (const activate of [false, true]) {
+      const { browser, game, CONFIG } = bootMobile();
+      const canvas = browser.elements.get("game");
+      game.start();
+      clearTouchTestBattlefield(game);
+      game.spawnAsteroid("rock", {
+        x: 250, y: 0, velocityAngle: 0, speed: 0, health: 500,
+        required: false, noDrops: true, collisionGrace: Infinity
+      });
+      rawPointer(browser, canvas, "pointerdown", activate ? 307 : 306, 700, 200);
+      if (activate) advanceTouchAutoAim(game, CONFIG);
+      else assert.equal(game.mobile.aimMode, "pending");
+      browser.window.dispatchEvent({ type: "orientationchange" });
+      assert.equal(game.mobile.orientationBlocked, false);
+      assert.equal(game.mobile.aimPointerId, null);
+      assert.equal(game.mobile.aimMode, "idle");
+      assert.equal(game.mobile.autoAimTarget, null);
+      assert.equal(game.input.touchFire, false);
+    }
   });
 
   test("desktop mouse aim and fire remain independent from dynamic touch sticks", () => {

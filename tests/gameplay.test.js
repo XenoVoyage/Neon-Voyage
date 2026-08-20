@@ -1324,7 +1324,8 @@ module.exports = function register(test) {
     assert.equal(state.mode, "transition", "stage clear did not enter hyperspace");
     assert.ok(state.ship.hull > 0, "ship lost its final hull point on the stage-clear frame");
 
-    const transitionFrames = Math.ceil((CONFIG.cinematic.duration + 0.2) / CONFIG.world.fixedStep);
+    const transitionFrames = Math.ceil((CONFIG.cinematic.clearHoldSeconds + CONFIG.cinematic.duration + 0.2) /
+      CONFIG.world.fixedStep);
     for (let frame = 0; frame < transitionFrames; frame += 1) {
       game.step(CONFIG.world.fixedStep);
       assert.notEqual(state.mode, "gameover", `ship died during hyperspace frame ${frame}`);
@@ -1335,8 +1336,8 @@ module.exports = function register(test) {
     assert.equal(state.encounterData.complete, false, "Stage 2 began already complete");
   });
 
-  test("hyperspace locks movement, weapons, dash, and pulse to a finite autopilot path", () => {
-    const { game, CONFIG } = boot(575);
+  test("stage-clear hold preserves final effects before input-locked hyperspace", () => {
+    const { browser, game, CONFIG } = boot(575);
     const state = game.state;
     game.setStage(1, 1);
     clearEntities(state);
@@ -1358,8 +1359,6 @@ module.exports = function register(test) {
     state.playerBullets.push({ marker: "old" });
     state.enemyBullets.push({ marker: "old" });
     state.mines.push({ marker: "old" });
-    state.effects.push({ marker: "old" });
-    state.floaters.push({ marker: "old" });
     state.ship.drones.push({ marker: "old" });
 
     game.killThreat(looseAsteroid, "player");
@@ -1368,16 +1367,64 @@ module.exports = function register(test) {
     game.step(CONFIG.world.fixedStep);
     assert.equal(state.mode, "transition");
     assert.equal(state.cinematic.active, true);
-    for (const name of ["asteroids", "aliens", "playerBullets", "enemyBullets", "mines", "pickups", "effects", "floaters"]) {
+    assert.equal(state.cinematic.phase, "clear");
+    assert.equal(state.cinematic.elapsed, 0, "travel clock advanced during the clear hold");
+    assert.equal(state.cinematic.progress, 0, "travel progress advanced during the clear hold");
+    for (const name of ["asteroids", "aliens", "playerBullets", "enemyBullets", "mines", "pickups"]) {
       assert.equal(state[name].length, 0, `${name} survived the hyperspace cleanup`);
     }
     assert.equal(state.ship.drones.length, 0, "drones survived the hyperspace cleanup");
+    assert.ok(state.effects.length > 0, "final destruction effects were deleted before the clear hold");
+    assert.ok(state.floaters.length > 0, "final score floaters were deleted before the clear hold");
 
-    const startX = state.ship.x;
-    const startY = state.ship.y;
+    const clearX = state.ship.x;
+    const clearY = state.ship.y;
     const startPulse = state.ship.pulse;
     const directionX = state.cinematic.directionX;
     const directionY = state.cinematic.directionY;
+    const firstEffect = state.effects[0];
+    const effectLifeBeforePause = firstEffect.life;
+    game.step(CONFIG.world.fixedStep);
+    assert.ok(firstEffect.life < effectLifeBeforePause, "clear hold did not advance its bounded final effect");
+    const pausedClearElapsed = state.cinematic.clearElapsed;
+    const pausedEffectLife = firstEffect.life;
+    browser.elements.get("pause-button").click();
+    assert.equal(state.mode, "paused");
+    runSteps(game, 0.25, CONFIG.world.fixedStep);
+    assert.equal(state.cinematic.clearElapsed, pausedClearElapsed, "pause advanced the clear-hold clock");
+    assert.equal(firstEffect.life, pausedEffectLife, "pause advanced a held final effect");
+    browser.elements.get("resume-button").click();
+    assert.equal(state.mode, "transition");
+
+    const clearFrameLimit = Math.ceil((CONFIG.cinematic.clearHoldSeconds + 0.2) / CONFIG.world.fixedStep);
+    for (let frame = 0; frame < clearFrameLimit && state.cinematic.phase === "clear"; frame += 1) {
+      game.input.keys.w = true;
+      game.input.keys.space = true;
+      game.input.touchMoveX = -1;
+      game.input.touchFire = true;
+      game.input.gamepadMoveX = 1;
+      game.input.gamepadFire = true;
+      game.input.pressed.dash = true;
+      game.input.pressed.pulse = true;
+      game.step(CONFIG.world.fixedStep);
+      if (state.cinematic.phase === "clear") {
+        approximately(state.ship.x, clearX, 1e-12, "clear-hold x");
+        approximately(state.ship.y, clearY, 1e-12, "clear-hold y");
+        assert.equal(state.ship.vx, 0, "movement input changed the clear-hold path");
+        assert.equal(state.ship.vy, 0, "movement input changed the clear-hold path");
+        assert.equal(state.encounter, 1, "encounter advanced before hyperspace travel");
+        assert.equal(state.cinematic.elapsed, 0, "travel clock advanced during the clear hold");
+        assert.equal(state.playerBullets.length, 0, "fire input created a projectile during the clear hold");
+        assert.equal(state.ship.pulse, startPulse, "pulse input activated during the clear hold");
+      }
+    }
+    assert.equal(state.cinematic.phase, "travel", "finite clear hold did not hand off to hyperspace");
+    assert.equal(state.encounter, 1, "encounter advanced before hyperspace completed");
+    assert.equal(state.effects.length, 0, "final effects survived into hyperspace travel");
+    assert.equal(state.floaters.length, 0, "final floaters survived into hyperspace travel");
+
+    const startX = state.ship.x;
+    const startY = state.ship.y;
     const frames = 18;
     for (let frame = 0; frame < frames; frame += 1) {
       game.input.keys.w = true;
@@ -1405,6 +1452,16 @@ module.exports = function register(test) {
     }
 
     assert.ok(state.cinematic.progress > 0 && state.cinematic.progress < 1);
+    const pausedTravelElapsed = state.cinematic.elapsed;
+    const pausedTravelPosition = { x: state.ship.x, y: state.ship.y };
+    browser.elements.get("pause-button").click();
+    assert.equal(state.mode, "paused");
+    runSteps(game, 0.25, CONFIG.world.fixedStep);
+    assert.equal(state.cinematic.elapsed, pausedTravelElapsed, "pause advanced the hyperspace clock");
+    assert.deepEqual({ x: state.ship.x, y: state.ship.y }, pausedTravelPosition,
+      "pause advanced the hyperspace path");
+    browser.elements.get("resume-button").click();
+    assert.equal(state.mode, "transition");
     const frameLimit = Math.ceil((CONFIG.cinematic.duration + 0.2) / CONFIG.world.fixedStep);
     for (let frame = 0; frame < frameLimit && state.mode === "transition"; frame += 1) game.step(CONFIG.world.fixedStep);
     assert.equal(state.mode, "playing");
@@ -1463,7 +1520,8 @@ module.exports = function register(test) {
       const capturedAnchor = { x: anchorDuring.x, y: anchorDuring.y };
       assert.ok(Math.hypot(capturedAnchor.x - anchorBefore.x, capturedAnchor.y - anchorBefore.y) < 16, `${layout.label} capture visibly jumped before transit`);
 
-      const frameLimit = Math.ceil((CONFIG.cinematic.duration + 0.2) / CONFIG.world.fixedStep);
+      const frameLimit = Math.ceil((CONFIG.cinematic.clearHoldSeconds + CONFIG.cinematic.duration + 0.2) /
+        CONFIG.world.fixedStep);
       for (let frame = 0; frame < frameLimit && state.mode === "transition"; frame += 1) game.step(CONFIG.world.fixedStep);
       assert.equal(state.mode, "playing");
       assert.equal(state.encounter, 2 + index);
@@ -3026,7 +3084,8 @@ module.exports = function register(test) {
         approximately(during.x, before.x, 1e-7, `${context} transition anchor x`);
         approximately(during.y, before.y, 1e-7, `${context} transition anchor y`);
 
-        const frameLimit = Math.ceil((CONFIG.cinematic.duration + 0.2) / CONFIG.world.fixedStep);
+        const frameLimit = Math.ceil((CONFIG.cinematic.clearHoldSeconds + CONFIG.cinematic.duration + 0.2) /
+          CONFIG.world.fixedStep);
         for (let frame = 0; frame < frameLimit && state.mode === "transition"; frame += 1) game.step(CONFIG.world.fixedStep);
         assert.equal(state.mode, "playing", `${context} did not finish hyperspace`);
         assert.equal(state.sector, 2, `${context} did not enter Sector 2`);
