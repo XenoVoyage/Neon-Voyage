@@ -7,14 +7,14 @@ This document is the current-state handoff. It records project maturity and open
 | Area | Status |
 | --- | --- |
 | Runtime | 20-stage browser game published from protected `main` |
-| Current runtime version | `v2026.8.20d` in the source checkpoint; Pages follows successful `main` deployments |
+| Current runtime version | `v2026.8.20e` in the source checkpoint; Pages follows successful `main` deployments |
 | Hosting | Direct `file://` launch and GitHub Pages repository subpath |
 | Dependencies and build | No runtime dependencies and no build step |
 | Saved data | Unchanged local high score, preferences, schema-3 20-stage progress, and bounded stacking checkpoint loadouts |
 | Verification | Frozen-source results belong in [`AUDIT.md`](../AUDIT.md); merge, Pages, live-play, and physical-touch evidence remain separate gates |
-| Product work | Mobile viewport alignment, touch-target readability, stage/death presentation polish, progressive rewards, evolved hazards, full-field boss counterplay, and a six-subject realistic gameplay-art proof are implemented |
+| Product work | Mobile viewport alignment, touch-target readability, stage/death presentation polish, progressive rewards, evolved hazards, full-field boss counterplay, complete realistic gameplay art, and material-aware synthesized audio are implemented |
 
-The current source checkpoint replaces the rejected procedural geometry pilot with a ground-up realistic raster proof for six representative subjects: player interceptor, common asteroid, alien Scout, starting projectile, compact impact, and shield pickup. The proof changes presentation only; gameplay, collisions, saved data, accessibility, deterministic bounds, security, and offline operation remain unchanged. Every other visual family retains its established renderer until hands-on gameplay acceptance supports expansion. [`AUDIT.md`](../AUDIT.md) owns frozen automated source evidence; GitHub records and hands-on browser sessions separately own merge, deployment, live-play, visual-quality, and physical-device evidence.
+The current source checkpoint extends the accepted six-subject direction across every physical gameplay family: all asteroid variants, alien classes, bosses and nodes, player/hostile projectiles, mines, pickups, drones, blades, impacts, and destruction bursts. The pass changes presentation only; gameplay, collisions, saved data, accessibility, deterministic bounds, security, and offline operation remain unchanged. Directional cast/drop shadows are excluded from rotating sprites; self-shading and owner-attached emission provide depth without creating a false fixed light direction. [`AUDIT.md`](../AUDIT.md) owns frozen automated source evidence; GitHub records and hands-on browser sessions separately own merge, deployment, live-play, visual-quality, audio-quality, and physical-device evidence.
 
 ## Implemented product
 
@@ -28,7 +28,8 @@ The current source checkpoint replaces the rejected procedural geometry pilot wi
 - The Harrower and Leviathan both use the normal responsive rectangular battlefield with subtle edge cues. The Leviathan retains its node-dependent reflector that weakens direct body shots and returns configured hostile projectiles while nodes live.
 - The Canvas renderer derives its CSS-space dimensions from the actual `#game-shell` layout box and uses device-pixel ratio only for its bounded backing store. Mobile browser-toolbar changes therefore resize the combat field and its top/bottom cues with the surrounding responsive shell.
 - The cyan/magenta aim reticle appears only for active mouse or pen pointer aim. Touch input hides it; a later pointer move can restore it on a hybrid device without changing mouse, keyboard, or gamepad control.
-- Six local transparent WebPs provide the realistic gameplay-art proof for the player interceptor, common `rock`, alien `scout`, starting `bolt`, selected compact ring impacts, and `shield` pickup. The renderer keeps existing deterministic procedural fallbacks for failed loads and all non-proof families.
+- Forty-six local transparent gameplay WebPs cover the player, every asteroid and spacecraft family, projectiles, equipment, pickups, and material effects. The renderer keeps deterministic procedural fallbacks for pending or failed loads while code-drawn telegraphs, shields, crack stages, hazard pulses, and pickup symbols preserve live-state readability.
+- Optional Web Audio now owns bounded, cooldown-limited cues for each player weapon family, alien and boss weapons, shield/hull/asteroid/alien/boss impacts, destruction scale, pickups, upgrades, Dash, Pulse, and arena events. It loads no media or network resource and retains the 24-node ceiling.
 - Clearing a stage enters a one-second locked presentation that preserves only bounded final effects and floaters before the existing unchanged 1.65-second hyperspace flight. A lethal hit makes the run terminal immediately, freezes combat and input, advances only bounded death effects for 1.2 seconds, then reveals and focuses the game-over dialog.
 - Shield reserve is visible only while charged, capped at a weaker 60 points, and consumed at 1.25 points per absorbed damage. Passive acquisition and attraction use their exact equipped-tier ranges.
 - The live HUD lists equipped permanent modules and active timed countdowns; compact touch layouts replace each long row with one pointer-transparent accessible summary chip. Late-stage and boss scenes add cached restrained nebula washes.
@@ -47,10 +48,10 @@ See [`GAME_DESIGN.md`](GAME_DESIGN.md) for intended experience and [`ARCHITECTUR
 
 ## Publication status
 
-`v2026.8.20d` is the current runtime label. A local label, changelog heading, Pages deployment, or version badge does not by itself prove that a matching immutable tag and formal GitHub Release exist; publication status must be confirmed from GitHub.
+`v2026.8.20e` is the current runtime label. A local label, changelog heading, Pages deployment, or version badge does not by itself prove that a matching immutable tag and formal GitHub Release exist; publication status must be confirmed from GitHub.
 
 Creating or backfilling a tag is an explicit publication action. Do not do it during ordinary documentation maintenance, and never move a published tag.
 
 ## Next task boundary
 
-Review the six-subject realistic raster proof in live motion on desktop and at phone/iPad landscape sizes. If its silhouette, lighting, readability, scale, transparency, and performance are accepted, author the remaining asteroid, player/alien spacecraft, projectile, particle/effect, and pickup families to the same material language in separately reviewable batches. Publishing a formal release requires an explicit owner decision for any missing immutable tag or GitHub Release action. Physical phone and iPad acceptance remains a separate unverified boundary.
+Review the complete gameplay-art and sound pass in live motion on desktop, then record hands-on phone and iPad landscape acceptance separately. Check silhouette and projectile scale, transparent edges against bright worlds, telegraph readability, effect density with reduced effects, mix clarity, and sustained performance before refreshing the two documentation captures. Publishing a formal release requires an explicit owner decision for any missing immutable tag or GitHub Release action. Physical phone and iPad acceptance remains an unverified boundary until actually observed.

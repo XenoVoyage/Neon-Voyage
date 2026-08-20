@@ -2,6 +2,18 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.20e] — 2026-08-20
+
+### Added
+
+- Completed the accepted realistic gameplay-art direction across every asteroid variant, alien class, command ship and node, projectile family, mine, pickup, drone, orbit blade, impact material, and destruction burst.
+- Added bounded locally synthesized cues for every player weapon family, hostile and boss weapons, shield/hull/asteroid/ship impacts, scaled destruction, pickups, upgrades, Dash, Pulse, and arena events.
+
+### Changed
+
+- Removed fixed cast/drop shadows from the rotating-asset direction in favor of self-shading and owner-attached emission, while preserving code-drawn telegraphs, shields, crack stages, hazard fields, pickup symbols, and targeting cues.
+- Preserved all hitboxes, balance, deterministic state, saved-data compatibility, accessibility, reduced-effects behavior, local/offline operation, restrictive security policy, and dependency-free startup.
+
 ## [v2026.8.20d] — 2026-08-20
 
 ### Added
