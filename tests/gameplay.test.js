@@ -143,7 +143,7 @@ module.exports = function register(test) {
   test("carriers use their configured child type, count, reward, and lifetime cap", () => {
     const { game, CONFIG } = boot(211);
     const state = game.state;
-    game.setStage(8, 1);
+    game.setStage(4, 1);
     clearEntities(state);
     freezeDirector(state);
     state.ship.x = 0;
@@ -169,7 +169,7 @@ module.exports = function register(test) {
   test("gunships execute a warning-active-cooldown laser FSM without projectile spam", () => {
     const { game, CONFIG } = boot(221);
     const state = game.state;
-    game.setStage(17, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     freezeDirector(state);
     state.ship.x = 0;
@@ -200,7 +200,7 @@ module.exports = function register(test) {
     game.step(CONFIG.world.fixedStep);
     approximately(
       state.ship.hull,
-      hull - pattern.damage * CONFIG.difficulty.damageScale(1, 17),
+      hull - pattern.damage * CONFIG.difficulty.damageScale(1, 6),
       1e-9,
       "gunship laser damage"
     );
@@ -218,7 +218,7 @@ module.exports = function register(test) {
   test("gunship warning locks an actionable line, active fire sweeps at its bounded authored rate, and culling restores that aim", () => {
     const { browser, game, CONFIG, Core } = boot(2211, { width: 568, height: 320 });
     const state = game.state;
-    game.setStage(17, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     freezeDirector(state);
     Object.assign(state.ship, { x: 0, y: 0, shield: 0, invulnerable: 0 });
@@ -279,7 +279,7 @@ module.exports = function register(test) {
   test("a lethal gunship beam stops later aliens from firing in the captured game-over step", () => {
     const { game, CONFIG } = boot(222);
     const state = game.state;
-    game.setStage(17, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     freezeDirector(state);
     Object.assign(state.ship, { x: 0, y: 0, hull: 1, shield: 0, invulnerable: 0 });
@@ -303,7 +303,7 @@ module.exports = function register(test) {
   test("Brood Carrier far armor, close damage, lancer children, and lifetime cap use one config", () => {
     const { game, CONFIG } = boot(231);
     const state = game.state;
-    game.setStage(18, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     freezeDirector(state);
     state.ship.x = 0;
@@ -350,7 +350,7 @@ module.exports = function register(test) {
   test("Brood Carrier lineage survives repeated hard-culls without exceeding its six-child cap", () => {
     const { browser, game, CONFIG } = boot(232, { width: 640, height: 360 });
     const state = game.state;
-    game.setStage(18, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     freezeDirector(state);
     const pattern = CONFIG.aliens.broodCarrier.pattern;
@@ -594,6 +594,54 @@ module.exports = function register(test) {
     assert.equal(data.waveRequiredCleared, data.waveRequiredTotal, "final descendant did not resolve the objective");
   });
 
+  test("crystal asteroid deaths emit bounded finite hostile shards without extending the objective", () => {
+    const { game, CONFIG } = boot(314);
+    const state = game.state;
+    game.setStage(3, 1);
+    clearEntities(state);
+    freezeDirector(state);
+    const data = state.encounterData;
+    const beforeRequired = data.waveRequiredTotal;
+    const crystal = game.spawnAsteroid("crystal", {
+      x: state.ship.x + 180,
+      y: state.ship.y,
+      speed: 0,
+      health: 1,
+      required: false,
+      noDrops: true
+    });
+    assert.equal(game.killThreat(crystal, "player"), true);
+    const shards = state.enemyBullets.filter((bullet) => bullet.kind === "crystalShard");
+    const values = CONFIG.asteroids.crystal.deathShrapnel;
+    assert.equal(shards.length, values.count);
+    assert.equal(data.waveRequiredTotal, beforeRequired, "crystal shards became objective threats");
+    for (const shard of shards) {
+      approximately(Math.hypot(shard.vx, shard.vy), values.speed, 1e-9, "crystal shard speed");
+      approximately(shard.damage, values.damage * CONFIG.difficulty.damageScale(1, 3), 1e-9, "crystal shard damage");
+      assert.equal(shard.life, values.life);
+      assert.equal(shard.radius, values.radius);
+      assert.equal(shard.source, "crystalAsteroid");
+    }
+    runSteps(game, values.life + CONFIG.world.fixedStep * 2, CONFIG.world.fixedStep);
+    assert.equal(state.enemyBullets.some((bullet) => bullet.kind === "crystalShard"), false,
+      "crystal shards outlived their finite timer");
+
+    state.enemyBullets.length = 0;
+    for (let index = 0; index < CONFIG.caps.enemyProjectiles - 3; index += 1) state.enemyBullets.push({ dead: false });
+    const cappedCrystal = game.spawnAsteroid("crystal", {
+      x: state.ship.x + 220,
+      y: state.ship.y,
+      speed: 0,
+      health: 1,
+      required: false,
+      noDrops: true
+    });
+    game.killThreat(cappedCrystal, "player");
+    assert.equal(state.enemyBullets.length, CONFIG.caps.enemyProjectiles);
+    assert.equal(state.enemyBullets.filter((bullet) => bullet.kind === "crystalShard").length, 3,
+      "crystal shrapnel ignored the shared enemy-projectile cap");
+  });
+
   test("a colossal asteroid has an exact bounded one-to-three-to-six required split tree", () => {
     const { game } = boot(351);
     const state = game.state;
@@ -681,7 +729,7 @@ module.exports = function register(test) {
   test("magnetic Auric Shards pull the ship with one aggregate cap while remaining ballistic", () => {
     const { game, CONFIG } = boot(366);
     const state = game.state;
-    game.setStage(13, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     freezeDirector(state);
     const values = CONFIG.asteroids.auricShard.variants.magnetic;
@@ -819,7 +867,7 @@ module.exports = function register(test) {
   test("Corona warning, rotating beam, off-axis safety, cadence, and death blast stay deterministic", () => {
     const { game, CONFIG } = boot(369);
     const state = game.state;
-    game.setStage(15, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     freezeDirector(state);
     const values = CONFIG.asteroids.corona.hazard;
@@ -906,7 +954,7 @@ module.exports = function register(test) {
   test("a lethal Corona trade captures earned score once and freezes later mid-step combat mutation", () => {
     const { browser, game, CONFIG } = boot(370);
     const state = game.state;
-    game.setStage(15, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     freezeDirector(state);
     Object.assign(state.ship, { x: 0, y: 0, hull: 1, shield: 0, invulnerable: 0 });
@@ -941,13 +989,12 @@ module.exports = function register(test) {
     state.playerBullets.push(bullet(993700, corona.x), bullet(993701, laterThreat.x));
 
     game.step(CONFIG.world.fixedStep);
-    const earned = Math.round(CONFIG.asteroids.corona.score * CONFIG.difficulty.scoreScale(1, 15));
-    assert.equal(earned, 598);
+    const earned = Math.round(CONFIG.asteroids.corona.score * CONFIG.difficulty.scoreScale(1, 6));
     assert.equal(state.mode, "gameover");
     assert.equal(state.score, earned, "live score changed after final-score capture");
-    assert.equal(browser.elements.get("final-score").textContent, "000598");
-    assert.equal(browser.elements.get("final-encounter").textContent, "15");
-    assert.equal(browser.elements.get("high-score").textContent, "000598");
+    assert.equal(browser.elements.get("final-score").textContent, String(earned).padStart(6, "0"));
+    assert.equal(browser.elements.get("final-encounter").textContent, "6");
+    assert.equal(browser.elements.get("high-score").textContent, String(earned).padStart(6, "0"));
     assert.equal(corona.dead, true);
     assert.equal(laterThreat.dead, false, "a later projectile mutated combat after the lethal trade");
     assert.equal(data.waveRequiredCleared, 1, "objective advanced after final-score capture");
@@ -979,7 +1026,7 @@ module.exports = function register(test) {
   test("hard-culling a required threat requeues its exact objective state", () => {
     const { browser, game, CONFIG } = boot(371, { width: 640, height: 360 });
     const state = game.state;
-    game.setStage(5, 1);
+    game.setStage(4, 1);
     clearEntities(state);
     freezeDirector(state);
     const data = state.encounterData;
@@ -1026,7 +1073,7 @@ module.exports = function register(test) {
   test("hard-culling an active Corona preserves finite hazard state and still blocks a clean wave", () => {
     const { browser, game, CONFIG } = boot(381, { width: 640, height: 360 });
     const state = game.state;
-    game.setStage(15, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     freezeDirector(state);
     const data = state.encounterData;
@@ -1067,12 +1114,7 @@ module.exports = function register(test) {
 
   test("stage APIs expose ordered finite goals and a required survivor prevents premature wave clear", () => {
     const { game, CONFIG } = boot(401);
-    const expected = [
-      "waves", "waves", "waves", "waves", "titan",
-      "waves", "waves", "waves", "waves", "boss",
-      "waves", "waves", "waves", "waves", "waves",
-      "waves", "waves", "waves", "waves", "boss"
-    ];
+    const expected = ["waves", "titan", "waves", "waves", "boss", "waves", "boss"];
     expected.forEach((goal, index) => {
       const snapshot = game.setStage(index + 1, 1);
       assert.equal(snapshot.encounter, index + 1);
@@ -1084,7 +1126,7 @@ module.exports = function register(test) {
         assert.equal(snapshot.objective.waveCount, CONFIG.sector.encounters[index].waves.length);
         assert.ok(snapshot.objective.waveRequiredTotal > 0);
       } else {
-        assert.equal(CONFIG.sector.encounters[index].bossType, index === 9 ? "harrower" : "leviathan");
+        assert.equal(CONFIG.sector.encounters[index].bossType, index === 4 ? "harrower" : "leviathan");
       }
     });
     game.setStage(1, 1);
@@ -1100,7 +1142,7 @@ module.exports = function register(test) {
   test("alien waves wait for every mixed asteroid hazard before advancing", () => {
     const { game, CONFIG } = boot(451);
     const state = game.state;
-    game.setStage(6, 1);
+    game.setStage(3, 1);
     const data = state.encounterData;
     const aliens = state.aliens.filter((entity) => !entity.dead);
     const hazards = state.asteroids.filter((entity) => !entity.dead);
@@ -1108,7 +1150,11 @@ module.exports = function register(test) {
     aliens.forEach((entity) => game.killThreat(entity, "player"));
     runSteps(game, CONFIG.combatField.interWaveSeconds + 0.2, CONFIG.world.fixedStep);
     assert.equal(data.waveNumber, 1, "wave advanced while asteroid hazards survived");
-    hazards.forEach((entity) => game.killThreat(entity, "player"));
+    let remainingHazards = state.asteroids.filter((entity) => !entity.dead);
+    while (remainingHazards.length) {
+      remainingHazards.forEach((entity) => game.killThreat(entity, "player"));
+      remainingHazards = state.asteroids.filter((entity) => !entity.dead);
+    }
     advanceToWave(game, 2, CONFIG.world.fixedStep);
     assert.ok(state.aliens.some((entity) => !entity.dead));
     assert.ok(state.asteroids.some((entity) => !entity.dead), "second alien wave omitted its asteroid pressure");
@@ -1139,7 +1185,7 @@ module.exports = function register(test) {
     assert.equal(requiredLiving(state).length, 4, "second wave spawned beyond its configured total");
   });
 
-  test("Inner Belt releases one finite deterministic surge without flooding split descendants", () => {
+  test("Titan Breach releases one finite deterministic surge without flooding split descendants", () => {
     const queuedKinds = (seed) => {
       const runtime = boot(seed, { width: 1280, height: 720 });
       runtime.game.setSeed(seed);
@@ -1147,7 +1193,7 @@ module.exports = function register(test) {
       return Array.from(living(runtime.game.state), (entity) => entity.kind)
         .concat(Array.from(runtime.game.state.encounterData.pendingSpawns, (entry) => entry.kind));
     };
-    assert.deepEqual(queuedKinds(611), queuedKinds(611), "the same seed changed the finite Belt Surge order");
+    assert.deepEqual(queuedKinds(611), queuedKinds(611), "the same seed changed the finite Titan Breach order");
 
     const { browser, game, CONFIG } = boot(611, { width: 1280, height: 720 });
     game.setSeed(611);
@@ -1180,10 +1226,10 @@ module.exports = function register(test) {
     };
 
     assert.equal(data.waveCount, 1);
-    assert.equal(data.waveRequiredTotal, 16);
-    assert.equal(browser.elements.get("objective-status").textContent, "BELT SURGE · 16 threats");
+    assert.equal(data.waveRequiredTotal, 10);
+    assert.equal(browser.elements.get("objective-status").textContent, "Destroy all threats · 10");
     assert.equal(living(state).length, release.initialBatch);
-    assert.equal(data.pendingSpawns.length, 16 - release.initialBatch);
+    assert.equal(data.pendingSpawns.length, 10 - release.initialBatch);
     assert.ok(pressure() <= release.activePressure);
     assert.equal(living(state).some((entity) => entity.kind === "colossal"), false,
       "the Colossal arrived before the opening formation");
@@ -1203,16 +1249,11 @@ module.exports = function register(test) {
 
     destroyAllLiving();
     assert.equal(releaseOneBatch(), release.batchSize);
-    assert.equal(living(state).some((entity) => entity.kind === "colossal"), false,
-      "the Colossal arrived before ten opening roots were released");
-
-    destroyAllLiving();
-    assert.equal(releaseOneBatch(), release.batchSize);
     const colossal = living(state).find((entity) => entity.kind === "colossal");
     assert.ok(colossal, "the mid-surge Colossal did not arrive");
     approximately(colossal.maxHealth,
-      CONFIG.asteroids.colossal.baseHealth * CONFIG.difficulty.healthScale(1, 2) * 0.8,
-      1e-9, "Belt Surge Colossal durability");
+      CONFIG.asteroids.colossal.baseHealth * CONFIG.difficulty.healthScale(1, 2) * 0.72,
+      1e-9, "Titan Breach Colossal durability");
     assert.ok(pressure() <= release.activePressure, "the Colossal release exceeded its bounded pressure");
     assert.ok(data.pendingSpawns.length > 0, "the Colossal incorrectly exhausted the finite reserve");
     assert.equal(data.complete, false);
@@ -1229,7 +1270,7 @@ module.exports = function register(test) {
       destroyAllLiving();
     }
     game.step(CONFIG.world.fixedStep);
-    assert.ok(maximumLiving <= 24, "the authored Belt Surge exceeded its split-pressure entity bound");
+    assert.ok(maximumLiving <= 24, "the authored Titan Breach exceeded its split-pressure entity bound");
     assert.equal(data.pendingSpawns.length, 0);
     assert.equal(data.requeue.length, 0);
     assert.equal(data.waveRequiredCleared, data.waveRequiredTotal);
@@ -1306,12 +1347,12 @@ module.exports = function register(test) {
     }
   });
 
-  test("Stages one through five safely place or defer every compact-screen opening threat", () => {
+  test("all five ordinary stages safely place or defer every compact-screen opening threat", () => {
     const viewports = [
       { width: 568, height: 320 },
       { width: 667, height: 375 }
     ];
-    const stages = [1, 2, 3, 4, 5];
+    const stages = [1, 2, 3, 4, 6];
     const seeds = 1024;
     for (const viewport of viewports) {
       const { browser, game, CONFIG, Core } = boot(12000 + viewport.width, viewport);
@@ -1360,6 +1401,8 @@ module.exports = function register(test) {
             }
           }
 
+          for (const alien of state.aliens) alien.cooldown = Infinity;
+
           for (let frame = 0; frame < Math.ceil(2 / CONFIG.world.fixedStep); frame += 1) game.step(CONFIG.world.fixedStep);
           assert.equal(state.ship.hull, 100, `${label} damaged the stationary ship during the protected opening window`);
         }
@@ -1369,32 +1412,32 @@ module.exports = function register(test) {
 
   test("mixed asteroid groups use a deterministic balanced bag instead of all-large outliers", () => {
     const { game } = boot(12055, { width: 1280, height: 720 });
-    const hazardKinds = ["rock", "crystal", "volatile", "armored"];
-    const stageFiveHazards = (seed, sector) => {
+    const hazardKinds = ["prismatic", "razor"];
+    const anomalyHazards = (seed, sector) => {
       game.setSeed(seed);
-      game.setStage(5, sector || 1);
+      game.setStage(6, sector || 1);
       return game.state.asteroids
-        .filter((asteroid) => !asteroid.dead && asteroid.required === false)
+        .filter((asteroid) => !asteroid.dead && asteroid.required && hazardKinds.includes(asteroid.kind))
         .map((asteroid) => asteroid.kind)
         .concat(game.state.encounterData.pendingSpawns
-          .filter((entry) => entry.family === "asteroid" && entry.required === false)
+          .filter((entry) => entry.family === "asteroid" && entry.required && hazardKinds.includes(entry.kind))
           .map((entry) => entry.kind));
     };
 
     for (let seed = 1; seed <= 256; seed += 1) {
-      const kinds = stageFiveHazards(seed, 1);
-      assert.equal(kinds.length, 5, `seed ${seed} lost a Stage 5 hazard root`);
+      const kinds = anomalyHazards(seed, 1);
+      assert.equal(kinds.length, 4, `seed ${seed} lost a Stage 6 anomaly root`);
       const counts = hazardKinds.map((kind) => kinds.filter((entry) => entry === kind).length);
       assert.ok(Math.max(...counts) - Math.min(...counts) <= 1,
         `seed ${seed} produced an unbalanced mixed hazard group: ${counts.join("/")}`);
     }
 
-    const first = stageFiveHazards(77, 1);
-    const second = stageFiveHazards(77, 1);
+    const first = anomalyHazards(77, 1);
+    const second = anomalyHazards(77, 1);
     assert.deepEqual(second, first, "the same seed changed balanced hazard order");
-    const capped = stageFiveHazards(77, 37);
-    assert.equal(capped.length, 8);
-    assert.deepEqual(hazardKinds.map((kind) => capped.filter((entry) => entry === kind).length), [2, 2, 2, 2]);
+    const capped = anomalyHazards(77, 37);
+    assert.equal(capped.length, 6);
+    assert.deepEqual(hazardKinds.map((kind) => capped.filter((entry) => entry === kind).length), [3, 3]);
   });
 
   test("stage clear waits for an optional asteroid, then protects a one-hull ship through hyperspace", () => {
@@ -1650,27 +1693,50 @@ module.exports = function register(test) {
   test("destroying the Titan completes its stage once every accompanying asteroid is clear", () => {
     const { game, CONFIG } = boot(590);
     const state = game.state;
-    game.setStage(5, 1);
+    game.setStage(2, 1);
     const data = state.encounterData;
-    assert.equal(data.timer, 0);
-    const titan = state.asteroids.find((entity) => !entity.dead && entity.required && entity.kind === "titan");
-    assert.ok(titan, "Titan wave did not spawn its required Titan");
-    assert.equal(data.waveRequiredTotal, 2, "Titan Gate must include its authored Auric Colossus");
+    assert.equal(data.waveRequiredTotal, 10, "Titan Breach must include ten authored roots");
+    let titan = null;
+    for (let cycle = 0; cycle < 20 && !titan; cycle += 1) {
+      let targets = living(state).filter((entity) => entity.kind !== "titan");
+      while (targets.length) {
+        targets.forEach((entity) => game.killThreat(entity, "player"));
+        targets = living(state).filter((entity) => entity.kind !== "titan");
+      }
+      titan = living(state).find((entity) => entity.kind === "titan") || null;
+      if (!titan) runSteps(game,
+        CONFIG.sector.encounters[1].waves[0].reinforcements.intervalSeconds + CONFIG.world.fixedStep * 2,
+        CONFIG.world.fixedStep);
+    }
+    assert.ok(titan, "Titan wave did not release its required Titan");
+    approximately(titan.maxHealth,
+      CONFIG.asteroids.titan.baseHealth * CONFIG.difficulty.healthScale(1, 2) * 0.68,
+      1e-9, "Titan Breach durability");
+    const escort = game.spawnAsteroid("rock", {
+      x: state.ship.x + 180,
+      y: state.ship.y,
+      speed: 0,
+      health: 10,
+      required: false,
+      noDrops: true
+    });
+    assert.ok(escort, "Titan Breach could not retain an accompanying asteroid");
     assert.equal(game.killThreat(titan, "player"), true);
     game.step(CONFIG.world.fixedStep);
     assert.equal(data.complete, false, "Titan death ignored surviving stage hazards");
-    let survivor = living(state)[0];
-    while (survivor) {
-      game.killThreat(survivor, "player");
-      survivor = living(state)[0];
+    assert.equal(escort.dead, false);
+    game.killThreat(escort, "player");
+    let optionalFragments = living(state);
+    while (optionalFragments.length) {
+      optionalFragments.forEach((entity) => game.killThreat(entity, "player"));
+      optionalFragments = living(state);
     }
     game.step(CONFIG.world.fixedStep);
-    assert.ok(data.timer <= CONFIG.world.fixedStep * 2.01, "Titan stage added a survival-time gate after cleanup");
     assert.equal(data.waveRequiredCleared, data.waveRequiredTotal);
     assert.equal(data.complete, true);
     assert.equal(state.mode, "transition", "Titan destruction did not enter hyperspace immediately");
-    assert.equal(state.cinematic.fromEncounter, 5);
-    assert.equal(state.cinematic.toEncounter, 6);
+    assert.equal(state.cinematic.fromEncounter, 2);
+    assert.equal(state.cinematic.toEncounter, 3);
   });
 
   test("Rapid Fire and Tri-Shot coexist, stack additively, and expire independently", () => {
@@ -1765,11 +1831,42 @@ module.exports = function register(test) {
       "stacking Rapid changed another temporary timer");
   });
 
+  test("Thruster Surge increases acceleration and top speed for one bounded timed effect", () => {
+    const base = boot(675);
+    const boosted = boot(675);
+    for (const runtime of [base, boosted]) {
+      runtime.game.setStage(1, 1);
+      clearEntities(runtime.game.state);
+      freezeDirector(runtime.game.state);
+      Object.assign(runtime.game.state.ship, { x: 0, y: 0, vx: 0, vy: 0 });
+      runtime.game.input.keys.d = true;
+    }
+    boosted.game.applyPickup(boosted.game.spawnPickup(0, 0, "thruster"));
+    assert.equal(boosted.game.state.ship.thrusterTimer, boosted.CONFIG.powerups.thruster.duration);
+    base.game.step(base.CONFIG.world.fixedStep);
+    boosted.game.step(boosted.CONFIG.world.fixedStep);
+    approximately(
+      boosted.game.state.ship.vx / base.game.state.ship.vx,
+      boosted.CONFIG.powerups.thruster.accelerationMultiplier,
+      1e-9,
+      "Thruster Surge acceleration multiplier"
+    );
+    runSteps(base.game, 0.7, base.CONFIG.world.fixedStep);
+    runSteps(boosted.game, 0.7, boosted.CONFIG.world.fixedStep);
+    const baseSpeed = Math.hypot(base.game.state.ship.vx, base.game.state.ship.vy);
+    const boostedSpeed = Math.hypot(boosted.game.state.ship.vx, boosted.game.state.ship.vy);
+    assert.ok(boostedSpeed > baseSpeed, "Thruster Surge did not raise sustained speed");
+    assert.ok(baseSpeed <= base.CONFIG.world.playerMaxSpeed + 1e-9);
+    assert.ok(boostedSpeed <= boosted.CONFIG.world.playerMaxSpeed * boosted.CONFIG.powerups.thruster.maxSpeedMultiplier + 1e-9);
+    assert.ok(boosted.game.state.ship.thrusterTimer > 0 &&
+      boosted.game.state.ship.thrusterTimer < boosted.CONFIG.powerups.thruster.duration);
+  });
+
   test("module upgrade is permanent for the run and remains bounded", () => {
     const { game, CONFIG } = boot(681);
     const state = game.state;
     const moduleCount = Object.keys(CONFIG.weapons.modules).length;
-    game.setStage(19, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     freezeDirector(state);
     const before = { ...state.ship.modules };
@@ -1782,6 +1879,7 @@ module.exports = function register(test) {
     runSteps(game, 30, CONFIG.world.fixedStep);
     assert.equal(state.ship.modules[selected], (before[selected] || 0) + 1, "permanent run upgrade expired over time");
 
+    state.sector = 2;
     for (let index = 0; index < moduleCount * CONFIG.weapons.maxModuleTier; index += 1) {
       state.pickups.length = 0;
       game.applyPickup(game.spawnPickup(0, 0, "module"));
@@ -1801,7 +1899,7 @@ module.exports = function register(test) {
   test("Homing Salvo and Radial Array fire autonomously, persist for the run, and respect projectile caps", () => {
     const { game, CONFIG } = boot(691);
     const state = game.state;
-    game.setStage(5, 1);
+    game.setStage(4, 1);
     clearEntities(state);
     freezeDirector(state);
     const target = game.spawnAsteroid("crystal", {
@@ -2317,7 +2415,7 @@ module.exports = function register(test) {
       const runtime = boot(seed);
       const { game, CONFIG } = runtime;
       const state = game.state;
-      game.setStage(16, 1);
+      game.setStage(6, 1);
       clearEntities(state);
       freezeDirector(state);
       state.ship.rapidTimer = CONFIG.powerups.rapid.duration * 2;
@@ -2337,6 +2435,7 @@ module.exports = function register(test) {
         required: false,
         noDrops: true
       });
+      game.setSeed(seed);
       game.input.keys.space = true;
       game.input.pointerFire = true;
       game.input.touchMoveX = 1;
@@ -2353,8 +2452,8 @@ module.exports = function register(test) {
       return runtime;
     }
 
-    const slowed = prepare(1701, true);
-    const control = prepare(1701, false);
+    const slowed = prepare(1, true);
+    const control = prepare(1, false);
     const fixedStep = slowed.CONFIG.world.fixedStep;
     const steps = Math.ceil(slowed.CONFIG.powerups.enigma.slowdownSeconds / fixedStep) + 1;
     const scales = [];
@@ -2437,7 +2536,7 @@ module.exports = function register(test) {
   test("Enigma defers overlapping pickups so an advertised permanent tier stays exact", () => {
     const { game, CONFIG } = boot(2391);
     const state = game.state;
-    game.setStage(16, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     freezeDirector(state);
     for (const id of Object.keys(state.ship.modules)) state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
@@ -2469,9 +2568,9 @@ module.exports = function register(test) {
   test("Enigma defers an in-flight boss-core reward until its advertised tier is applied", () => {
     const { game, CONFIG } = boot(2396);
     const state = game.state;
-    game.setStage(10, 1);
+    game.setStage(5, 1);
     runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
-    assert.equal(state.boss && state.boss.type, "harrower", "Harrower did not enter the Stage 10 field");
+    assert.equal(state.boss && state.boss.type, "harrower", "Harrower did not enter the Stage 5 field");
     clearEntities(state);
     for (const id of Object.keys(state.ship.modules)) state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
     state.ship.modules.homingSalvo = 0;
@@ -2527,12 +2626,12 @@ module.exports = function register(test) {
     function choices(seed, capBuild) {
       const runtime = boot(seed);
       const { game, CONFIG } = runtime;
-      game.setStage(16, 1);
+      game.setStage(6, 1);
       clearEntities(game.state);
       freezeDirector(game.state);
       if (capBuild) {
         for (const id of Object.keys(game.state.ship.modules)) game.state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
-        for (const kind of ["rapid", "triShot", "piercing", "arcBurst", "novaLance", "amplifier", "aegis"]) {
+        for (const kind of ["rapid", "triShot", "piercing", "arcBurst", "novaLance", "amplifier", "aegis", "thruster"]) {
           const timer = `${kind}Timer`;
           game.state.ship[timer] = CONFIG.powerups[kind].duration * CONFIG.powerups.temporaryStackLimit;
         }
@@ -2556,7 +2655,7 @@ module.exports = function register(test) {
   });
 
   test("Enigma drafts respect stage gates, may omit a permanent card, and always retain three distinct fallbacks", () => {
-    const stages = [1, 3, 4, 6, 11, 16];
+    const stages = [1, 2, 3, 4, 5, 6];
     for (const stage of stages) {
       let sawPermanent = false;
       let sawNoPermanent = false;
@@ -2608,7 +2707,7 @@ module.exports = function register(test) {
   test("a final-wave Enigma choice resolves before stage clear and keeps the selected upgrade", () => {
     const { game, CONFIG } = boot(2411);
     const state = game.state;
-    game.setStage(16, 1);
+    game.setStage(6, 1);
     clearEntities(state);
     const data = state.encounterData;
     data.pendingSpawns.length = 0;
@@ -2693,14 +2792,24 @@ module.exports = function register(test) {
     state.boss = boss;
     const asteroidHealth = [nearAsteroid.health, farAsteroid.health];
     const alienHealth = [nearAlien.health, farAlien.health];
+    const asteroidVelocity = [nearAsteroid.vx, nearAsteroid.vy, farAsteroid.vx, farAsteroid.vy];
+    const alienVelocity = [nearAlien.vx, nearAlien.vy, farAlien.vx, farAlien.vy];
     state.ship.pulse = 100;
 
     game.activatePulse();
 
     approximately(nearAsteroid.health, asteroidHealth[0] - CONFIG.voidPulse.asteroidDamage, 1e-9, "near asteroid pulse damage");
+    assert.ok(nearAsteroid.vx < asteroidVelocity[0], "pulse did not pull the nearby asteroid toward the ship");
+    assert.ok(Math.hypot(nearAsteroid.vx, nearAsteroid.vy) <= CONFIG.voidPulse.asteroidPullSpeedCap + 1e-9);
     assert.equal(farAsteroid.health, asteroidHealth[1], "pulse damaged an asteroid outside its radius");
+    approximately(farAsteroid.vx, asteroidVelocity[2], 1e-12, "far asteroid pulse velocity x");
+    approximately(farAsteroid.vy, asteroidVelocity[3], 1e-12, "far asteroid pulse velocity y");
     approximately(nearAlien.health, alienHealth[0] - CONFIG.voidPulse.alienDamage, 1e-9, "near alien pulse damage");
     assert.equal(farAlien.health, alienHealth[1], "pulse damaged an alien outside its radius");
+    approximately(nearAlien.vx, alienVelocity[0], 1e-12, "pulse must not pull a nearby alien on x");
+    approximately(nearAlien.vy, alienVelocity[1], 1e-12, "pulse must not pull a nearby alien on y");
+    approximately(farAlien.vx, alienVelocity[2], 1e-12, "far alien pulse velocity x");
+    approximately(farAlien.vy, alienVelocity[3], 1e-12, "far alien pulse velocity y");
     assert.equal(nearBullet.dead, true);
     assert.equal(farBullet.dead, false);
     assert.equal(nearMine.dead, true);
@@ -2715,8 +2824,8 @@ module.exports = function register(test) {
     assert.ok(CONFIG.voidPulse.radius < 0.5 * Math.hypot(1280, 720), "pulse retained a screen-wide radius");
   });
 
-  test("natural pickup pools follow stage gates while each drop band owns its slower pity cadence", () => {
-    const samples = [1, 2, 3, 4, 6, 8, 9, 11, 16];
+  test("natural pickup pools follow seven-stage gates while each drop band owns its frequent pity cadence", () => {
+    const samples = [1, 2, 3, 4, 5, 6, 7];
     const definitions = {
       shield: "shield",
       rapid: "rapid",
@@ -2727,6 +2836,7 @@ module.exports = function register(test) {
       novaLance: "novaLance",
       amplifier: "amplifier",
       aegis: "aegis",
+      thruster: "thruster",
       pulseCharge: "pulseCharge",
       enigma: "enigma"
     };
@@ -2775,7 +2885,7 @@ module.exports = function register(test) {
   });
 
   test("module caches obey unlock stages and drop-band tier caps while Sector 2 exposes Mk V", () => {
-    for (const stage of [1, 3, 4, 6, 11, 16]) {
+    for (const stage of [1, 2, 3, 4, 5, 6, 7]) {
       const { game, CONFIG } = boot(7100 + stage);
       game.setStage(stage, 1);
       clearEntities(game.state);
@@ -2885,7 +2995,7 @@ module.exports = function register(test) {
   test("boss stages use the normal rectangular field for extreme positions and dash velocity", () => {
     const { game, CONFIG } = boot(901);
     const state = game.state;
-    game.setStage(10, 1);
+    game.setStage(5, 1);
     state.arena.active = true;
     state.arena.locked = true;
     state.arena.warning = 0;
@@ -2902,7 +3012,7 @@ module.exports = function register(test) {
 
   test("both bosses reuse the responsive normal combat field", () => {
     for (const layout of [{ width: 1280, height: 720 }, { width: 568, height: 320 }, { width: 1024, height: 768 }]) {
-      for (const stage of [10, 20]) {
+      for (const stage of [5, 7]) {
         const { browser, game, CONFIG } = boot(9000 + stage + layout.width, layout);
         const state = game.state;
         game.setStage(stage, 1);
@@ -2951,7 +3061,7 @@ module.exports = function register(test) {
       { width: 1280, height: 720, label: "desktop" }
     ];
     for (const [layoutIndex, layout] of layouts.entries()) {
-      for (const stage of [10, 20]) {
+      for (const stage of [5, 7]) {
         const { game, CONFIG } = boot(9019 + layoutIndex * 30 + stage, layout);
         const state = game.state;
         game.setStage(stage, 1);
@@ -2988,7 +3098,7 @@ module.exports = function register(test) {
   test("Leviathan reflects only direct body bullets while live nodes govern shield damage and HUD weakness", () => {
     const { browser, game, CONFIG } = boot(9020);
     const state = game.state;
-    game.setStage(20, 1);
+    game.setStage(7, 1);
     runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
     const boss = state.boss;
     assert.ok(boss && boss.type === "leviathan");
@@ -3036,7 +3146,7 @@ module.exports = function register(test) {
     const reflected = state.enemyBullets.find((bullet) => bullet.kind === "reflected");
     assert.ok(reflected, "active Leviathan did not reflect a direct body bullet");
     assert.equal(reflected.sourceBoss, "leviathan");
-    approximately(reflected.damage, values.damage * CONFIG.difficulty.damageScale(1, 20), 1e-9,
+    approximately(reflected.damage, values.damage * CONFIG.difficulty.damageScale(1, 7), 1e-9,
       "reflected bullet damage");
     assert.equal(reflected.life, values.life);
     approximately(Math.hypot(reflected.vx, reflected.vy), values.speed, 1e-9, "reflected bullet speed");
@@ -3083,13 +3193,13 @@ module.exports = function register(test) {
   });
 
   test("both authored bosses wait for every surviving field escort before hyperspace", () => {
-    for (const [stage, bossType] of [[10, "harrower"], [20, "leviathan"]]) {
+    for (const [stage, bossType] of [[5, "harrower"], [7, "leviathan"]]) {
       const { game, CONFIG } = boot(875 + stage);
       const state = game.state;
       game.setStage(stage, 1);
       runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
       assert.equal(state.boss && state.boss.type, bossType, `${bossType} did not enter its authored field`);
-      const escort = game.spawnAlien(stage === 20 ? "lancer" : "scout", {
+      const escort = game.spawnAlien(stage === 7 ? "lancer" : "scout", {
         x: state.ship.x + 120,
         y: state.ship.y,
         health: 30,
@@ -3119,7 +3229,7 @@ module.exports = function register(test) {
     const tolerance = 1;
 
     for (const [layoutIndex, layout] of layouts.entries()) {
-      for (const stage of [10, 20]) {
+      for (const stage of [5, 7]) {
         const { browser, game, CONFIG } = boot(951 + layoutIndex * 30 + stage, layout);
         const state = game.state;
         game.setStage(stage, 1);
@@ -3177,7 +3287,7 @@ module.exports = function register(test) {
       for (const [edgeIndex, [edgeX, edgeY]] of edges.entries()) {
         const { browser, game, CONFIG } = boot(980 + layoutIndex * 10 + edgeIndex, layout);
         const state = game.state;
-        game.setStage(20, 1);
+        game.setStage(7, 1);
         clearEntities(state);
         state.arena.warning = CONFIG.world.fixedStep * 0.5;
         state.ship.invulnerable = 1e9;
@@ -3198,7 +3308,7 @@ module.exports = function register(test) {
 
         game.damageBoss(state.boss.maxHealth * 10);
         assert.equal(state.mode, "transition", `${context} did not enter hyperspace`);
-        assert.equal(state.cinematic.fromEncounter, 20);
+        assert.equal(state.cinematic.fromEncounter, 7);
         assert.equal(state.cinematic.toEncounter, 1);
         assert.equal(state.cinematic.fromSector, 1);
         assert.equal(state.cinematic.toSector, 2);
@@ -3233,7 +3343,7 @@ module.exports = function register(test) {
     }
   });
 
-  test("deterministic full-build weapon fire traverses all twenty stages, both bosses, and the sector wrap within caps", () => {
+  test("deterministic full-build weapon fire traverses all seven stages, both bosses, and the sector wrap within caps", () => {
     const { game, CONFIG } = boot(918273, { width: 1280, height: 720 });
     const state = game.state;
     const visited = new Set([state.encounter]);
@@ -3246,7 +3356,8 @@ module.exports = function register(test) {
       arcBurst: "arcBurstTimer",
       novaLance: "novaLanceTimer",
       amplifier: "amplifierTimer",
-      aegis: "aegisTimer"
+      aegis: "aegisTimer",
+      thruster: "thrusterTimer"
     })) {
       state.ship[timer] = CONFIG.powerups[kind].duration * CONFIG.powerups.temporaryStackLimit;
     }
@@ -3294,9 +3405,9 @@ module.exports = function register(test) {
       assert.ok(state.ship.drones.length <= CONFIG.caps.drones, "drones exceeded their cap during full journey");
       assert.ok(state.ship.orbitBlades.length <= 12, "Orbit Blades exceeded their runtime bound during full journey");
     }
-    assert.equal(state.sector, 2, "weapon-driven journey did not wrap after Stage 20");
+    assert.equal(state.sector, 2, "weapon-driven journey did not wrap after Stage 7");
     assert.equal(state.encounter, 1);
-    assert.deepEqual(Array.from(visited).sort((a, b) => a - b), Array.from({ length: 20 }, (_, index) => index + 1));
+    assert.deepEqual(Array.from(visited).sort((a, b) => a - b), Array.from({ length: 7 }, (_, index) => index + 1));
     assert.deepEqual(Array.from(bossTypes).sort(), ["harrower", "leviathan"]);
     assert.equal(state.bossesDefeated, 2, "both authored bosses were not defeated by weapon fire");
   });

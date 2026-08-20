@@ -151,97 +151,77 @@
     pulseCharge: "#bca4ff",
     arcBurst: "#65ffbd",
     novaLance: "#ff75ef",
-    enigma: "#c584ff"
+    enigma: "#c584ff",
+    thruster: "#72c8ff"
   });
   const PICKUP_LABELS = Object.freeze({
-    shield: "S",
-    aegis: "G",
-    rapid: "R",
-    amplifier: "A",
-    repair: "+",
-    module: "M",
-    triShot: "3",
-    piercing: "P",
-    pulseCharge: "E",
-    arcBurst: "A",
-    novaLance: "N",
-    enigma: "?"
+    shield: "SHIELD",
+    aegis: "AEGIS",
+    rapid: "RAPID",
+    amplifier: "AMP",
+    repair: "HULL",
+    module: "MODULE",
+    triShot: "TRI",
+    piercing: "PHASE",
+    pulseCharge: "PULSE",
+    arcBurst: "ARC",
+    novaLance: "LANCE",
+    enigma: "ENIGMA",
+    thruster: "THRUST"
   });
+  const ASTEROID_FRACTURE_PATTERNS = Object.freeze([
+    Object.freeze([
+      Object.freeze({ stage: 1, points: Object.freeze([[-0.5, -0.1], [-0.27, -0.02], [-0.1, -0.14], [0.08, -0.03]]) }),
+      Object.freeze({ stage: 2, points: Object.freeze([[-0.27, -0.02], [-0.34, 0.17], [-0.23, 0.34]]) }),
+      Object.freeze({ stage: 2, points: Object.freeze([[0.08, -0.03], [0.27, 0.08], [0.48, 0.03]]) }),
+      Object.freeze({ stage: 3, points: Object.freeze([[-0.1, -0.14], [-0.03, -0.32], [-0.12, -0.5]]) }),
+      Object.freeze({ stage: 3, points: Object.freeze([[0.27, 0.08], [0.2, 0.27], [0.32, 0.43]]) })
+    ]),
+    Object.freeze([
+      Object.freeze({ stage: 1, points: Object.freeze([[-0.38, 0.24], [-0.19, 0.08], [0.02, 0.13], [0.21, -0.01]]) }),
+      Object.freeze({ stage: 2, points: Object.freeze([[-0.19, 0.08], [-0.28, -0.09], [-0.22, -0.3]]) }),
+      Object.freeze({ stage: 2, points: Object.freeze([[0.02, 0.13], [0.11, 0.32], [0.04, 0.48]]) }),
+      Object.freeze({ stage: 3, points: Object.freeze([[0.21, -0.01], [0.39, -0.12], [0.51, -0.29]]) }),
+      Object.freeze({ stage: 3, points: Object.freeze([[-0.28, -0.09], [-0.43, -0.18], [-0.5, -0.34]]) })
+    ]),
+    Object.freeze([
+      Object.freeze({ stage: 1, points: Object.freeze([[-0.42, -0.28], [-0.2, -0.16], [-0.06, 0.02], [0.17, 0.09]]) }),
+      Object.freeze({ stage: 2, points: Object.freeze([[-0.2, -0.16], [-0.02, -0.27], [0.11, -0.43]]) }),
+      Object.freeze({ stage: 2, points: Object.freeze([[-0.06, 0.02], [-0.22, 0.17], [-0.28, 0.38]]) }),
+      Object.freeze({ stage: 3, points: Object.freeze([[0.17, 0.09], [0.35, 0.01], [0.5, 0.14]]) }),
+      Object.freeze({ stage: 3, points: Object.freeze([[-0.22, 0.17], [-0.08, 0.34], [0.1, 0.46]]) })
+    ])
+  ]);
   const SCENE_KEYFRAMES = Object.freeze([
     Object.freeze({ depth: 0.08, hue: 205, bodies: Object.freeze([
       Object.freeze({ id: "earth", type: "earth", x: 0.88, y: 0.58, size: 0.62, alpha: 0.92, hue: 205 }),
       Object.freeze({ id: "mars", type: "mars", x: 0.07, y: 0.16, size: 0.025, alpha: 0.025, hue: 18 })
     ]) }),
-    Object.freeze({ depth: 0.18, hue: 25, bodies: Object.freeze([
-      Object.freeze({ id: "earth", type: "earth", x: 0.08, y: 0.82, size: 0.14, alpha: 0.28, hue: 205 }),
-      Object.freeze({ id: "mars", type: "mars", x: 0.8, y: 0.25, size: 0.27, alpha: 0.72, hue: 18 })
+    Object.freeze({ depth: 0.38, hue: 34, bodies: Object.freeze([
+      Object.freeze({ id: "mars", type: "mars", x: 0.9, y: 0.18, size: 0.12, alpha: 0.24, hue: 18 }),
+      Object.freeze({ id: "titan-gate", type: "titan-world", x: 0.15, y: 0.62, size: 0.54, alpha: 0.8, hue: 36 })
     ]) }),
-    Object.freeze({ depth: 0.32, hue: 238, bodies: Object.freeze([
-      Object.freeze({ id: "earth", type: "earth", x: 0.015, y: 0.9, size: 0.052, alpha: 0.1, hue: 205 }),
-      Object.freeze({ id: "mars", type: "mars", x: 0.965, y: 0.1, size: 0.072, alpha: 0.16, hue: 18 })
+    Object.freeze({ depth: 0.68, hue: 144, bodies: Object.freeze([
+      Object.freeze({ id: "signal-world", type: "signal-world", x: 0.82, y: 0.3, size: 0.38, alpha: 0.7, hue: 142 }),
+      Object.freeze({ id: "frontier-scout", type: "frontier-world", x: 0.08, y: 0.8, size: 0.12, alpha: 0.24, hue: 184 })
     ]) }),
-    Object.freeze({ depth: 0.47, hue: 174, bodies: Object.freeze([
-      Object.freeze({ id: "frontier", type: "frontier-world", x: 0.82, y: 0.72, size: 0.33, alpha: 0.64, hue: 174 })
+    Object.freeze({ depth: 0.96, hue: 286, bodies: Object.freeze([
+      Object.freeze({ id: "shattered-world", type: "shard-world", x: 0.12, y: 0.7, size: 0.34, alpha: 0.65, hue: 304 }),
+      Object.freeze({ id: "raid-world", type: "fleet-world", x: 0.84, y: 0.26, size: 0.28, alpha: 0.5, hue: 256 })
     ]) }),
-    Object.freeze({ depth: 0.6, hue: 36, bodies: Object.freeze([
-      Object.freeze({ id: "titan-gate", type: "titan-world", x: 0.16, y: 0.33, size: 0.5, alpha: 0.76, hue: 36 })
+    Object.freeze({ depth: 1.24, hue: 340, bodies: Object.freeze([
+      Object.freeze({ id: "harrower-world", type: "command-world", x: 0.54, y: 0.18, size: 0.43, alpha: 0.82, hue: 344 }),
+      Object.freeze({ id: "harrower-fleet", type: "fleet-world", x: 0.06, y: 0.82, size: 0.14, alpha: 0.25, hue: 256 })
     ]) }),
-    Object.freeze({ depth: 0.71, hue: 142, bodies: Object.freeze([
-      Object.freeze({ id: "signal-moon", type: "signal-world", x: 0.84, y: 0.22, size: 0.22, alpha: 0.58, hue: 142 })
-    ]) }),
-    Object.freeze({ depth: 0.8, hue: 304, bodies: Object.freeze([
-      Object.freeze({ id: "shard-world", type: "shard-world", x: 0.12, y: 0.76, size: 0.31, alpha: 0.66, hue: 304 })
-    ]) }),
-    Object.freeze({ depth: 0.9, hue: 256, bodies: Object.freeze([
-      Object.freeze({ id: "fleet-world", type: "fleet-world", x: 0.74, y: 0.63, size: 0.46, alpha: 0.72, hue: 256 })
-    ]) }),
-    Object.freeze({ depth: 0.96, hue: 285, bodies: Object.freeze([
-      Object.freeze({ id: "command-screen", type: "fleet-world", x: 0.18, y: 0.28, size: 0.33, alpha: 0.6, hue: 277 }),
-      Object.freeze({ id: "command-beacon", type: "shard-world", x: 0.9, y: 0.76, size: 0.16, alpha: 0.34, hue: 318 })
-    ]) }),
-    Object.freeze({ depth: 1, hue: 344, bodies: Object.freeze([
-      Object.freeze({ id: "harrower-world", type: "command-world", x: 0.52, y: 0.16, size: 0.39, alpha: 0.82, hue: 344 })
-    ]) }),
-    Object.freeze({ depth: 1.08, hue: 32, bodies: Object.freeze([
-      Object.freeze({ id: "ion-remnant", type: "titan-world", x: 0.08, y: 0.72, size: 0.24, alpha: 0.42, hue: 28 }),
-      Object.freeze({ id: "ion-moon", type: "frontier-world", x: 0.82, y: 0.18, size: 0.1, alpha: 0.2, hue: 202 })
-    ]) }),
-    Object.freeze({ depth: 1.16, hue: 292, bodies: Object.freeze([
-      Object.freeze({ id: "prism-primary", type: "shard-world", x: 0.86, y: 0.48, size: 0.51, alpha: 0.72, hue: 298 }),
-      Object.freeze({ id: "prism-secondary", type: "signal-world", x: 0.12, y: 0.16, size: 0.12, alpha: 0.26, hue: 166 })
-    ]) }),
-    Object.freeze({ depth: 1.24, hue: 226, bodies: Object.freeze([
-      Object.freeze({ id: "gravity-anchor", type: "command-world", x: 0.06, y: 0.28, size: 0.22, alpha: 0.36, hue: 222 }),
-      Object.freeze({ id: "gravity-shear", type: "frontier-world", x: 0.88, y: 0.82, size: 0.31, alpha: 0.48, hue: 184 })
-    ]) }),
-    Object.freeze({ depth: 1.32, hue: 168, bodies: Object.freeze([
-      Object.freeze({ id: "halo-core", type: "frontier-world", x: 0.54, y: 0.24, size: 0.38, alpha: 0.58, hue: 166 }),
-      Object.freeze({ id: "halo-shard-left", type: "shard-world", x: 0.05, y: 0.82, size: 0.09, alpha: 0.19, hue: 312 }),
-      Object.freeze({ id: "halo-shard-right", type: "shard-world", x: 0.94, y: 0.68, size: 0.13, alpha: 0.24, hue: 326 })
-    ]) }),
-    Object.freeze({ depth: 1.4, hue: 118, bodies: Object.freeze([
-      Object.freeze({ id: "anomaly-crown", type: "signal-world", x: 0.48, y: 0.58, size: 0.62, alpha: 0.7, hue: 122 })
-    ]) }),
-    Object.freeze({ depth: 1.5, hue: 353, bodies: Object.freeze([
-      Object.freeze({ id: "vanguard-muster", type: "fleet-world", x: 0.14, y: 0.64, size: 0.42, alpha: 0.62, hue: 350 }),
-      Object.freeze({ id: "vanguard-signal", type: "signal-world", x: 0.84, y: 0.16, size: 0.15, alpha: 0.3, hue: 145 })
-    ]) }),
-    Object.freeze({ depth: 1.6, hue: 208, bodies: Object.freeze([
-      Object.freeze({ id: "null-bastion", type: "titan-world", x: 0.82, y: 0.3, size: 0.43, alpha: 0.66, hue: 212 }),
-      Object.freeze({ id: "null-shard", type: "shard-world", x: 0.1, y: 0.78, size: 0.18, alpha: 0.28, hue: 292 })
-    ]) }),
-    Object.freeze({ depth: 1.7, hue: 278, bodies: Object.freeze([
-      Object.freeze({ id: "siege-choir", type: "command-world", x: 0.78, y: 0.78, size: 0.3, alpha: 0.5, hue: 282 }),
-      Object.freeze({ id: "siege-fleet", type: "fleet-world", x: 0.22, y: 0.18, size: 0.24, alpha: 0.42, hue: 248 })
-    ]) }),
-    Object.freeze({ depth: 1.82, hue: 322, bodies: Object.freeze([
-      Object.freeze({ id: "sovereign-gate", type: "command-world", x: 0.92, y: 0.5, size: 0.58, alpha: 0.78, hue: 326 }),
-      Object.freeze({ id: "sovereign-guard", type: "fleet-world", x: 0.18, y: 0.7, size: 0.24, alpha: 0.4, hue: 256 })
+    Object.freeze({ depth: 1.58, hue: 178, bodies: Object.freeze([
+      Object.freeze({ id: "anomaly-frontier", type: "frontier-world", x: 0.84, y: 0.74, size: 0.34, alpha: 0.58, hue: 174 }),
+      Object.freeze({ id: "anomaly-shard", type: "shard-world", x: 0.1, y: 0.2, size: 0.2, alpha: 0.38, hue: 304 }),
+      Object.freeze({ id: "anomaly-signal", type: "signal-world", x: 0.62, y: 0.12, size: 0.1, alpha: 0.2, hue: 142 })
     ]) }),
     Object.freeze({ depth: 1.96, hue: 264, bodies: Object.freeze([
       Object.freeze({ id: "leviathan-well", type: "signal-world", x: 0.5, y: 0.18, size: 0.48, alpha: 0.72, hue: 266 }),
       Object.freeze({ id: "leviathan-remnant", type: "titan-world", x: 0.07, y: 0.9, size: 0.28, alpha: 0.38, hue: 26 }),
-      Object.freeze({ id: "leviathan-shard", type: "shard-world", x: 0.92, y: 0.82, size: 0.16, alpha: 0.3, hue: 314 })
+      Object.freeze({ id: "leviathan-command", type: "command-world", x: 0.92, y: 0.78, size: 0.17, alpha: 0.3, hue: 326 })
     ]) })
   ]);
 
@@ -428,6 +408,98 @@
     const maxHealth = Number(asteroid && asteroid.maxHealth);
     const ratio = maxHealth > 0 && Number.isFinite(health) ? clamp(health / maxHealth, 0, 1) : 1;
     return ratio < 0.25 ? 3 : ratio < 0.5 ? 2 : ratio < 0.75 ? 1 : 0;
+  }
+
+  function asteroidFracturePattern(asteroid) {
+    const id = Math.abs(Math.floor(Number(asteroid && asteroid.id) || 0));
+    return ASTEROID_FRACTURE_PATTERNS[id % ASTEROID_FRACTURE_PATTERNS.length];
+  }
+
+  function asteroidFractureColor(asteroid) {
+    const kind = asteroid && asteroid.kind;
+    if (kind === "volatile" || kind === "auricColossus" || kind === "auricShard" || kind === "corona") {
+      return "rgba(255, 193, 101, 0.72)";
+    }
+    if (kind === "crystal" || kind === "prismatic") return "rgba(184, 248, 255, 0.7)";
+    if (kind === "razor") return "rgba(185, 255, 229, 0.62)";
+    return "rgba(210, 220, 224, 0.5)";
+  }
+
+  function playerDamageStage(ship) {
+    const hull = Number(ship && ship.hull);
+    const maximum = Number(ship && ship.maxHull);
+    const ratio = maximum > 0 && Number.isFinite(hull) ? clamp(hull / maximum, 0, 1) : 1;
+    return ratio < 0.18 ? 3 : ratio < 0.35 ? 2 : ratio < 0.6 ? 1 : 0;
+  }
+
+  function pickupIdentity(kind) {
+    return Object.freeze({
+      color: PICKUP_COLORS[kind] || "#ffffff",
+      label: PICKUP_LABELS[kind] || "SIGNAL"
+    });
+  }
+
+  function tracePickupGlyph(ctx, kind) {
+    if (kind === "rapid") {
+      for (const y of [-5, 0, 5]) { ctx.moveTo(-8, y); ctx.lineTo(5, y); ctx.lineTo(2, y - 2); }
+    } else if (kind === "triShot") {
+      for (const y of [-7, 0, 7]) { ctx.moveTo(-7, 0); ctx.lineTo(7, y); }
+    } else if (kind === "piercing") {
+      ctx.moveTo(-9, 0); ctx.lineTo(9, 0); ctx.moveTo(4, -4); ctx.lineTo(9, 0); ctx.lineTo(4, 4);
+      ctx.moveTo(-2, -7); ctx.lineTo(-2, 7);
+    } else if (kind === "arcBurst") {
+      ctx.moveTo(-3, -9); ctx.lineTo(3, -2); ctx.lineTo(-1, -2); ctx.lineTo(4, 9);
+      ctx.lineTo(-6, 1); ctx.lineTo(-2, 1);
+    } else if (kind === "amplifier") {
+      ctx.moveTo(-8, 6); ctx.lineTo(-2, 0); ctx.lineTo(2, 4); ctx.lineTo(8, -5);
+      ctx.moveTo(3, -5); ctx.lineTo(8, -5); ctx.lineTo(8, 0);
+    } else if (kind === "novaLance") {
+      ctx.moveTo(-8, 0); ctx.lineTo(7, 0); ctx.moveTo(1, -5); ctx.lineTo(8, 0); ctx.lineTo(1, 5);
+      ctx.moveTo(-6, -4); ctx.lineTo(-6, 4);
+    } else if (kind === "shield") {
+      ctx.moveTo(0, -9); ctx.lineTo(7, -5); ctx.lineTo(6, 3); ctx.quadraticCurveTo(4, 7, 0, 9);
+      ctx.quadraticCurveTo(-4, 7, -6, 3); ctx.lineTo(-7, -5); ctx.closePath();
+    } else if (kind === "aegis") {
+      ctx.arc(0, 0, 8, 0, TAU);
+      ctx.moveTo(0, -5); ctx.lineTo(5, 0); ctx.lineTo(0, 5); ctx.lineTo(-5, 0); ctx.closePath();
+    } else if (kind === "repair") {
+      ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.moveTo(0, -8); ctx.lineTo(0, 8);
+    } else if (kind === "module") {
+      ctx.moveTo(-7, 5); ctx.lineTo(0, -7); ctx.lineTo(7, 5); ctx.closePath();
+      ctx.moveTo(0, -7); ctx.lineTo(0, 2);
+    } else if (kind === "pulseCharge") {
+      ctx.arc(0, 0, 8, -Math.PI * 0.35, Math.PI * 1.35);
+      ctx.moveTo(3, -3); ctx.arc(0, 0, 3, 0, TAU);
+    } else if (kind === "thruster") {
+      for (const x of [-5, 3]) { ctx.moveTo(x - 3, -7); ctx.lineTo(x + 3, 0); ctx.lineTo(x - 3, 7); }
+    } else if (kind === "enigma") {
+      ctx.moveTo(0, -9); ctx.lineTo(8, 0); ctx.lineTo(0, 9); ctx.lineTo(-8, 0); ctx.closePath();
+      ctx.moveTo(0, -3); ctx.lineTo(0, 3);
+    } else {
+      ctx.arc(0, 0, 6, 0, TAU);
+    }
+  }
+
+  function drawPickupGlyph(ctx, kind, color) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2.15;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 5;
+    ctx.beginPath();
+    tracePickupGlyph(ctx, kind);
+    ctx.stroke();
+    if (kind === "module") {
+      for (const point of [[-7, 5], [0, -7], [7, 5]]) {
+        ctx.beginPath(); ctx.arc(point[0], point[1], 1.7, 0, TAU); ctx.fill();
+      }
+    } else if (kind === "enigma") {
+      ctx.beginPath(); ctx.arc(0, 6, 1.4, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
   }
 
   function previewRandom(stage, sector) {
@@ -968,6 +1040,9 @@
     cinematicProfile,
     screenAnchor,
     asteroidCrackStage,
+    asteroidFracturePattern,
+    playerDamageStage,
+    pickupIdentity,
     assetSource,
     gameplayAssetSource,
     offscreenIndicators
@@ -1084,7 +1159,7 @@
           ? CONFIG.sector.encounters[index]
           : null;
         const bossType = encounter && encounter.bossType ? String(encounter.bossType) : "";
-        const lateStage = clamp((index - 8) / Math.max(1, SCENE_KEYFRAMES.length - 9), 0, 1);
+        const lateStage = clamp((index - 2) / Math.max(1, SCENE_KEYFRAMES.length - 3), 0, 1);
         const sceneHue = SCENE_KEYFRAMES[index].hue;
         const mirrored = index % 2 === 1;
         const base = this.ctx.createLinearGradient(
@@ -1697,6 +1772,41 @@
       if (!cinematic && ship.invulnerable > 0 && Math.floor(time * 18) % 2 === 0) ctx.globalAlpha = 0.34;
       const art = this.assets.playerInterceptor;
       const engine = cinematic ? Math.max(0.9, ship.engine || 0) : ship.engine || 0;
+      const damageStage = cinematic ? 0 : playerDamageStage(ship);
+      if (damageStage > 0) {
+        ctx.save();
+        const smokeCount = this.reduced ? 2 : 2 + damageStage;
+        for (let index = 0; index < smokeCount; index += 1) {
+          const drift = this.reduced ? index * 7 : mod(time * (10 + index * 1.5) + index * 9, 27);
+          const radius = 3.5 + index * 1.2 + damageStage * 0.7;
+          ctx.globalAlpha = clamp(0.34 - drift * 0.008, 0.1, 0.34);
+          ctx.fillStyle = index % 2 ? "#5f6871" : "#252b31";
+          ctx.beginPath();
+          ctx.arc(-19 - drift, -9 + Math.sin(time * 3.2 + index * 2.1) * 4, radius, 0, TAU);
+          ctx.fill();
+        }
+        if (damageStage >= 2) {
+          const flicker = this.reduced ? 0 : Math.sin(time * 19) * 2;
+          ctx.globalCompositeOperation = "lighter";
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = "#ff7a3d";
+          ctx.beginPath();
+          ctx.moveTo(-10, -12);
+          ctx.quadraticCurveTo(-17 - flicker, -20, -13, -27 - flicker);
+          ctx.quadraticCurveTo(-5, -20, -5, -13);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "#fff0a3";
+          ctx.globalAlpha = 0.78;
+          ctx.beginPath();
+          ctx.moveTo(-9, -13);
+          ctx.quadraticCurveTo(-12, -18, -10, -21 - flicker * 0.35);
+          ctx.quadraticCurveTo(-6, -17, -6, -13);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
       if (readyImage(art)) {
         if (engine > 0) {
           const flame = 14 + engine * 10 + (this.reduced ? 0 : Math.sin(time * 42) * 1.5);
@@ -1720,6 +1830,23 @@
         ctx.drawImage(art, -38, -25.5, 76, 51);
       } else {
         this.shipPath(1, engine, time, false);
+      }
+      if (damageStage >= 3) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = this.reduced ? 0.64 : 0.56 + Math.sin(time * 28) * 0.18;
+        ctx.strokeStyle = "#bffcff";
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(-17, 4);
+        ctx.lineTo(-7, -1);
+        ctx.lineTo(-1, 4);
+        ctx.lineTo(8, -5);
+        ctx.moveTo(-8, -12);
+        ctx.lineTo(-2, -7);
+        ctx.lineTo(5, -12);
+        ctx.stroke();
+        ctx.restore();
       }
       ctx.restore();
       if (ship.shield > 0 || ship.aegisTimer > 0) {
@@ -1876,27 +2003,31 @@
 
       const crackStage = asteroidCrackStage(asteroid);
       if (crackStage > 0) {
-        ctx.globalAlpha = 0.3 + crackStage * 0.15;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = Math.max(1, asteroid.radius * (0.014 + crackStage * 0.006));
-        const crack = asteroid.radius * 0.62;
+        const pattern = asteroidFracturePattern(asteroid);
         ctx.beginPath();
-        ctx.moveTo(-crack, -crack * 0.14);
-        ctx.lineTo(-crack * 0.15, crack * 0.08);
-        ctx.lineTo(crack * 0.18, -crack * 0.36);
-        ctx.lineTo(crack * 0.72, crack * 0.18);
-        if (crackStage >= 2) {
-          ctx.moveTo(-crack * 0.15, crack * 0.08);
-          ctx.lineTo(-crack * 0.42, crack * 0.5);
-          ctx.lineTo(-crack * 0.12, crack * 0.76);
+        for (const fracture of pattern) {
+          if (fracture.stage > crackStage) continue;
+          for (let index = 0; index < fracture.points.length; index += 1) {
+            const point = fracture.points[index];
+            const x = point[0] * asteroid.radius;
+            const y = point[1] * asteroid.radius;
+            if (index === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
         }
-        if (crackStage >= 3) {
-          ctx.moveTo(crack * 0.18, -crack * 0.36);
-          ctx.lineTo(crack * 0.02, -crack * 0.74);
-          ctx.moveTo(crack * 0.34, -crack * 0.18);
-          ctx.lineTo(crack * 0.68, -crack * 0.58);
-        }
+        ctx.globalAlpha = 0.7;
+        ctx.strokeStyle = "rgba(5, 7, 10, 0.86)";
+        ctx.lineWidth = clamp(asteroid.radius * 0.009, 1.1, 2.6);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
         ctx.stroke();
+        ctx.globalAlpha = 0.22 + crackStage * 0.08;
+        ctx.strokeStyle = asteroidFractureColor(asteroid);
+        ctx.lineWidth = clamp(asteroid.radius * 0.0035, 0.5, 1.05);
+        ctx.shadowColor = asteroidFractureColor(asteroid);
+        ctx.shadowBlur = this.reduced ? 0 : 2.5;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
       }
       if (asteroid.kind === "volatile") {
         ctx.globalAlpha = 0.85;
@@ -2368,8 +2499,9 @@
         const isRocket = !hostile && bullet.kind === "missile" && bullet.sourceModule === "homingSalvo";
         const isRadial = !hostile && bullet.kind === "radial";
         const isReflected = hostile && bullet.kind === "reflected";
+        const isCrystalShard = hostile && bullet.kind === "crystalShard";
         const projectileSpec = hostile
-          ? isReflected ? ["reflectedPlasma", 30, 12] : ["alienPlasma", 28, 11]
+          ? isCrystalShard ? ["playerPrism", 24, 10] : isReflected ? ["reflectedPlasma", 30, 12] : ["alienPlasma", 28, 11]
           : PROJECTILE_ART[bullet.kind];
         const projectileArt = projectileSpec && readyImage(this.assets[projectileSpec[0]])
           ? this.assets[projectileSpec[0]]
@@ -2381,6 +2513,25 @@
           ctx.globalCompositeOperation = "source-over";
           ctx.globalAlpha = 0.94;
           ctx.drawImage(projectileArt, -projectileSpec[1], -projectileSpec[2] / 2, projectileSpec[1], projectileSpec[2]);
+          ctx.restore();
+          continue;
+        }
+        if (isCrystalShard) {
+          ctx.save();
+          ctx.translate(point.x, point.y);
+          ctx.rotate(angle);
+          ctx.globalAlpha = 0.92;
+          ctx.fillStyle = color;
+          ctx.strokeStyle = "#e9ffff";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(8, 0);
+          ctx.lineTo(-2, -4.5);
+          ctx.lineTo(-7, 0);
+          ctx.lineTo(-2, 4.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
           ctx.restore();
           continue;
         }
@@ -2523,8 +2674,9 @@
 
     drawPickup(pickup, camera, time) {
       const point = this.worldToScreen(pickup.x, pickup.y, camera);
-      if (!this.onScreen(point.x, point.y, 24)) return;
+      if (!this.onScreen(point.x, point.y, 40)) return;
       const color = PICKUP_COLORS[pickup.kind] || "#ffffff";
+      const label = PICKUP_LABELS[pickup.kind] || "SIGNAL";
       const ctx = this.ctx;
       ctx.save();
       ctx.translate(point.x, point.y);
@@ -2535,76 +2687,56 @@
         ? this.assets.pickupChassis
         : null;
       const pickupArt = shieldArt || chassisArt;
+      const phase = Number(pickup.phase) || 0;
+      const pulse = this.reduced ? 1 : 1 + Math.sin(time * 4 + phase) * 0.045;
       if (pickupArt) {
-        const phase = Number(pickup.phase) || 0;
-        const pulse = this.reduced ? 1 : 1 + Math.sin(time * 4 + phase) * 0.045;
         const size = (shieldArt ? 42 : 40) * pulse;
         ctx.save();
         ctx.rotate(time * 0.42 + phase);
         ctx.globalAlpha = 0.96;
         ctx.drawImage(pickupArt, -size / 2, -size / 2, size, size);
         ctx.restore();
-        if (chassisArt) {
-          ctx.globalCompositeOperation = "lighter";
-          ctx.globalAlpha = 0.7;
-          ctx.fillStyle = color;
-          ctx.beginPath();
-          ctx.arc(0, 0, 5.5, 0, TAU);
-          ctx.fill();
-          ctx.globalCompositeOperation = "source-over";
-          ctx.globalAlpha = 0.98;
-          ctx.fillStyle = "#f4ffff";
-          ctx.font = "900 10px ui-sans-serif, system-ui, sans-serif";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(PICKUP_LABELS[pickup.kind] || "?", 0, 0.5);
-        }
-        ctx.restore();
-        return;
-      }
-      ctx.rotate(time * 1.25 + pickup.phase);
-      ctx.strokeStyle = color;
-      ctx.fillStyle = "rgba(6,12,25,0.9)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (let i = 0; i < 6; i += 1) {
-        const angle = i / 6 * TAU;
-        const x = Math.cos(angle) * 13;
-        const y = Math.sin(angle) * 13;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.rotate(-time * 1.25 - pickup.phase);
-      if (pickup.kind === "amplifier") {
-        ctx.fillStyle = color;
+      } else {
+        ctx.save();
+        ctx.rotate(time * 0.7 + phase);
+        ctx.strokeStyle = color;
+        ctx.fillStyle = "rgba(6,12,25,0.94)";
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(2, -8);
-        ctx.lineTo(-4, 0);
-        ctx.lineTo(0, 0);
-        ctx.lineTo(-2, 8);
-        ctx.lineTo(6, -2);
-        ctx.lineTo(2, -2);
+        for (let index = 0; index < 6; index += 1) {
+          const angle = index / 6 * TAU;
+          const x = Math.cos(angle) * 17;
+          const y = Math.sin(angle) * 17;
+          if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
         ctx.closePath();
         ctx.fill();
-      } else if (pickup.kind === "aegis") {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1.8;
-        ctx.lineJoin = "round";
-        ctx.beginPath();
-        ctx.moveTo(0, -7.5);
-        ctx.lineTo(6, -4.5);
-        ctx.lineTo(5, 2.5);
-        ctx.quadraticCurveTo(3.8, 6, 0, 8);
-        ctx.quadraticCurveTo(-3.8, 6, -5, 2.5);
-        ctx.lineTo(-6, -4.5);
-        ctx.closePath();
         ctx.stroke();
-      } else {
-        ctx.fillStyle = color;
-        ctx.font = "900 11px ui-sans-serif, system-ui, sans-serif";
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(PICKUP_LABELS[pickup.kind] || "?", 0, 0.5);
+        ctx.restore();
       }
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 0.2;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(0, 0, 12, 0, TAU);
+      ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+      drawPickupGlyph(ctx, pickup.kind, color);
+
+      const labelWidth = clamp(label.length * 5.6 + 12, 34, 58);
+      ctx.fillStyle = "rgba(2, 8, 18, 0.92)";
+      ctx.fillRect(-labelWidth / 2, 22, labelWidth, 14);
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.74;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-labelWidth / 2, 22, labelWidth, 14);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#f4ffff";
+      ctx.font = "800 8px ui-sans-serif, system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, 0, 29.2);
       ctx.restore();
     }
 

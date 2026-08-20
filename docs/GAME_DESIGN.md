@@ -21,38 +21,25 @@ Neon Voyage is a focused space-arcade expedition that begins above a familiar Ea
 3. Break asteroids, defeat spacecraft, stack field pickups, and choose among Enigma enhancements.
 4. Clear every encounter-owned threat.
 5. Travel through hyperspace to the next authored stage.
-6. Defeat the Harrower at Stage 10, break through the evolved frontier, defeat the Leviathan at Stage 20, then continue into a harder sector or return later through an earned checkpoint.
+6. Defeat the Harrower at Stage 5, survive the anomaly siege, defeat the Leviathan at Stage 7, then continue into a harder sector or return later through an earned checkpoint.
 
 ## Journey
 
 | Stage | Encounter | Purpose | Clear reward |
 | --- | --- | --- | --- |
-| 1 | Earth Orbit | Learn movement and fire against a safe opening asteroid field | — |
-| 2 | Inner Belt | Sustain one finite pressure-bounded surge, introduce crystal/volatile/armored hazards, then break a Colossal mass | — |
-| 3 | Deep Drift | Increase mixed asteroid pressure as familiar space recedes | Homing Salvo tier |
-| 4 | Shattered Frontier | Introduce Auric Colossi, mixed shard counterplay, and colossal split pressure | — |
-| 5 | Titan Gate | Break the Titan and an Auric Colossus while controlling their surrounding hazards | — |
-| 6 | First Contact | Meet alien scouts without removing the physical asteroid field | Guardian Drone tier |
-| 7 | Strike Wing | Learn telegraphed striker charges beside the scout screen | — |
-| 8 | Raid Fleet | Add bombers and bounded carrier-supported formations | — |
-| 9 | Command Screen | Break the capital ship's final pickets and carriers | Shield Reactor tier |
-| 10 | Harrower Field | Defeat the Harrower and every surviving escort | Boss-core upgrade or capped overflow |
-| 11 | Ion Graveyard | Enter the evolved anomaly arc against razor and prismatic fields | — |
-| 12 | Prism Rift | Cross refracting prismatic and volatile formations | Prism Fan tier |
-| 13 | Gravity Scar | Control dense monoliths inside a collapsing field | — |
-| 14 | Fractured Halo | Survive Auric, razor, monolith, and colossal split pressure | — |
-| 15 | Anomaly Crown | Read Corona beams while shattering an evolved Titan court | Overclock Matrix tier |
-| 16 | Vanguard Swarm | Meet advanced lancers before heavier fleet weapons arrive | — |
-| 17 | Null Phalanx | Add warning/active Gunship lasers to coordinated lancer formations | — |
-| 18 | Siege Choir | Introduce armored Brood Carriers and their bounded lancer lineage | Seeker Rack tier |
-| 19 | Sovereign Guard | Clear the Leviathan's densest mixed fleet and Corona screen | — |
-| 20 | Leviathan Field | Defeat the Leviathan and every surviving escort | Boss-core upgrade or capped overflow |
+| 1 | Earth Orbit | Learn movement and fire across two compact asteroid waves | Homing Salvo tier |
+| 2 | Titan Breach | Sustain a finite pressure-bounded belt surge, break a Colossal, then dismantle the Titan and its descendants | Tractor Field tier |
+| 3 | First Contact | Meet a lone Scout, then fight Scouts and a Striker among crystal and volatile hazards | Guardian Drone tier |
+| 4 | Shattered Front | Mix Scouts, Strikers, Bombers, Carriers, and a Gunship with Auric, Prismatic, and Razor asteroid counterplay | Radial Array tier |
+| 5 | Harrower Field | Defeat the Harrower and every surviving escort | Boss-core upgrade or capped overflow |
+| 6 | Anomaly Siege | Survive Lancers, Gunships, a Brood Carrier, Corona beams, and evolved asteroid pressure | Seeker Rack tier |
+| 7 | Leviathan Field | Defeat the Leviathan and every surviving escort | Boss-core upgrade or capped overflow |
 
-Stages 1–5 form an accessible asteroid-and-anomaly opening; ordinary alien spacecraft do not appear before Stage 6. Stage 2 is the first continuous set-piece: sixteen authored roots remain finite and visible in the objective count, six begin the encounter, small batches replenish only after live weighted pressure falls, and a single Colossal arrives after the opening formation. Its stage-owned durability keeps the denser field aimed at a compact roughly three-minute session rather than a health grind. Stages 6–9 introduce scout, striker, bomber, and carrier roles in sequence before the first command-ship battle. Stages 11–15 add evolved asteroid counterplay, while Stages 16–19 introduce lancer, Gunship, then Brood Carrier novelty before the Stage 20 boss. Authored group counts and the bounded health, damage, speed, fire-rate, and score curves increase pressure across the journey without turning any stage into endless spawning. Later sectors repeat the complete journey at the bounded final reward band and with deep-space scenery rather than returning visually to Earth.
+The expedition is deliberately compressed into seven substantial stages so each clear advances the story. Stage 2 owns ten finite asteroid roots: five open the field, later pairs release only below bounded live pressure, and the Colossal and Titan provide distinct announced set-pieces with required finite descendants. A single alien Scout appears at Stage 3 before a mixed formation closes the stage; Stage 4 combines ordinary alien roles and evolved asteroid counterplay rather than postponing first contact through a long asteroid-only arc. Stage 5 is the first command-ship battle, Stage 6 condenses the advanced fleet and anomaly vocabulary, and Stage 7 closes with the Leviathan. Authored counts and bounded health, damage, speed, fire-rate, and score curves increase pressure without endless replacement spawning. Later sectors repeat the complete journey at the bounded final reward band and with deep-space scenery rather than returning visually to Earth.
 
 ## Player systems
 
-Movement is analog where the device supports it. Aim direction persists after release so the ship does not snap to an unrelated heading. Dash provides a short repositioning burst with a cooldown. Void Pulse is a charged local defense: it protects the nearby area but is not a screen-wide clear.
+Movement is analog where the device supports it. Aim direction persists after release so the ship does not snap to an unrelated heading. Dash provides a short repositioning burst with a cooldown. Void Pulse is a charged local defense: it damages nearby threats and pulls only asteroids inward with one bounded impulse, but it neither moves alien ships nor clears the whole screen.
 
 Keyboard and mouse, gamepad, and touch share the same simulation actions. Mobile play uses landscape orientation and two independent floating sticks. The left half owns movement; the right half owns aim and automatic fire. Each enlarged stick begins under its thumb and follows only when that thumb moves beyond the configured radius, preserving analog deflection without leaving the control behind. A right-stick touch held at neutral for 0.10 seconds locks the nearest actionable asteroid, spacecraft, or exposed boss target and reacquires only when that target is gone. Any manual deflection immediately latches manual aim for the rest of that pointer gesture, so returning the thumb to center cannot unexpectedly take control back. While either command ship's nodes survive, stationary auto-aim can select those nodes or another threat but not the damage-reduced body; the Leviathan's nodes additionally govern its reflector. Manual aim remains unrestricted. Dash and Pulse occupy stable touch slots but appear and accept input only while ready. Touch ownership and any auto-aim target end through the matching terminal or a real browser lifecycle boundary, never through an inactivity timer.
 
@@ -60,7 +47,7 @@ Collecting an Enigma signal first neutralizes held input and eases the fixed-ste
 
 ## Combat and threats
 
-Asteroids are physical ballistic hazards. They separate and bounce when they hit one another instead of causing mutual destruction. Mixed-kind groups use balanced seeded orders so one repeated kind cannot dominate by chance, while late anomaly waves limit guaranteed massive roots and introduce smaller bodies alongside them. Large authored asteroids can show progressive cracks and split through explicit finite generations. An asteroid can destroy an alien through a genuine approaching impact, but environmental destruction grants no player reward.
+Asteroids are physical ballistic hazards. They separate and bounce when they hit one another instead of causing mutual destruction. Mixed-kind groups use balanced seeded orders so one repeated kind cannot dominate by chance, while late anomaly waves limit guaranteed massive roots and introduce smaller bodies alongside them. Large authored asteroids show restrained irregular branching fractures and split through explicit finite generations. Destroying a crystal asteroid emits one seeded ring of eight hostile crystal shards; each shard is a capped projectile with finite life and damage, never a stage objective or another asteroid. An asteroid can destroy an alien through a genuine approaching impact, but environmental destruction grants no player reward.
 
 An Auric Colossus owns an exact 1→3→6 split tree. Its children include explosive shards with a local 120 px death blast and magnetic shards that pull the ship only inside a 300 px field with one aggregate acceleration cap. Coronas warn before activating a rotating 520 px beam, return to a finite cooldown, and produce a separate local 160 px death blast. These hazards stay ballistic: their counterplay does not turn the asteroid family into projectile-firing spacecraft.
 
@@ -72,36 +59,35 @@ A wave is complete only when all of its configured spawns are exhausted and the 
 
 ## Weapons and progression
 
-Field pickups can repair or shield the ship, recharge Void Pulse, or temporarily enable faster, wider, piercing, arc, lance, amplified-damage, or damage-resistant play. Content opens by authored stage rather than exposing the final build in Earth Orbit. Each of the seven temporary effects lasts 24–30 seconds per pickup and owns an independent finite timer; another matching pickup adds one full duration up to four base durations.
+Field pickups can repair or shield the ship, recharge Void Pulse, or temporarily enable faster firing, wider fire, piercing, arc, lance, amplified-damage, damage-resistant, or faster-movement play. Each pickup uses a distinct semantic glyph and short readable label instead of relying on one generic chassis. Content opens by authored stage rather than exposing the final build in Earth Orbit. Each of the eight temporary effects lasts 42–48 seconds per pickup and owns an independent finite timer; another matching pickup adds one full duration up to four base durations.
 
 | Active stage band | Drop chance per eligible defeat | Pity after dry kills | Permanent tier ceiling |
 | --- | ---: | ---: | --- |
-| 1–2 | 26% | 4 | Mk I |
-| 3 | 28% | 4 | Mk II |
-| 4–5 | 29% | 4 | Mk II |
-| 6–10 | 31% | 4 | Mk III |
-| 11–15 | 34% | 3 | Mk IV |
-| 16–20 and later sectors | 38% | 3 | Mk V |
+| 1 | 44% | 3 | Mk I |
+| 2 | 48% | 2 | Mk II |
+| 3–4 | 52% | 2 | Mk III |
+| 5–6 | 56% | 2 | Mk IV |
+| 7 and later sectors | 60% | 2 | Mk V |
 
-Enigma first enters at Stage 3. Permanent Enigma-card probability rises by band, common module caches enter at Stage 4 and gain weight later, and both paths draw only from modules whose unlock stage and current band ceiling permit another tier. This makes rewards more common as pressure rises without allowing early Mk V acceleration.
+Enigma and common module caches first enter at Stage 2. Permanent Enigma-card probability rises by band, and both paths draw only from modules whose unlock stage and current band ceiling permit another tier. This makes useful rewards frequent from the Titan breach onward without allowing early Mk V acceleration.
 
 | Permanent module | Opens | Activation | Mk I → Mk V range or footprint |
 | --- | ---: | --- | --- |
 | Pulse Repeater | 1 | While firing | Player aimed |
-| Homing Salvo | 3 | Autonomous | 480 → 680 px acquisition |
-| Radial Array | 5 | Autonomous | 360 → 520 px threat acquisition |
-| Guardian Drone | 6 | Autonomous | 360 → 560 px from each drone |
-| Tractor Field | 7 | Passive | 140 → 320 px attraction |
-| Tesla Coil | 9 | Autonomous | 360 → 600 px first target; 130 → 220 px chaining |
-| Shield Reactor | 9 | Autonomous | Timed reserve recovery; no target range |
-| Orbit Blades | 11 | Autonomous | 58 → 94 px orbit radius |
-| Prism Fan | 12 | While firing | Player aimed |
-| Mine Layer | 14 | Autonomous | 280 → 440 px threat acquisition |
-| Overclock Matrix | 15 | Passive | Global equipped-weapon cadence |
-| Seeker Rack | 17 | While firing | 500 → 680 px targeting |
-| Mass Driver | 19 | While firing | Player aimed |
+| Homing Salvo | 1 | Autonomous | 480 → 680 px acquisition |
+| Radial Array | 2 | Autonomous | 360 → 520 px threat acquisition |
+| Tractor Field | 2 | Passive | 140 → 320 px attraction |
+| Guardian Drone | 3 | Autonomous | 360 → 560 px from each drone |
+| Shield Reactor | 3 | Autonomous | Timed reserve recovery; no target range |
+| Tesla Coil | 4 | Autonomous | 360 → 600 px first target; 130 → 220 px chaining |
+| Orbit Blades | 4 | Autonomous | 58 → 94 px orbit radius |
+| Prism Fan | 4 | While firing | Player aimed |
+| Mine Layer | 5 | Autonomous | 280 → 440 px threat acquisition |
+| Overclock Matrix | 5 | Passive | Global equipped-weapon cadence |
+| Seeker Rack | 6 | While firing | 500 → 680 px targeting |
+| Mass Driver | 6 | While firing | Player aimed |
 
-Only six authored milestones guarantee a module: Stage 3 Homing Salvo, Stage 6 Guardian Drone, Stage 9 Shield Reactor, Stage 12 Prism Fan, Stage 15 Overclock Matrix, and Stage 18 Seeker Rack. If a target is already at the active tier ceiling, the bounded reward rules redirect or overflow safely. Enigma cards, module caches, milestones, and boss cores all share the same catalog and tier bounds. All 13 systems cooperate within shared projectile, mine, drone, audio, and effect caps.
+Five authored milestones guarantee a module: Stage 1 Homing Salvo, Stage 2 Tractor Field, Stage 3 Guardian Drone, Stage 4 Radial Array, and Stage 6 Seeker Rack. If a target is already at the active tier ceiling, the bounded reward rules redirect or overflow safely. Enigma cards, module caches, milestones, and boss cores all share the same catalog and tier bounds. All 13 systems cooperate within shared projectile, mine, drone, audio, and effect caps.
 
 The ordinary shield pickup restores 30 points to a visible 60-point reserve. Shielding is deliberately weaker than hull: absorbing one point of incoming damage consumes 1.25 shield points. Shield Reactor recovery and Aegis mitigation remain separate systems.
 
@@ -119,7 +105,7 @@ The combat Canvas follows the actual game-shell layout rather than a competing b
 
 The cyan/magenta aim reticle is a mouse/pen pointer cue and appears only while pointer aim is active. Touch input does not show a cursor target beneath the player's finger; a real pointer move may restore it on a hybrid device. Keyboard and gamepad aiming remain unchanged.
 
-Stage completion and defeat each get a short readable beat without adding another combat path. The clear presentation holds the completed field for one second before the existing hyperspace sequence. On lethal damage, the run becomes terminal immediately and the ship-destruction effects continue alone for 1.2 seconds; the game-over dialog remains hidden and unfocused until that burst finishes. No enemies, projectiles, pickups, rewards, director state, input, or random progression advance during either frozen presentation.
+Stage completion and defeat each get a short readable beat without adding another combat path. The clear presentation holds the completed field for one second before the existing hyperspace sequence. As hull falls below configured visual thresholds, restrained deterministic smoke, attached flame, then electrical arcs communicate worsening damage without adding collision state. On lethal damage, the run becomes terminal immediately and the ship-destruction effects continue alone for 1.2 seconds; the game-over dialog remains hidden and unfocused until that burst finishes. No enemies, projectiles, pickups, rewards, director state, input, or random progression advance during either frozen presentation.
 
 Special guided rockets, radial shots, orbit blades, mines, and reflected projectiles use distinct local transparent rasters. Tesla chains, tier-accurate Tractor Field arcs, shield pulses, warning beams, crack stages, hazard fields, and pickup symbols remain restrained code-drawn overlays because they communicate live state. The Enigma chooser uses three wide cards when space permits, compacts for short landscape screens, and becomes a single column in narrow portrait layouts. Each actionable card owns a deterministic code-drawn micro-preview without adding a separate animation loop or asset. Dialog focus, full card labels, central announcements, keyboard shortcuts, and gamepad navigation preserve the same decision across input methods.
 

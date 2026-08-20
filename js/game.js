@@ -25,7 +25,7 @@
   });
   const MODULE_ORDER = Object.keys(CONFIG.weapons.modules);
   const ENCOUNTER_COUNT = CONFIG.sector.encounters.length;
-  const TEMPORARY_UPGRADE_ORDER = ["rapid", "triShot", "piercing", "arcBurst", "novaLance", "amplifier", "aegis"];
+  const TEMPORARY_UPGRADE_ORDER = ["rapid", "triShot", "piercing", "arcBurst", "novaLance", "amplifier", "aegis", "thruster"];
   const TEMPORARY_TIMER_BY_KIND = {
     rapid: "rapidTimer",
     triShot: "triShotTimer",
@@ -33,9 +33,33 @@
     arcBurst: "arcBurstTimer",
     novaLance: "novaLanceTimer",
     amplifier: "amplifierTimer",
-    aegis: "aegisTimer"
+    aegis: "aegisTimer",
+    thruster: "thrusterTimer"
   };
   const TEMP_WEAPON_TIMERS = TEMPORARY_UPGRADE_ORDER.map((kind) => TEMPORARY_TIMER_BY_KIND[kind]);
+  const SCHEMA_THREE_TEMP_WEAPON_TIMERS = Object.freeze([
+    "rapidTimer", "triShotTimer", "piercingTimer", "arcBurstTimer",
+    "novaLanceTimer", "amplifierTimer", "aegisTimer"
+  ]);
+  const SCHEMA_THREE_TEMP_WEAPON_LIMITS = Object.freeze({
+    rapidTimer: 112,
+    triShotTimer: 112,
+    piercingTimer: 104,
+    arcBurstTimer: 96,
+    novaLanceTimer: 120,
+    amplifierTimer: 112,
+    aegisTimer: 112
+  });
+  const LEGACY_STAGE_TO_CURRENT = Object.freeze([
+    0,
+    1,
+    2, 2, 2,
+    3, 3, 3,
+    4, 4,
+    5,
+    6, 6, 6, 6, 6,
+    7, 7, 7, 7, 7
+  ]);
   const TEMPORARY_KIND_BY_TIMER = Object.freeze(Object.fromEntries(
     Object.entries(TEMPORARY_TIMER_BY_KIND).map(([kind, timer]) => [timer, kind])
   ));
@@ -159,19 +183,32 @@
     return { modules, timers };
   }
 
-  function validCheckpoint(value) {
-    if (!exactKeys(value, ["modules", "timers"]) || !exactKeys(value.modules, MODULE_ORDER) ||
-        !exactKeys(value.timers, TEMP_WEAPON_TIMERS)) return false;
-    for (const id of MODULE_ORDER) {
+  function validCheckpointShape(value, moduleIds, timerIds, timerLimits) {
+    if (!exactKeys(value, ["modules", "timers"]) || !exactKeys(value.modules, moduleIds) ||
+        !exactKeys(value.timers, timerIds)) return false;
+    for (const id of moduleIds) {
       const tier = value.modules[id];
       const minimum = CONFIG.weapons.startingModules[id] || 0;
       if (!Number.isInteger(tier) || tier < minimum || tier > CONFIG.weapons.maxModuleTier) return false;
     }
-    for (const timer of TEMP_WEAPON_TIMERS) {
+    for (const timer of timerIds) {
       const remaining = value.timers[timer];
-      if (!Number.isFinite(remaining) || remaining < 0 || remaining > TEMP_WEAPON_LIMITS[timer]) return false;
+      if (!Number.isFinite(remaining) || remaining < 0 || remaining > timerLimits[timer]) return false;
     }
     return true;
+  }
+
+  function validCheckpoint(value) {
+    return validCheckpointShape(value, MODULE_ORDER, TEMP_WEAPON_TIMERS, TEMP_WEAPON_LIMITS);
+  }
+
+  function validSchemaThreeCheckpoint(value) {
+    return validCheckpointShape(
+      value,
+      MODULE_ORDER,
+      SCHEMA_THREE_TEMP_WEAPON_TIMERS,
+      SCHEMA_THREE_TEMP_WEAPON_LIMITS
+    );
   }
 
   function cloneCheckpoint(value) {
@@ -180,43 +217,40 @@
   }
 
   function validSchemaOneProgress(value) {
-    const maximum = Math.min(9, ENCOUNTER_COUNT);
     return exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage"]) && value.schema === 1 &&
-      Number.isInteger(value.maxUnlockedStage) && value.maxUnlockedStage >= 1 && value.maxUnlockedStage <= maximum &&
+      Number.isInteger(value.maxUnlockedStage) && value.maxUnlockedStage >= 1 && value.maxUnlockedStage <= 9 &&
       Number.isInteger(value.lastPlayedStage) && value.lastPlayedStage >= 1 && value.lastPlayedStage <= value.maxUnlockedStage;
   }
 
   function validSchemaTwoCheckpoint(value) {
-    if (!exactKeys(value, ["modules", "timers"]) || !exactKeys(value.modules, LEGACY_MODULE_ORDER) ||
-        !exactKeys(value.timers, LEGACY_TEMP_WEAPON_TIMERS)) return false;
-    for (const id of LEGACY_MODULE_ORDER) {
-      const tier = value.modules[id];
-      const minimum = CONFIG.weapons.startingModules[id] || 0;
-      if (!Number.isInteger(tier) || tier < minimum || tier > CONFIG.weapons.maxModuleTier) return false;
-    }
-    for (const timer of LEGACY_TEMP_WEAPON_TIMERS) {
-      const remaining = value.timers[timer];
-      if (!Number.isFinite(remaining) || remaining < 0 || remaining > LEGACY_TEMP_WEAPON_LIMITS[timer]) return false;
-    }
-    return true;
+    return validCheckpointShape(
+      value,
+      LEGACY_MODULE_ORDER,
+      LEGACY_TEMP_WEAPON_TIMERS,
+      LEGACY_TEMP_WEAPON_LIMITS
+    );
+  }
+
+  function validCheckpointProgress(value, schema, maximum, checkpointValidator) {
+    if (!exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage", "checkpoints"]) ||
+        value.schema !== schema ||
+        !Number.isInteger(value.maxUnlockedStage) || value.maxUnlockedStage < 1 || value.maxUnlockedStage > maximum ||
+        !Number.isInteger(value.lastPlayedStage) || value.lastPlayedStage < 1 ||
+        value.lastPlayedStage > value.maxUnlockedStage) return false;
+    const stageKeys = Array.from({ length: value.maxUnlockedStage }, (_, index) => String(index + 1));
+    return exactKeys(value.checkpoints, stageKeys) && Object.values(value.checkpoints).every(checkpointValidator);
   }
 
   function validSchemaTwoProgress(value) {
-    const legacyMaximum = Math.min(9, ENCOUNTER_COUNT);
-    if (!exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage", "checkpoints"]) || value.schema !== 2 ||
-        !Number.isInteger(value.maxUnlockedStage) || value.maxUnlockedStage < 1 || value.maxUnlockedStage > legacyMaximum ||
-        !Number.isInteger(value.lastPlayedStage) || value.lastPlayedStage < 1 || value.lastPlayedStage > value.maxUnlockedStage) return false;
-    const stageKeys = Array.from({ length: value.maxUnlockedStage }, (_, index) => String(index + 1));
-    return exactKeys(value.checkpoints, stageKeys) && Object.values(value.checkpoints).every(validSchemaTwoCheckpoint);
+    return validCheckpointProgress(value, 2, 9, validSchemaTwoCheckpoint);
+  }
+
+  function validSchemaThreeProgress(value) {
+    return validCheckpointProgress(value, 3, 20, validSchemaThreeCheckpoint);
   }
 
   function validProgress(value) {
-    const maximum = ENCOUNTER_COUNT;
-    if (!exactKeys(value, ["schema", "maxUnlockedStage", "lastPlayedStage", "checkpoints"]) || value.schema !== 3 ||
-        !Number.isInteger(value.maxUnlockedStage) || value.maxUnlockedStage < 1 || value.maxUnlockedStage > maximum ||
-        !Number.isInteger(value.lastPlayedStage) || value.lastPlayedStage < 1 || value.lastPlayedStage > value.maxUnlockedStage) return false;
-    const stageKeys = Array.from({ length: value.maxUnlockedStage }, (_, index) => String(index + 1));
-    return exactKeys(value.checkpoints, stageKeys) && Object.values(value.checkpoints).every(validCheckpoint);
+    return validCheckpointProgress(value, 4, ENCOUNTER_COUNT, validCheckpoint);
   }
 
   function newProgress(maxUnlockedStage, lastPlayedStage) {
@@ -225,7 +259,7 @@
     const last = clamp(Math.floor(Number(lastPlayedStage) || 1), 1, unlocked);
     const checkpoints = {};
     for (let stage = 1; stage <= unlocked; stage += 1) checkpoints[String(stage)] = baseCheckpoint();
-    return { schema: 3, maxUnlockedStage: unlocked, lastPlayedStage: last, checkpoints };
+    return { schema: 4, maxUnlockedStage: unlocked, lastPlayedStage: last, checkpoints };
   }
 
   function copyProgress(value) {
@@ -234,17 +268,51 @@
     return copy;
   }
 
-  function migrateProgress(value) {
-    if (validProgress(value)) return copyProgress(value);
-    const migrated = newProgress(value?.maxUnlockedStage, value?.lastPlayedStage);
-    if (!validSchemaTwoProgress(value)) return migrated;
-    for (const key of Object.keys(value.checkpoints)) {
-      const checkpoint = migrated.checkpoints[key];
-      const legacy = value.checkpoints[key];
-      for (const id of LEGACY_MODULE_ORDER) checkpoint.modules[id] = legacy.modules[id];
-      for (const timer of LEGACY_TEMP_WEAPON_TIMERS) checkpoint.timers[timer] = legacy.timers[timer];
+  function legacyStageToCurrent(stage) {
+    const legacyStage = clamp(Math.floor(Number(stage) || 1), 1, 20);
+    return LEGACY_STAGE_TO_CURRENT[legacyStage] || ENCOUNTER_COUNT;
+  }
+
+  function mergeLegacyCheckpoint(target, source, moduleIds, timerIds) {
+    for (const id of moduleIds) {
+      if (!Object.prototype.hasOwnProperty.call(target.modules, id)) continue;
+      target.modules[id] = Math.max(target.modules[id], Math.floor(Number(source.modules[id]) || 0));
+    }
+    for (const timer of timerIds) {
+      if (!Object.prototype.hasOwnProperty.call(target.timers, timer)) continue;
+      target.timers[timer] = Math.max(
+        target.timers[timer],
+        clamp(Number(source.timers[timer]) || 0, 0, TEMP_WEAPON_LIMITS[timer])
+      );
+    }
+  }
+
+  function migrateCheckpointProgress(value, moduleIds, timerIds) {
+    const unlocked = legacyStageToCurrent(value.maxUnlockedStage);
+    const last = clamp(legacyStageToCurrent(value.lastPlayedStage), 1, unlocked);
+    const migrated = newProgress(unlocked, last);
+    for (const key of Object.keys(value.checkpoints).sort((first, second) => Number(first) - Number(second))) {
+      const target = migrated.checkpoints[String(legacyStageToCurrent(key))];
+      mergeLegacyCheckpoint(target, value.checkpoints[key], moduleIds, timerIds);
     }
     return migrated;
+  }
+
+  function migrateProgress(value) {
+    if (validProgress(value)) return copyProgress(value);
+    if (validSchemaThreeProgress(value)) {
+      return migrateCheckpointProgress(value, MODULE_ORDER, SCHEMA_THREE_TEMP_WEAPON_TIMERS);
+    }
+    if (validSchemaTwoProgress(value)) {
+      return migrateCheckpointProgress(value, LEGACY_MODULE_ORDER, LEGACY_TEMP_WEAPON_TIMERS);
+    }
+    if (validSchemaOneProgress(value)) {
+      return newProgress(
+        legacyStageToCurrent(value.maxUnlockedStage),
+        legacyStageToCurrent(value.lastPlayedStage)
+      );
+    }
+    return newProgress(1, 1);
   }
 
   const saved = Core.safeReadJSON(null, STORAGE_KEY, {
@@ -256,9 +324,10 @@
     reducedEffects: saved.settings.reducedEffects
   };
   const savedProgress = Core.safeReadJSON(null, PROGRESS_STORAGE_KEY, null, (value) =>
-    validProgress(value) || validSchemaTwoProgress(value) || validSchemaOneProgress(value), PROGRESS_STORAGE_LIMIT);
+    validProgress(value) || validSchemaThreeProgress(value) || validSchemaTwoProgress(value) ||
+      validSchemaOneProgress(value), PROGRESS_STORAGE_LIMIT);
   const progress = migrateProgress(savedProgress);
-  if (savedProgress && savedProgress.schema !== 3) {
+  if (savedProgress && savedProgress.schema !== 4) {
     Core.safeWriteJSON(null, PROGRESS_STORAGE_KEY, progress, validProgress, PROGRESS_STORAGE_LIMIT);
   }
   let highScore = Math.floor(saved.highScore);
@@ -1837,16 +1906,22 @@
     if (state.mode !== "playing") return;
 
     if (ship.dashTime <= 0) {
-      const acceleration = CONFIG.world.playerAcceleration;
+      const thrusterActive = ship.thrusterTimer > 0;
+      const acceleration = CONFIG.world.playerAcceleration * (thrusterActive
+        ? Math.max(1, Number(CONFIG.powerups.thruster.accelerationMultiplier) || 1)
+        : 1);
+      const maximumSpeed = CONFIG.world.playerMaxSpeed * (thrusterActive
+        ? Math.max(1, Number(CONFIG.powerups.thruster.maxSpeedMultiplier) || 1)
+        : 1);
       ship.vx += move.x * acceleration * dt;
       ship.vy += move.y * acceleration * dt;
       const drag = Math.exp(-CONFIG.world.playerDrag * dt);
       ship.vx *= drag;
       ship.vy *= drag;
       const speed = Math.hypot(ship.vx, ship.vy);
-      if (speed > CONFIG.world.playerMaxSpeed) {
-        ship.vx = ship.vx / speed * CONFIG.world.playerMaxSpeed;
-        ship.vy = ship.vy / speed * CONFIG.world.playerMaxSpeed;
+      if (speed > maximumSpeed) {
+        ship.vx = ship.vx / speed * maximumSpeed;
+        ship.vy = ship.vy / speed * maximumSpeed;
       }
     }
 
@@ -2238,7 +2313,24 @@
       }
     }
     for (const asteroid of state.asteroids) {
-      if (distanceSquared(ship.x, ship.y, asteroid.x, asteroid.y) <= radiusSquared) damageThreat(asteroid, amplifiedDamage(values.asteroidDamage), null);
+      const dx = ship.x - asteroid.x;
+      const dy = ship.y - asteroid.y;
+      const squared = dx * dx + dy * dy;
+      if (squared <= radiusSquared) {
+        const distance = Math.sqrt(squared);
+        if (distance > 0.001) {
+          const proximity = 1 - clamp(distance / radius, 0, 1);
+          const impulse = values.asteroidPullImpulse * (0.45 + proximity * 0.55);
+          asteroid.vx += dx / distance * impulse;
+          asteroid.vy += dy / distance * impulse;
+          const speed = Math.hypot(asteroid.vx, asteroid.vy);
+          if (speed > values.asteroidPullSpeedCap) {
+            asteroid.vx = asteroid.vx / speed * values.asteroidPullSpeedCap;
+            asteroid.vy = asteroid.vy / speed * values.asteroidPullSpeedCap;
+          }
+        }
+        damageThreat(asteroid, amplifiedDamage(values.asteroidDamage), null);
+      }
       if (state.mode === "gameover") return;
     }
     for (const alien of state.aliens) {
@@ -3354,6 +3446,33 @@
     return bullet;
   }
 
+  function spawnAsteroidShrapnel(asteroid, values) {
+    if (!asteroid || !values) return 0;
+    const available = Math.max(0, CONFIG.caps.enemyProjectiles - state.enemyBullets.length);
+    const total = Math.min(Math.max(0, Math.floor(Number(values.count) || 0)), available);
+    if (!total) return 0;
+    const offset = rng.range(0, TAU);
+    let spawned = 0;
+    for (let index = 0; index < total; index += 1) {
+      const angle = offset + index / total * TAU;
+      const bullet = spawnEnemyBullet(
+        asteroid.x + Math.cos(angle) * Math.max(4, asteroid.radius * 0.18),
+        asteroid.y + Math.sin(angle) * Math.max(4, asteroid.radius * 0.18),
+        angle,
+        Math.max(1, Number(values.speed) || 1),
+        Math.max(0, Number(values.damage) || 0),
+        values.color || "#8ffcff",
+        Math.max(CONFIG.world.fixedStep, Number(values.life) || 1)
+      );
+      if (!bullet) break;
+      bullet.kind = "crystalShard";
+      bullet.radius = Math.max(2, Number(values.radius) || 4);
+      bullet.source = "crystalAsteroid";
+      spawned += 1;
+    }
+    return spawned;
+  }
+
   function fireEnemyAt(x, y, targetX, targetY, speed, damage, count, spread, color, source) {
     const total = Math.max(1, count || 1);
     const center = Math.atan2(targetY - y, targetX - x);
@@ -4251,6 +4370,10 @@
       const radius = Math.max(14, entity.radius * (definition.split.radiusScale || 0.42));
       spawnFragments(entity, definition.split.count, definition.split.into || "rock", radius, 135, false, entity.splitRemaining - 1);
     }
+    if (entity.kind && definition.deathShrapnel) {
+      const shardCount = spawnAsteroidShrapnel(entity, definition.deathShrapnel);
+      if (shardCount) addRing(entity.x, entity.y, definition.deathShrapnel.color || "#8ffcff", 3, 0.32, entity.radius * 1.3);
+    }
     state.stats.kills += 1;
     if (rewarded) {
       state.combo = clamp(state.combo + 1, 1, 20);
@@ -4345,6 +4468,7 @@
         ["novaLance", CONFIG.powerups.novaLance],
         ["amplifier", CONFIG.powerups.amplifier],
         ["aegis", CONFIG.powerups.aegis],
+        ["thruster", CONFIG.powerups.thruster],
         ["pulseCharge", CONFIG.powerups.pulseCharge],
         ["enigma", CONFIG.powerups.enigma]
       ].filter((item) => contentUnlocked(item[1])).map((item) => [item[0], Math.max(0, Number(item[1].weight) || 0)]);
@@ -5349,6 +5473,7 @@
         novaLanceTimer: state.ship.novaLanceTimer,
         amplifierTimer: state.ship.amplifierTimer,
         aegisTimer: state.ship.aegisTimer,
+        thrusterTimer: state.ship.thrusterTimer,
         modules: { ...state.ship.modules },
         weaponTimers: { ...state.ship.weaponTimers },
         orbitBlades: state.ship.orbitBlades.map((blade) => ({ ...blade }))

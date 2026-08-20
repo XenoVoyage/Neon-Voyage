@@ -1,6 +1,6 @@
 # Neon Voyage
 
-[![Version v2026.8.20g](https://img.shields.io/badge/version-v2026.8.20g-63f7f0)](CHANGELOG.md)
+[![Version v2026.8.21](https://img.shields.io/badge/version-v2026.8.21-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
@@ -16,7 +16,7 @@ Neon Voyage is a fast, finite-arena space shooter about leaving Earth, crossing 
 | Detail | Summary |
 | --- | --- |
 | Genre | 2D space arcade shooter |
-| Journey | Twenty stages, with command-ship battles at Stages 10 and 20 |
+| Journey | Seven stages, with command-ship battles at Stages 5 and 7 |
 | Play with | Keyboard and mouse, gamepad, or touch controls |
 | Progress | Local stage checkpoints with saved, stacking weapon loadouts |
 | Built with | HTML, CSS, JavaScript, and Canvas |
@@ -36,9 +36,9 @@ On phones and tablets, play in landscape and touch either half of the battlefiel
 
 ## The voyage
 
-Clear each battlefield, stack long-lasting temporary weapons, and grow a stage-gated catalog of 13 permanent modules through Mk V. Reward chances and tier limits rise as the voyage becomes more dangerous. **Enigma** signals slow combat to a halt and offer three compact animated enhancement cards, while six milestone clears guarantee key systems.
+Clear each battlefield, stack long-lasting temporary weapons, and grow a stage-gated catalog of 13 permanent modules through Mk V. Reward chances and tier limits rise as the voyage becomes more dangerous. **Enigma** signals slow combat to a halt and offer three compact animated enhancement cards, while five milestone clears guarantee key systems.
 
-The Inner Belt now plays as one continuous finite surge: a pre-authored reserve replenishes the field in small pressure-bounded groups before a Colossal mass breaks into smaller pieces. Auric Colossi split into explosive and magnetic shards, Coronas sweep the field with rotating beams, and advanced alien gunships and Brood Carriers demand new positioning. Every normal and boss stage occupies a larger finite field: the camera follows the interceptor through a restrained dead zone, hard borders keep encounters bounded, and clustered edge cues use the real target art to locate off-screen objectives. The Leviathan still reflects direct fire while its nodes survive. **New Game** begins again at Earth; **Continue** restores the selected checkpoint's saved weapons to a fresh battlefield.
+The voyage now reaches its full escalation in seven distinct stages. A finite Titan breach arrives at Stage 2, first contact begins at Stage 3, asteroid and alien formations mix by Stage 4, the Harrower attacks at Stage 5, and the Leviathan closes Stage 7. Crystal asteroids burst into short-lived hostile shards, the Titan and Colossal masses break through finite descendant trees, and advanced gunships and Brood Carriers demand new positioning. Void Pulse pulls nearby asteroids inward without moving alien ships, while frequent longer-lived upgrades—including Thruster Surge—bring autonomous fire and build variety online early. Every normal and boss stage occupies a larger finite field: the camera follows the interceptor through a restrained dead zone, hard borders keep encounters bounded, and clustered edge cues use the real target art to locate off-screen objectives. **New Game** begins again at Earth; **Continue** restores the selected checkpoint's saved weapons to a fresh battlefield.
 
 Every ship, asteroid, projectile, pickup, and impact now shares one realistic deep-space art direction, backed by distinct locally synthesized weapon, material-impact, and destruction cues.
 

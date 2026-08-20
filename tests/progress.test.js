@@ -7,7 +7,8 @@ const SAVE_KEY = "neon-voyage-v1";
 const LEGACY_MODULE_IDS = ["pulse", "homingSalvo", "radialArray", "prism", "seeker", "massDriver", "drone"];
 const MODULE_IDS = LEGACY_MODULE_IDS.concat(["teslaCoil", "orbitBlades", "mineLayer", "shieldReactor", "overclock", "tractorField"]);
 const LEGACY_TIMER_IDS = ["rapidTimer", "triShotTimer", "piercingTimer", "arcBurstTimer", "novaLanceTimer"];
-const TIMER_IDS = LEGACY_TIMER_IDS.concat(["amplifierTimer", "aegisTimer"]);
+const SCHEMA_THREE_TIMER_IDS = LEGACY_TIMER_IDS.concat(["amplifierTimer", "aegisTimer"]);
+const TIMER_IDS = SCHEMA_THREE_TIMER_IDS.concat(["thrusterTimer"]);
 
 function checkpoint(overrides) {
   const options = overrides || {};
@@ -34,7 +35,8 @@ function checkpoint(overrides) {
       arcBurstTimer: 0,
       novaLanceTimer: 0,
       amplifierTimer: 0,
-      aegisTimer: 0
+      aegisTimer: 0,
+      thrusterTimer: 0
     }, options.timers || {})
   };
 }
@@ -43,6 +45,18 @@ function progressRecord(maxUnlockedStage, lastPlayedStage, stageCheckpoints) {
   const checkpoints = {};
   for (let stage = 1; stage <= maxUnlockedStage; stage += 1) {
     checkpoints[String(stage)] = checkpoint(stageCheckpoints && stageCheckpoints[stage]);
+  }
+  return { schema: 4, maxUnlockedStage, lastPlayedStage, checkpoints };
+}
+
+function schemaThreeRecord(maxUnlockedStage, lastPlayedStage, stageCheckpoints) {
+  const checkpoints = {};
+  for (let stage = 1; stage <= maxUnlockedStage; stage += 1) {
+    const source = checkpoint(stageCheckpoints && stageCheckpoints[stage]);
+    checkpoints[String(stage)] = {
+      modules: Object.fromEntries(MODULE_IDS.map((id) => [id, source.modules[id]])),
+      timers: Object.fromEntries(SCHEMA_THREE_TIMER_IDS.map((id) => [id, source.timers[id]]))
+    };
   }
   return { schema: 3, maxUnlockedStage, lastPlayedStage, checkpoints };
 }
@@ -130,7 +144,7 @@ function register(test) {
 
     assert.equal(game.progress.maxUnlockedStage, 1);
     assert.equal(game.progress.lastPlayedStage, 1);
-    assert.equal(game.progress.schema, 3);
+    assert.equal(game.progress.schema, 4);
     assert.equal(browser.storage.has(PROGRESS_KEY), false);
     assert.equal(browser.elements.get("continue-button").disabled, true);
     assert.equal(cards.length, CONFIG.sector.encounters.length);
@@ -186,15 +200,15 @@ function register(test) {
       [PROGRESS_KEY, JSON.stringify({ schema: 1, maxUnlockedStage: 5, lastPlayedStage: 3 })]
     ]);
     const { browser, game } = boot({ storage });
-    assert.equal(game.progress.schema, 3);
-    assert.equal(game.progress.maxUnlockedStage, 5);
-    assert.equal(game.progress.lastPlayedStage, 3);
-    assert.deepEqual(storedProgress(storage), progressRecord(5, 3));
+    assert.equal(game.progress.schema, 4);
+    assert.equal(game.progress.maxUnlockedStage, 3);
+    assert.equal(game.progress.lastPlayedStage, 2);
+    assert.deepEqual(storedProgress(storage), progressRecord(3, 2));
     assert.equal(browser.elements.get("menu-high-score").textContent, "654321");
     assert.deepEqual(JSON.parse(storage.get(SAVE_KEY)), local);
   });
 
-  test("strict schema 3 validation rejects tampering while accepting all twenty bounded checkpoints", () => {
+  test("strict schema 4 validation rejects tampering while accepting all seven bounded checkpoints", () => {
     const invalid = [];
     const extraModule = progressRecord(2, 2);
     extraModule.checkpoints["2"].modules.unknown = 1;
@@ -206,7 +220,7 @@ function register(test) {
     negativeTimer.checkpoints["2"].timers.rapidTimer = -1;
     invalid.push(negativeTimer);
     const excessiveTimer = progressRecord(2, 2);
-    excessiveTimer.checkpoints["2"].timers.arcBurstTimer = 97;
+    excessiveTimer.checkpoints["2"].timers.arcBurstTimer = 169;
     invalid.push(excessiveTimer);
     const missingStage = progressRecord(3, 2);
     delete missingStage.checkpoints["2"];
@@ -235,17 +249,48 @@ function register(test) {
         arcBurstTimer: 95.98333333333333,
         novaLanceTimer: 119.98333333333333,
         amplifierTimer: 111.98333333333333,
-        aegisTimer: 111.98333333333333
+        aegisTimer: 111.98333333333333,
+        thrusterTimer: 179.98333333333332
       }
     });
-    const complete = progressRecord(20, 20, Object.fromEntries(
-      Array.from({ length: 20 }, (_, index) => [index + 1, saturatedCheckpoint])
+    const complete = progressRecord(7, 7, Object.fromEntries(
+      Array.from({ length: 7 }, (_, index) => [index + 1, saturatedCheckpoint])
     ));
     const raw = JSON.stringify(complete);
     assert.ok(raw.length <= 16384, `full checkpoint record is ${raw.length} bytes`);
     const accepted = boot({ storage: new Map([[PROGRESS_KEY, raw]]) });
-    assert.equal(accepted.game.progress.maxUnlockedStage, 20);
-    assert.equal(accepted.game.progress.lastPlayedStage, 20);
+    assert.equal(accepted.game.progress.maxUnlockedStage, 7);
+    assert.equal(accepted.game.progress.lastPlayedStage, 7);
+  });
+
+  test("schema 3 twenty-stage checkpoints compact into seven stages without losing strongest loadouts", () => {
+    const legacy = schemaThreeRecord(20, 15, {
+      5: checkpoint({ modules: { homingSalvo: 2 }, timers: { rapidTimer: 20 } }),
+      7: checkpoint({ modules: { drone: 3 }, timers: { rapidTimer: 30, aegisTimer: 12 } }),
+      10: checkpoint({ modules: { radialArray: 4 }, timers: { novaLanceTimer: 18 } }),
+      15: checkpoint({ modules: { overclock: 2 }, timers: { amplifierTimer: 14 } }),
+      20: checkpoint({ modules: { seeker: 5 }, timers: { piercingTimer: 22 } })
+    });
+    const storage = new Map([[PROGRESS_KEY, JSON.stringify(legacy)]]);
+    const { game } = boot({ storage });
+    assert.equal(game.progress.schema, 4);
+    assert.equal(game.progress.maxUnlockedStage, 7);
+    assert.equal(game.progress.lastPlayedStage, 6);
+    assert.equal(game.progress.checkpoint(3).modules.homingSalvo, 2);
+    assert.equal(game.progress.checkpoint(3).modules.drone, 3);
+    assert.equal(game.progress.checkpoint(3).timers.rapidTimer, 30);
+    assert.equal(game.progress.checkpoint(3).timers.aegisTimer, 12);
+    assert.equal(game.progress.checkpoint(5).modules.radialArray, 4);
+    assert.equal(game.progress.checkpoint(6).modules.overclock, 2);
+    assert.equal(game.progress.checkpoint(7).modules.seeker, 5);
+    assert.equal(game.progress.checkpoint(7).timers.piercingTimer, 22);
+    assert.equal(game.progress.checkpoint(7).timers.thrusterTimer, 0);
+    assert.deepEqual(storedProgress(storage), progressRecord(7, 6, {
+      3: checkpoint({ modules: { homingSalvo: 2, drone: 3 }, timers: { rapidTimer: 30, aegisTimer: 12 } }),
+      5: checkpoint({ modules: { radialArray: 4 }, timers: { novaLanceTimer: 18 } }),
+      6: checkpoint({ modules: { overclock: 2 }, timers: { amplifierTimer: 14 } }),
+      7: checkpoint({ modules: { seeker: 5 }, timers: { piercingTimer: 22 } })
+    }));
   });
 
   test("strict legacy schema 2 checkpoints migrate in place without losing the original nine-stage arsenal", () => {
@@ -257,18 +302,18 @@ function register(test) {
     });
     const storage = new Map([[PROGRESS_KEY, JSON.stringify(compatibleTierThree)]]);
     const compatible = boot({ storage });
-    assert.equal(compatible.game.progress.schema, 3);
-    assert.equal(compatible.game.progress.maxUnlockedStage, 9, "schema-2 checkpoint stopped loading");
-    assert.equal(compatible.game.progress.lastPlayedStage, 9);
-    assert.equal(compatible.game.progress.checkpoint(4).modules.drone, 3);
+    assert.equal(compatible.game.progress.schema, 4);
+    assert.equal(compatible.game.progress.maxUnlockedStage, 4, "schema-2 checkpoint stopped loading");
+    assert.equal(compatible.game.progress.lastPlayedStage, 4);
+    assert.equal(compatible.game.progress.checkpoint(2).modules.drone, 3);
     for (const id of MODULE_IDS.slice(LEGACY_MODULE_IDS.length)) {
-      assert.equal(compatible.game.progress.checkpoint(4).modules[id], 0, `${id} was not initialized during migration`);
+      assert.equal(compatible.game.progress.checkpoint(2).modules[id], 0, `${id} was not initialized during migration`);
     }
     for (const id of TIMER_IDS.slice(LEGACY_TIMER_IDS.length)) {
-      assert.equal(compatible.game.progress.checkpoint(4).timers[id], 0, `${id} was not initialized during migration`);
+      assert.equal(compatible.game.progress.checkpoint(2).timers[id], 0, `${id} was not initialized during migration`);
     }
-    assert.deepEqual(storedProgress(storage), progressRecord(9, 9, {
-      4: checkpoint({
+    assert.deepEqual(storedProgress(storage), progressRecord(4, 4, {
+      2: checkpoint({
         modules: Object.fromEntries(LEGACY_MODULE_IDS.map((id) => [id, 3])),
         timers: { rapidTimer: 10, triShotTimer: 10, piercingTimer: 10, arcBurstTimer: 9, novaLanceTimer: 12 }
       })
@@ -288,7 +333,7 @@ function register(test) {
   test("Continue rejects locked cards and restores only the selected Stage checkpoint loadout", () => {
     const savedCheckpoint = checkpoint({
       modules: { pulse: 3, homingSalvo: 2, prism: 1, teslaCoil: 2, tractorField: 1 },
-      timers: { rapidTimer: 7, triShotTimer: 4, piercingTimer: 3, arcBurstTimer: 5, novaLanceTimer: 8, amplifierTimer: 6, aegisTimer: 9 }
+      timers: { rapidTimer: 7, triShotTimer: 4, piercingTimer: 3, arcBurstTimer: 5, novaLanceTimer: 8, amplifierTimer: 6, aegisTimer: 9, thrusterTimer: 11 }
     });
     const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(5, 3, { 4: savedCheckpoint }))]]);
     const { browser, game } = boot({ storage });
@@ -303,10 +348,11 @@ function register(test) {
     assert.match(stageFourLabel, /NOVA LANCE, 8 seconds remaining/);
     assert.match(stageFourLabel, /AMPLIFIER, 6 seconds remaining/);
     assert.match(stageFourLabel, /AEGIS FIELD, 9 seconds remaining/);
+    assert.match(stageFourLabel, /THRUSTER SURGE, 11 seconds remaining/);
     assert.ok(browser.createdElements.some((element) =>
-      element.className === "stage-loadout-module is-temporary" && element.textContent === "7 timed · 42s"
+      element.className === "stage-loadout-module is-temporary" && element.textContent === "8 timed · 53s"
     ), "Continue omitted the visual total for stacked timed enhancements");
-    cards[8].click();
+    cards[5].click();
     assert.equal(game.state.mode, "menu", "locked card bypassed its runtime guard");
 
     cards[3].click();
@@ -331,7 +377,7 @@ function register(test) {
     assert.equal(moduleSlots.length, 5, "HUD reserved slots for unequipped permanent modules");
     assert.ok(moduleSlots.every((slot) => !/empty/i.test(slot.textContent)), "HUD exposed an EMPTY placeholder");
     const activeEffects = browser.createdElements.filter((element) => /(^|\s)active-effect-chip(\s|$)/.test(element.className));
-    assert.equal(activeEffects.length, 7, "HUD omitted a live timed enhancement");
+    assert.equal(activeEffects.length, 8, "HUD omitted a live timed enhancement");
     assert.equal(browser.elements.get("active-effects").classList.contains("is-hidden"), false);
     assert.equal(game.progress.maxUnlockedStage, 5);
     assert.equal(game.progress.lastPlayedStage, 4);
@@ -374,8 +420,8 @@ function register(test) {
     let written = storedProgress(pickupStorage);
     assert.equal(written.checkpoints["1"].timers.rapidTimer, pickupRun.CONFIG.powerups.rapid.duration);
     assert.equal(written.checkpoints["1"].modules.pulse, 1);
-    assert.equal(written.checkpoints["1"].modules.homingSalvo, 0,
-      "a forced early module cache bypassed the Stage 3 module gate");
+    assert.equal(written.checkpoints["1"].modules.homingSalvo, 1,
+      "the early module cache did not expose the Stage 1 autonomous weapon");
     pickupRun.game.state.ship.rapidTimer = 3.25;
     pickupRun.game.state.ship.modules.prism = 2;
     pickupRun.browser.elements.get("pause-button").click();
@@ -419,15 +465,15 @@ function register(test) {
   });
 
   test("each permanent module reward transaction writes one campaign checkpoint", () => {
-    const cacheStorage = trackedStorage(progressRecord(19, 19));
+    const cacheStorage = trackedStorage(progressRecord(6, 6));
     const cacheRun = boot({ storage: cacheStorage });
     cacheRun.browser.elements.get("continue-button").click();
-    stageCards(cacheRun.browser)[18].click();
+    stageCards(cacheRun.browser)[5].click();
     cacheStorage.writes.length = 0;
     cacheRun.game.applyPickup(cacheRun.game.spawnPickup(0, 0, "module"));
     assert.equal(cacheStorage.writes.filter((key) => key === PROGRESS_KEY).length, 1,
       "a module cache wrote its checkpoint more than once");
-    assertStoredLoadout(cacheStorage, 19, cacheRun.game.state.ship, "module cache");
+    assertStoredLoadout(cacheStorage, 6, cacheRun.game.state.ship, "module cache");
 
     const milestoneStorage = trackedStorage(progressRecord(3, 3));
     const milestoneRun = boot({ storage: milestoneStorage });
@@ -439,10 +485,10 @@ function register(test) {
       "a milestone module reward and stage unlock did not share one checkpoint write");
     assertStoredLoadout(milestoneStorage, 4, milestoneRun.game.state.ship, "milestone reward");
 
-    const enigmaStorage = trackedStorage(progressRecord(16, 16));
+    const enigmaStorage = trackedStorage(progressRecord(6, 6));
     const enigmaRun = boot({ storage: enigmaStorage });
     enigmaRun.browser.elements.get("continue-button").click();
-    stageCards(enigmaRun.browser)[15].click();
+    stageCards(enigmaRun.browser)[5].click();
     enigmaRun.game.setSeed(5511);
     enigmaRun.game.applyPickup(enigmaRun.game.spawnPickup(0, 0, "enigma"));
     const limit = Math.ceil(enigmaRun.CONFIG.powerups.enigma.slowdownSeconds / enigmaRun.CONFIG.world.fixedStep) + 2;
@@ -455,13 +501,13 @@ function register(test) {
     enigmaRun.game.chooseEnhancement(permanentIndex);
     assert.equal(enigmaStorage.writes.filter((key) => key === PROGRESS_KEY).length, 1,
       "an Enigma module selection wrote its checkpoint more than once");
-    assertStoredLoadout(enigmaStorage, 16, enigmaRun.game.state.ship, "Enigma module reward");
+    assertStoredLoadout(enigmaStorage, 6, enigmaRun.game.state.ship, "Enigma module reward");
 
     for (const withEscort of [false, true]) {
-      const bossStorage = trackedStorage(progressRecord(10, 10));
+      const bossStorage = trackedStorage(progressRecord(5, 5));
       const bossRun = boot({ storage: bossStorage });
       bossRun.browser.elements.get("continue-button").click();
-      stageCards(bossRun.browser)[9].click();
+      stageCards(bossRun.browser)[4].click();
       const warningFrames = Math.ceil((bossRun.CONFIG.bossArena.warningSeconds + 0.1) /
         bossRun.CONFIG.world.fixedStep);
       for (let frame = 0; frame < warningFrames && !bossRun.game.state.boss; frame += 1) {
@@ -484,14 +530,14 @@ function register(test) {
       bossRun.game.damageBoss(bossRun.game.state.boss.maxHealth * 10);
       assert.equal(bossStorage.writes.filter((key) => key === PROGRESS_KEY).length, 1,
         `a boss-core reward ${withEscort ? "with an escort" : "on a clear field"} wrote its checkpoint more than once`);
-      assertStoredLoadout(bossStorage, withEscort ? 10 : 11, bossRun.game.state.ship,
+      assertStoredLoadout(bossStorage, withEscort ? 5 : 6, bossRun.game.state.ship,
         `boss-core reward ${withEscort ? "with an escort" : "on a clear field"}`);
     }
 
-    const deferredStorage = trackedStorage(progressRecord(10, 10));
+    const deferredStorage = trackedStorage(progressRecord(5, 5));
     const deferredRun = boot({ storage: deferredStorage });
     deferredRun.browser.elements.get("continue-button").click();
-    stageCards(deferredRun.browser)[9].click();
+    stageCards(deferredRun.browser)[4].click();
     const warningFrames = Math.ceil((deferredRun.CONFIG.bossArena.warningSeconds + 0.1) /
       deferredRun.CONFIG.world.fixedStep);
     for (let frame = 0; frame < warningFrames && !deferredRun.game.state.boss; frame += 1) {
@@ -524,7 +570,7 @@ function register(test) {
     deferredRun.game.step(deferredRun.CONFIG.world.fixedStep);
     assert.equal(deferredStorage.writes.filter((key) => key === PROGRESS_KEY).length, 1,
       "a deferred boss-core reward with an escort did not write exactly one checkpoint");
-    assertStoredLoadout(deferredStorage, 10, deferredRun.game.state.ship, "deferred boss-core reward with an escort");
+    assertStoredLoadout(deferredStorage, 5, deferredRun.game.state.ship, "deferred boss-core reward with an escort");
   });
 
   test("New Game requires explicit confirmation, cancels safely, and erases only campaign data", () => {
@@ -534,7 +580,7 @@ function register(test) {
     const savedLocal = { highScore: 9876, settings: { sound: false, reducedEffects: true } };
     const storage = new Map([
       [SAVE_KEY, JSON.stringify(savedLocal)],
-      [PROGRESS_KEY, JSON.stringify(progressRecord(8, 7, {
+      [PROGRESS_KEY, JSON.stringify(progressRecord(7, 7, {
         1: checkpoint({ modules: { pulse: 3 }, timers: { rapidTimer: 8 } }),
         7: checkpoint({ modules: { pulse: 3, drone: 2 }, timers: { novaLanceTimer: 9 } })
       }))]
@@ -551,7 +597,7 @@ function register(test) {
     browser.elements.get("new-game-cancel-button").click();
     assert.equal(browser.elements.get("new-game-modal").open, false);
     assert.equal(browser.document.activeElement, browser.elements.get("start-button"));
-    assert.equal(game.progress.maxUnlockedStage, 8);
+    assert.equal(game.progress.maxUnlockedStage, 7);
     assert.deepEqual(JSON.parse(storage.get(SAVE_KEY)), savedLocal);
 
     browser.elements.get("start-button").click();
@@ -591,17 +637,17 @@ function register(test) {
     assert.equal(first.game.progress.lastPlayedStage, 4);
     assert.equal(first.browser.elements.get("continue-button").disabled, false);
     const written = storedProgress(storage);
-    assert.equal(written.schema, 3);
-    assert.equal(written.checkpoints["4"].modules.homingSalvo, 1, "guaranteed reward was omitted from next checkpoint");
+    assert.equal(written.schema, 4);
+    assert.equal(written.checkpoints["4"].modules.drone, 1, "guaranteed reward was omitted from next checkpoint");
     assert.equal(written.checkpoints["4"].timers.rapidTimer, first.game.state.ship.rapidTimer);
     assert.equal(written.checkpoints["4"].timers.novaLanceTimer, first.game.state.ship.novaLanceTimer);
-    assert.ok(written.checkpoints["4"].timers.rapidTimer > 9.9);
-    first.game.state.ship.modules.homingSalvo = 3;
-    assert.equal(written.checkpoints["4"].modules.homingSalvo, 1, "stored checkpoint aliased live ship modules");
+    assert.ok(written.checkpoints["4"].timers.rapidTimer > 44.9);
+    first.game.state.ship.modules.drone = 3;
+    assert.equal(written.checkpoints["4"].modules.drone, 1, "stored checkpoint aliased live ship modules");
     first.browser.elements.get("pause-button").click();
     first.browser.elements.get("pause-menu-button").click();
     assert.equal(storedProgress(storage).lastPlayedStage, 4, "leaving during transit replaced the newly unlocked checkpoint");
-    assert.equal(storedProgress(storage).checkpoints["4"].modules.homingSalvo, 1);
+    assert.equal(storedProgress(storage).checkpoints["4"].modules.drone, 1);
 
     const reloaded = boot({ storage });
     assert.equal(reloaded.game.progress.maxUnlockedStage, 4);
@@ -609,22 +655,21 @@ function register(test) {
     assert.equal(reloaded.browser.elements.get("continue-button").disabled, false);
     reloaded.browser.elements.get("continue-button").click();
     stageCards(reloaded.browser)[3].click();
-    assert.equal(reloaded.game.state.ship.modules.homingSalvo, 1);
+    assert.equal(reloaded.game.state.ship.modules.drone, 1);
     assert.equal(reloaded.game.state.ship.rapidTimer, written.checkpoints["4"].timers.rapidTimer);
     assert.equal(reloaded.game.state.ship.novaLanceTimer, written.checkpoints["4"].timers.novaLanceTimer);
   });
 
-  test("authored three-stage milestones stack their targeted module into the next checkpoint", () => {
+  test("authored seven-stage milestones stack their targeted module into the next checkpoint", () => {
     const milestones = [
-      { stage: 3, moduleId: "homingSalvo", before: 0 },
-      { stage: 6, moduleId: "drone", before: 2 },
-      { stage: 9, moduleId: "shieldReactor", before: 1 },
-      { stage: 12, moduleId: "prism", before: 2 },
-      { stage: 15, moduleId: "overclock", before: 1 },
-      { stage: 18, moduleId: "seeker", before: 2 }
+      { stage: 1, moduleId: "homingSalvo", before: 0 },
+      { stage: 2, moduleId: "tractorField", before: 0 },
+      { stage: 3, moduleId: "drone", before: 2 },
+      { stage: 4, moduleId: "radialArray", before: 1 },
+      { stage: 6, moduleId: "seeker", before: 2 }
     ];
     for (const item of milestones) {
-      const stageLoadout = checkpoint({ modules: { [item.moduleId]: item.before } });
+      const stageLoadout = checkpoint({ modules: { pulse: item.stage === 1 ? 2 : 1, [item.moduleId]: item.before } });
       const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(item.stage, item.stage, {
         [item.stage]: stageLoadout
       }))]]);
@@ -654,25 +699,25 @@ function register(test) {
   });
 
   test("a capped targeted milestone falls back to one eligible permanent module", () => {
-    const stage9 = checkpoint({ modules: { shieldReactor: 5 } });
-    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(9, 9, { 9: stage9 }))]]);
+    const stage3 = checkpoint({ modules: { drone: 5 } });
+    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(3, 3, { 3: stage3 }))]]);
     const { browser, game, CONFIG } = boot({ storage });
     browser.elements.get("continue-button").click();
-    stageCards(browser)[8].click();
+    stageCards(browser)[2].click();
     const before = JSON.parse(JSON.stringify(game.state.ship.modules));
     finishCurrentStage(game, CONFIG.world.fixedStep);
     const changed = MODULE_IDS.filter((id) => game.state.ship.modules[id] !== before[id]);
     assert.deepEqual(changed, ["homingSalvo"]);
-    assert.equal(game.state.ship.modules.shieldReactor, 5);
+    assert.equal(game.state.ship.modules.drone, 5);
     assert.equal(game.state.ship.modules.homingSalvo, 1);
-    assert.equal(storedProgress(storage).checkpoints["10"].modules.homingSalvo, 1);
+    assert.equal(storedProgress(storage).checkpoints["4"].modules.homingSalvo, 1);
   });
 
   test("stacked temporary caps and an Enigma choice persist without saving live draft state", () => {
-    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(16, 16))]]);
+    const storage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(6, 6))]]);
     const first = boot({ storage });
     first.browser.elements.get("continue-button").click();
-    stageCards(first.browser)[15].click();
+    stageCards(first.browser)[5].click();
     for (let index = 0; index < first.CONFIG.powerups.temporaryStackLimit + 2; index += 1) {
       first.game.applyPickup(first.game.spawnPickup(0, 0, "rapid"));
     }
@@ -693,20 +738,20 @@ function register(test) {
     assert.ok(stackedRemaining <= first.CONFIG.powerups.rapid.duration * first.CONFIG.powerups.temporaryStackLimit);
     assert.equal(first.game.chooseEnhancement(permanentIndex), true);
     const written = storedProgress(storage);
-    assert.equal(written.checkpoints["16"].timers.rapidTimer, stackedRemaining);
-    assert.equal(written.checkpoints["16"].modules[selectedModule], first.game.state.ship.modules[selectedModule]);
+    assert.equal(written.checkpoints["6"].timers.rapidTimer, stackedRemaining);
+    assert.equal(written.checkpoints["6"].modules[selectedModule], first.game.state.ship.modules[selectedModule]);
     assert.equal("upgradeDraft" in written, false);
     assert.equal("enigma" in written, false);
 
     const reloaded = boot({ storage });
     reloaded.browser.elements.get("continue-button").click();
-    stageCards(reloaded.browser)[15].click();
+    stageCards(reloaded.browser)[5].click();
     assert.equal(reloaded.game.state.ship.rapidTimer, stackedRemaining);
     assert.equal(reloaded.game.state.ship.modules[selectedModule], first.game.state.ship.modules[selectedModule]);
     assert.equal(reloaded.game.snapshot().enigma.phase, "idle");
   });
 
-  test("debug stage jumps never unlock campaign checkpoints and progress clamps at Stage 20", () => {
+  test("debug stage jumps never unlock campaign checkpoints and progress clamps at Stage 7", () => {
     const automatedStorage = new Map();
     const automated = boot({ storage: automatedStorage });
     automated.game.start();
@@ -723,7 +768,7 @@ function register(test) {
     const storage = new Map([[PROGRESS_KEY, JSON.stringify({ schema: 1, maxUnlockedStage: 2, lastPlayedStage: 2 })]]);
     const debug = boot({ storage });
     debug.game.start();
-    debug.game.setStage(19, 1);
+    debug.game.setStage(6, 1);
     finishCurrentStage(debug.game, debug.CONFIG.world.fixedStep);
     assert.equal(debug.game.progress.maxUnlockedStage, 2);
     assert.deepEqual(storedProgress(storage), progressRecord(2, 2));
@@ -739,13 +784,13 @@ function register(test) {
     sectorTwo.browser.elements.get("pause-menu-button").click();
     assert.equal(sectorTwoStorage.get(PROGRESS_KEY), beforeSectorTwo, "Sector 2 rewrote Sector 1 checkpoints");
 
-    const completeStorage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(20, 19))]]);
+    const completeStorage = new Map([[PROGRESS_KEY, JSON.stringify(progressRecord(7, 6))]]);
     const complete = boot({ storage: completeStorage });
     complete.browser.elements.get("continue-button").click();
-    stageCards(complete.browser)[18].click();
+    stageCards(complete.browser)[5].click();
     finishCurrentStage(complete.game, complete.CONFIG.world.fixedStep);
-    assert.equal(complete.game.progress.maxUnlockedStage, 20);
-    assert.equal(complete.game.progress.lastPlayedStage, 20);
+    assert.equal(complete.game.progress.maxUnlockedStage, 7);
+    assert.equal(complete.game.progress.lastPlayedStage, 7);
   });
 
   test("portrait ownership closes Continue and landscape restores only the active menu overlay", () => {

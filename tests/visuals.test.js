@@ -256,20 +256,20 @@ module.exports = function register(test) {
   test("scene journey leaves Earth for Mars and authored deep-space worlds", () => {
     const debug = loadRenderer();
     assert.ok(debug && typeof debug.sceneFrame === "function" && typeof debug.screenAnchor === "function");
-    const scenes = Array.from({ length: 20 }, (_, index) => debug.sceneFrame(index + 1, 1, 0));
+    const scenes = Array.from({ length: 7 }, (_, index) => debug.sceneFrame(index + 1, 1, 0));
     const body = (scene, id) => scene.bodies.find((item) => item.id === id);
     const earth1 = body(scenes[0], "earth");
-    const earth2 = body(scenes[1], "earth");
-    const earth3 = body(scenes[2], "earth");
     const mars1 = body(scenes[0], "mars");
     const mars2 = body(scenes[1], "mars");
-    const mars3 = body(scenes[2], "mars");
+    const titan2 = body(scenes[1], "titan-gate");
+    const signal3 = body(scenes[2], "signal-world");
     assert.ok(earth1.alpha > 0.8 && earth1.size > 0.5, "Earth is not the prominent Stage 1 origin");
-    assert.ok(earth2.alpha < earth1.alpha && earth2.size < earth1.size, "Earth did not recede toward Mars");
-    assert.ok(mars2.alpha > 0.6 && mars2.size > 0.2 && mars2.alpha > mars1.alpha, "Mars is not prominent in Stage 2");
-    assert.ok(earth3.alpha < earth2.alpha && mars3.alpha < mars2.alpha, "the familiar planets did not recede in Stage 3");
-    assert.ok(earth3.size < 0.08 && mars3.size < 0.1, "Stage 3 remains visually too close to the inner system");
-    for (let index = 3; index < scenes.length; index += 1) {
+    assert.ok(mars2.alpha > mars1.alpha && mars2.size > mars1.size, "Mars did not become the Stage 2 waypoint");
+    assert.ok(titan2.alpha > 0.7 && titan2.size > 0.5, "Titan is not prominent during its breach");
+    assert.ok(signal3.alpha > 0.6 && signal3.size > 0.3, "First Contact lacks its deep-space signal world");
+    assert.equal(body(scenes[1], "earth"), undefined, "Earth did not leave the frame after Stage 1");
+    assert.equal(body(scenes[2], "mars"), undefined, "Mars did not leave the frame before First Contact");
+    for (let index = 1; index < scenes.length; index += 1) {
       assert.ok(scenes[index].bodies.some((item) => debug.assetSource(item.type) && item.alpha > 0.4), `Stage ${index + 1} lacks a visible authored world`);
       assert.ok(scenes[index].bodies.every((item) => item.type !== "exotic"), `Stage ${index + 1} retained the old procedural planet type`);
       assert.ok(scenes[index].depth > scenes[index - 1].depth, `Stage ${index + 1} did not move deeper into space`);
@@ -287,7 +287,7 @@ module.exports = function register(test) {
       "shard-world", "fleet-world", "command-world"
     ];
     const types = new Set();
-    for (let stage = 4; stage <= 20; stage += 1) {
+    for (let stage = 2; stage <= 7; stage += 1) {
       const visible = debug.sceneFrame(stage, 1, 0).visibleBodies.filter((item) => item.alpha > 0.15);
       assert.ok(visible.length > 0, `Stage ${stage} lacks a main authored world`);
       for (const body of visible) {
@@ -295,7 +295,7 @@ module.exports = function register(test) {
         types.add(body.type);
       }
     }
-    for (const type of expected) assert.ok(types.has(type), `${type} never appears in the twenty-stage journey`);
+    for (const type of expected) assert.ok(types.has(type), `${type} never appears in the seven-stage journey`);
     for (const type of ["earth", "mars"].concat(expected)) {
       assert.equal(debug.assetSource(type), `assets/${type}.webp`);
     }
@@ -396,9 +396,10 @@ module.exports = function register(test) {
     ], camera, false);
     renderer.drawProjectiles([
       { x: 0, y: 0, vx: 1, vy: 0 },
-      { x: 0, y: 0, vx: 1, vy: 0, kind: "reflected" }
+      { x: 0, y: 0, vx: 1, vy: 0, kind: "reflected" },
+      { x: 0, y: 0, vx: 1, vy: 0, kind: "crystalShard" }
     ], camera, true);
-    for (const kind of ["shield", "repair", "rapid", "module", "triShot", "piercing", "arcBurst", "novaLance", "enigma"]) {
+    for (const kind of ["shield", "repair", "rapid", "module", "triShot", "piercing", "arcBurst", "novaLance", "amplifier", "aegis", "pulseCharge", "enigma", "thruster"]) {
       renderer.drawPickup({ x: 0, y: 0, kind, phase: 0 }, camera, 1);
     }
     renderer.drawMine({ x: 0, y: 0, radius: 11, owner: "player", triggerRadius: 0, phase: 0 }, camera, 1);
@@ -417,13 +418,13 @@ module.exports = function register(test) {
     assert.deepEqual([...new Set(drawn)].sort(), Object.values(expected).sort());
   });
 
-  test("all twenty scene handoffs interpolate continuously, including the sector wrap", () => {
+  test("all seven scene handoffs interpolate continuously, including the sector wrap", () => {
     const debug = loadRenderer();
     const activeMap = (scene) => new Map(scene.bodies.filter((body) => body.alpha > 1e-10).map((body) => [body.id, body]));
-    for (let stage = 1; stage <= 20; stage += 1) {
+    for (let stage = 1; stage <= 7; stage += 1) {
       const sector = 1;
-      const nextStage = stage === 20 ? 1 : stage + 1;
-      const nextSector = stage === 20 ? 2 : sector;
+      const nextStage = stage === 7 ? 1 : stage + 1;
+      const nextSector = stage === 7 ? 2 : sector;
       const start = debug.sceneFrame(stage, sector, 0, nextStage, nextSector);
       const middle = debug.sceneFrame(stage, sector, 0.5, nextStage, nextSector);
       const end = debug.sceneFrame(stage, sector, 1, nextStage, nextSector);
@@ -446,14 +447,14 @@ module.exports = function register(test) {
       }
     }
     assert.equal(debug.sceneFrame(-20, -4, -1).fromStage, 1);
-    assert.equal(debug.sceneFrame(99, 1, 99).fromStage, 20);
+    assert.equal(debug.sceneFrame(99, 1, 99).fromStage, 7);
     assert.equal(debug.sceneFrame(1, 1, Infinity).progress, 1);
     assert.equal(debug.sceneFrame(1, 1, NaN).progress, 0);
   });
 
   test("late-stage and boss nebula washes share the same continuous handoff weights", () => {
     const renderer = readProject("js/render.js");
-    assert.match(renderer, /const lateStage = clamp\(\(index - 8\)/,
+    assert.match(renderer, /const lateStage = clamp\(\(index - 2\)/,
       "late-stage nebula intensity is not derived from encounter progression");
     assert.match(renderer, /if \(lateStage > 0 \|\| bossType\) \{[\s\S]*?nebula = this\.ctx\.createRadialGradient/,
       "late stages and boss scenes do not receive a local nebula wash");
@@ -582,6 +583,7 @@ module.exports = function register(test) {
   test("asteroid cracks reveal exactly three progressive pre-break damage stages", () => {
     const debug = loadRenderer();
     assert.equal(typeof debug.asteroidCrackStage, "function");
+    assert.equal(typeof debug.asteroidFracturePattern, "function");
     const asteroid = { health: 100, maxHealth: 100 };
     assert.equal(debug.asteroidCrackStage(asteroid), 0);
     asteroid.health = 75;
@@ -598,6 +600,61 @@ module.exports = function register(test) {
     assert.equal(debug.asteroidCrackStage(asteroid), 3);
     asteroid.health = -Infinity;
     assert.equal(debug.asteroidCrackStage(asteroid), 0, "invalid damage state produced cracks");
+
+    const patterns = [0, 1, 2].map((id) => JSON.parse(JSON.stringify(debug.asteroidFracturePattern({ id }))));
+    assert.equal(new Set(patterns.map((pattern) => JSON.stringify(pattern))).size, 3,
+      "asteroids reused one obvious fracture overlay");
+    for (const pattern of patterns) {
+      assert.deepEqual([1, 2, 3].map((stage) => pattern.filter((fracture) => fracture.stage <= stage).length), [1, 3, 5]);
+      assert.ok(pattern.every((fracture) => fracture.points.length >= 3), "fracture branch remained a straight two-point slash");
+      assert.ok(pattern.flatMap((fracture) => fracture.points).every(([x, y]) => Math.abs(x) <= 0.55 && Math.abs(y) <= 0.55),
+        "fracture overlay escaped the asteroid material core");
+    }
+    const renderer = readProject("js/render.js");
+    assert.doesNotMatch(renderer, /0\.014\s*\+\s*crackStage/, "the oversized legacy neon crack width remains");
+    assert.match(renderer, /clamp\(asteroid\.radius \* 0\.0035, 0\.5, 1\.05\)/,
+      "fine material fracture highlight is missing");
+  });
+
+  test("ship damage states and pickup identities remain explicit and touch-safe", () => {
+    const debug = loadRenderer();
+    assert.equal(typeof debug.playerDamageStage, "function");
+    assert.equal(debug.playerDamageStage({ hull: 100, maxHull: 100 }), 0);
+    assert.equal(debug.playerDamageStage({ hull: 59, maxHull: 100 }), 1);
+    assert.equal(debug.playerDamageStage({ hull: 34, maxHull: 100 }), 2);
+    assert.equal(debug.playerDamageStage({ hull: 17, maxHull: 100 }), 3);
+    assert.equal(debug.playerDamageStage({ hull: NaN, maxHull: 100 }), 0);
+
+    const expectedLabels = {
+      shield: "SHIELD",
+      rapid: "RAPID",
+      triShot: "TRI",
+      piercing: "PHASE",
+      arcBurst: "ARC",
+      novaLance: "LANCE",
+      amplifier: "AMP",
+      aegis: "AEGIS",
+      repair: "HULL",
+      module: "MODULE",
+      pulseCharge: "PULSE",
+      enigma: "ENIGMA",
+      thruster: "THRUST"
+    };
+    for (const [kind, label] of Object.entries(expectedLabels)) {
+      const identity = debug.pickupIdentity(kind);
+      assert.equal(identity.label, label, `${kind} pickup label`);
+      assert.match(identity.color, /^#[0-9a-f]{6}$/i, `${kind} pickup color`);
+    }
+    assert.equal(new Set(Object.values(expectedLabels)).size, Object.keys(expectedLabels).length,
+      "two power-ups share the same visible label");
+
+    const html = readProject("index.html");
+    const css = readProject("styles.css");
+    assert.match(html, /class="desktop-control-hint"[^>]*><kbd>Shift<\/kbd> Dash [\s\S]*<kbd>E<\/kbd> Pulse/,
+      "desktop play lacks visible Dash and Pulse keys");
+    assert.match(css, /\.desktop-control-hint\s+kbd\s*\{/);
+    assert.match(css, /\.is-touch-capable\s+\.desktop-control-hint\s*\{[^}]*display:\s*none/s);
+    assert.match(css, /@media\s*\(pointer:\s*coarse\)[\s\S]*?\.desktop-control-hint\s*\{[^}]*display:\s*none/s);
   });
 
   test("touch landscape HUD replaces chip spam with one pointer-transparent summary per row", () => {
@@ -695,7 +752,7 @@ module.exports = function register(test) {
     assert.match(css, /\.upgrade-card-preview\s*\{[^}]*pointer-events:\s*none/s,
       "decorative previews can intercept card input");
     assert.match(renderer, /enigma:\s*"#c584ff"/);
-    assert.match(renderer, /enigma:\s*"\?"/);
+    assert.match(renderer, /enigma:\s*"ENIGMA"/);
     assert.match(renderer, /drawTimeFracture\(state\)/);
     assert.match(renderer, /sourceModule\s*===\s*"homingSalvo"/);
     assert.match(renderer, /bullet\.kind\s*===\s*"radial"/);
@@ -709,6 +766,7 @@ module.exports = function register(test) {
       "the removed glowing boss boundary is still rendered");
     assert.match(renderer, /amplifier:\s*"#ffb45f"/);
     assert.match(renderer, /aegis:\s*"#7bdcff"/);
+    assert.match(renderer, /thruster:\s*"#72c8ff"/);
   });
 
   test("the menu local record uses the space-theme cyan accent", () => {

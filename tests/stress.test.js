@@ -78,6 +78,7 @@ function stress(seed, seconds) {
   const reflectionPhases = new Set();
   let shieldReactorActivated = false;
   let reflectionAccelerated = false;
+  let crystalShardsSeen = 0;
   for (const id of Object.keys(state.ship.modules)) state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
   for (const [kind, timer] of Object.entries({
     rapid: "rapidTimer",
@@ -86,7 +87,8 @@ function stress(seed, seconds) {
     arcBurst: "arcBurstTimer",
     novaLance: "novaLanceTimer",
     amplifier: "amplifierTimer",
-    aegis: "aegisTimer"
+    aegis: "aegisTimer",
+    thruster: "thrusterTimer"
   })) {
     state.ship[timer] = CONFIG.powerups[kind].duration * CONFIG.powerups.temporaryStackLimit;
   }
@@ -153,6 +155,7 @@ function stress(seed, seconds) {
       if (asteroid.hazardVariant) hazardVariants.add(asteroid.hazardVariant);
     }
     for (const alien of state.aliens) alienTypes.add(alien.type);
+    crystalShardsSeen += state.enemyBullets.filter((bullet) => bullet.kind === "crystalShard").length;
     if (state.boss && state.boss.reflectionShield) reflectionPhases.add(state.boss.reflectionShield.phase);
     for (const bullet of state.playerBullets) if (bullet.sourceModule) bulletSources.add(bullet.sourceModule);
     if (state.ship.weaponTimers.shieldReactor > 0) shieldReactorActivated = true;
@@ -181,15 +184,16 @@ function stress(seed, seconds) {
     alienTypes: Array.from(alienTypes).sort(),
     hazardVariants: Array.from(hazardVariants).sort(),
     reflectionPhases: Array.from(reflectionPhases).sort(),
-    shieldReactorActivated
+    shieldReactorActivated,
+    crystalShardsSeen
   };
 }
 
 module.exports = function register(test) {
   test("twenty-minute deterministic arcade stress stays finite and within every enforced collection cap", () => {
     const run = stress(440044, 1200);
-    assert.ok(run.stageChanges >= 20, `stress run exercised only ${run.stageChanges} stage changes`);
-    assert.deepEqual(run.visitedStages, Array.from({ length: 20 }, (_, index) => index + 1));
+    assert.ok(run.stageChanges >= 14, `stress run exercised only ${run.stageChanges} stage changes`);
+    assert.deepEqual(run.visitedStages, Array.from({ length: 7 }, (_, index) => index + 1));
     assert.deepEqual(run.bossTypes, ["harrower", "leviathan"]);
     for (const kind of ["auricColossus", "auricShard", "corona"]) {
       assert.ok(run.asteroidKinds.includes(kind), `stress run never exercised ${kind}`);
@@ -199,6 +203,7 @@ module.exports = function register(test) {
     }
     assert.deepEqual(run.hazardVariants, ["explosive", "magnetic"]);
     assert.ok(run.reflectionPhases.includes("active"), "stress run never exercised Leviathan reflection");
+    assert.ok(run.crystalShardsSeen > 0, "stress run never exercised finite crystal shrapnel");
     assert.ok(run.runtime.game.state.stats.spawned > 100, "stress run did not exercise enough spawning");
     assert.ok(run.peaks.asteroids >= 3, "stress run never produced asteroid pressure");
     assert.ok(run.peaks.aliens >= 1, "stress run never produced alien pressure");
@@ -229,6 +234,7 @@ module.exports = function register(test) {
     assert.deepEqual(first.hazardVariants, second.hazardVariants);
     assert.deepEqual(first.reflectionPhases, second.reflectionPhases);
     assert.equal(first.shieldReactorActivated, second.shieldReactorActivated);
+    assert.equal(first.crystalShardsSeen, second.crystalShardsSeen);
     assert.equal(JSON.stringify(first.snapshot), JSON.stringify(second.snapshot));
   });
 };
