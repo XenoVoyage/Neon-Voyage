@@ -1139,6 +1139,104 @@ module.exports = function register(test) {
     assert.equal(requiredLiving(state).length, 4, "second wave spawned beyond its configured total");
   });
 
+  test("Inner Belt releases one finite deterministic surge without flooding split descendants", () => {
+    const queuedKinds = (seed) => {
+      const runtime = boot(seed, { width: 1280, height: 720 });
+      runtime.game.setSeed(seed);
+      runtime.game.setStage(2, 1);
+      return Array.from(living(runtime.game.state), (entity) => entity.kind)
+        .concat(Array.from(runtime.game.state.encounterData.pendingSpawns, (entry) => entry.kind));
+    };
+    assert.deepEqual(queuedKinds(611), queuedKinds(611), "the same seed changed the finite Belt Surge order");
+
+    const { browser, game, CONFIG } = boot(611, { width: 1280, height: 720 });
+    game.setSeed(611);
+    game.setStage(2, 1);
+    const state = game.state;
+    const data = state.encounterData;
+    const release = CONFIG.sector.encounters[1].waves[0].reinforcements;
+    const pressure = () => living(state).reduce((total, entity) =>
+      total + Math.max(1, Number(entity.threatCost) || 0), 0);
+    let maximumLiving = living(state).length;
+    const destroyAllLiving = () => {
+      let targets = living(state);
+      while (targets.length) {
+        targets.forEach((entity) => {
+          game.killThreat(entity, "player");
+          maximumLiving = Math.max(maximumLiving, living(state).length);
+        });
+        targets = living(state);
+      }
+    };
+    const waitForRelease = () => runSteps(game, release.intervalSeconds + CONFIG.world.fixedStep * 2,
+      CONFIG.world.fixedStep);
+    const releaseOneBatch = () => {
+      const before = data.pendingSpawns.length;
+      const limit = Math.ceil((release.intervalSeconds + 0.1) / CONFIG.world.fixedStep);
+      for (let frame = 0; frame < limit && data.pendingSpawns.length === before; frame += 1) {
+        game.step(CONFIG.world.fixedStep);
+      }
+      return before - data.pendingSpawns.length;
+    };
+
+    assert.equal(data.waveCount, 1);
+    assert.equal(data.waveRequiredTotal, 16);
+    assert.equal(browser.elements.get("objective-status").textContent, "BELT SURGE · 16 threats");
+    assert.equal(living(state).length, release.initialBatch);
+    assert.equal(data.pendingSpawns.length, 16 - release.initialBatch);
+    assert.ok(pressure() <= release.activePressure);
+    assert.equal(living(state).some((entity) => entity.kind === "colossal"), false,
+      "the Colossal arrived before the opening formation");
+
+    const openingCrystal = living(state).find((entity) => entity.kind === "crystal");
+    assert.ok(openingCrystal);
+    game.killThreat(openingCrystal, "player");
+    const pendingBeforePressureDrop = data.pendingSpawns.length;
+    waitForRelease();
+    assert.equal(data.pendingSpawns.length, pendingBeforePressureDrop,
+      "reinforcements ignored the active pressure threshold");
+
+    destroyAllLiving();
+    assert.equal(releaseOneBatch(), release.batchSize);
+    assert.equal(living(state).some((entity) => entity.kind === "colossal"), false,
+      "the Colossal skipped the authored opening reserve");
+
+    destroyAllLiving();
+    assert.equal(releaseOneBatch(), release.batchSize);
+    assert.equal(living(state).some((entity) => entity.kind === "colossal"), false,
+      "the Colossal arrived before ten opening roots were released");
+
+    destroyAllLiving();
+    assert.equal(releaseOneBatch(), release.batchSize);
+    const colossal = living(state).find((entity) => entity.kind === "colossal");
+    assert.ok(colossal, "the mid-surge Colossal did not arrive");
+    approximately(colossal.maxHealth,
+      CONFIG.asteroids.colossal.baseHealth * CONFIG.difficulty.healthScale(1, 2) * 0.8,
+      1e-9, "Belt Surge Colossal durability");
+    assert.ok(pressure() <= release.activePressure, "the Colossal release exceeded its bounded pressure");
+    assert.ok(data.pendingSpawns.length > 0, "the Colossal incorrectly exhausted the finite reserve");
+    assert.equal(data.complete, false);
+
+    destroyAllLiving();
+    const pendingBeforeInterval = data.pendingSpawns.length;
+    runSteps(game, release.intervalSeconds * 0.5, CONFIG.world.fixedStep);
+    assert.equal(data.pendingSpawns.length, pendingBeforeInterval, "the finite release interval was bypassed");
+
+    for (let cycle = 0; cycle < 40 && data.pendingSpawns.length; cycle += 1) {
+      const released = releaseOneBatch();
+      assert.ok(released > 0 && released <= release.batchSize, "a reinforcement batch escaped its configured bound");
+      maximumLiving = Math.max(maximumLiving, living(state).length);
+      destroyAllLiving();
+    }
+    game.step(CONFIG.world.fixedStep);
+    assert.ok(maximumLiving <= 24, "the authored Belt Surge exceeded its split-pressure entity bound");
+    assert.equal(data.pendingSpawns.length, 0);
+    assert.equal(data.requeue.length, 0);
+    assert.equal(data.waveRequiredCleared, data.waveRequiredTotal);
+    assert.equal(data.complete, true);
+    assert.equal(state.mode, "transition");
+  });
+
   test("Earth Orbit opening spawns are radius-safe across phone, tablet, and desktop viewports", () => {
     const viewports = [
       { width: 568, height: 320 },

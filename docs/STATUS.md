@@ -7,18 +7,18 @@ This document is the current-state handoff. It records project maturity and open
 | Area | Status |
 | --- | --- |
 | Runtime | 20-stage browser game published from protected `main` |
-| Current runtime version | `v2026.8.20f` in the source checkpoint; Pages follows successful `main` deployments |
+| Current runtime version | `v2026.8.20g` in the source checkpoint; Pages follows successful `main` deployments |
 | Hosting | Direct `file://` launch and GitHub Pages repository subpath |
 | Dependencies and build | No runtime dependencies and no build step |
 | Saved data | Unchanged local high score, preferences, schema-3 20-stage progress, and bounded stacking checkpoint loadouts |
 | Verification | Frozen-source results belong in [`AUDIT.md`](../AUDIT.md); merge, Pages, live-play, and physical-touch evidence remain separate gates |
-| Product work | Mobile viewport alignment, touch-target readability, stage/death presentation polish, progressive rewards, evolved hazards, expanded finite scrolling fields, bounded follow camera, off-screen objective cues, complete realistic gameplay art, and material-aware synthesized audio are implemented |
+| Product work | Mobile viewport alignment, touch-target readability, stage/death presentation polish, progressive rewards, evolved hazards, expanded finite scrolling fields, bounded follow camera, off-screen objective cues, a finite pressure-bounded Inner Belt surge, complete realistic gameplay art, and material-aware synthesized audio are implemented |
 
-The current source checkpoint gives every normal and boss encounter a larger finite scrolling field. A restrained dead-zone camera follows the ship while remaining inside hard field bounds, and capped clustered edge cues reuse authored target art to identify off-screen objectives. Ultra-short desktop click and Space taps queue one fixed-step shot rather than being lost between simulation updates. Saved data, accessibility, deterministic caps, security, offline operation, art ownership, and audio remain unchanged. [`AUDIT.md`](../AUDIT.md) owns frozen automated source evidence; GitHub records and hands-on browser sessions separately own merge, deployment, live-play, visual-quality, audio-quality, and physical-device evidence.
+The current source checkpoint gives every normal and boss encounter a larger finite scrolling field. Stage 2 now uses one pre-authored sixteen-root reserve: six roots open the Belt Surge, later pairs release only below bounded live pressure, split descendants pause replenishment, and one announced Colossal provides the central set-piece. Per-group durability keeps the denser field aimed at a compact session without changing global asteroid definitions. A restrained dead-zone camera follows the ship while remaining inside hard field bounds, and capped clustered edge cues reuse authored target art to identify off-screen objectives. Ultra-short desktop click and Space taps queue one fixed-step shot rather than being lost between simulation updates. Saved data, accessibility, deterministic caps, security, offline operation, art ownership, and audio remain unchanged. [`AUDIT.md`](../AUDIT.md) owns frozen automated source evidence; GitHub records and hands-on browser sessions separately own merge, deployment, live-play, balance, visual-quality, audio-quality, and physical-device evidence.
 
 ## Implemented product
 
-- Twenty finite stages increase authored composition pressure from an accessible asteroid opening through staged alien roles, the Harrower at Stage 10, evolved anomaly fields, advanced fleets, and the Leviathan at Stage 20.
+- Twenty finite stages increase authored composition pressure from an accessible asteroid opening through staged alien roles, the Harrower at Stage 10, evolved anomaly fields, advanced fleets, and the Leviathan at Stage 20. Inner Belt is the first continuous reinforcement set-piece; its complete reserve is finite, deterministic, pressure-bounded, and counted by the objective from entry.
 - Keyboard and mouse, gamepad, and independent floating two-stick touch input are implemented. Enlarged stick bases follow drag overshoot, and the reserved Dash/Pulse slots become visible and interactive only while ready. A neutral right-stick hold waits 0.10 seconds, then locks and reacquires the nearest actionable threat; any deflection keeps manual aim in control for the rest of that touch. A damage-reduced command-ship body is excluded while its nodes live.
 - Enigma pickups slow combat to a full stop and require one of three accessible enhancement cards. Each card has a deterministic local Canvas preview, and a draft may omit permanent choices when its stage band does not offer one.
 - Six reward bands begin at Stages 1, 3, 4, 6, 11, and 16. Their drop chances are 26%, 28%, 29%, 31%, 34%, and 38%; pity triggers after four kills in the first four bands and three in the final two.
@@ -49,10 +49,10 @@ See [`GAME_DESIGN.md`](GAME_DESIGN.md) for intended experience and [`ARCHITECTUR
 
 ## Publication status
 
-`v2026.8.20f` is the current runtime label. A local label, changelog heading, Pages deployment, or version badge does not by itself prove that a matching immutable tag and formal GitHub Release exist; publication status must be confirmed from GitHub.
+`v2026.8.20g` is the current runtime label. A local label, changelog heading, Pages deployment, or version badge does not by itself prove that a matching immutable tag and formal GitHub Release exist; publication status must be confirmed from GitHub.
 
 Creating or backfilling a tag is an explicit publication action. Do not do it during ordinary documentation maintenance, and never move a published tag.
 
 ## Next task boundary
 
-Review the expanded camera field, hard borders, clustered target cues, complete gameplay art, and sound pass in live motion on desktop, then record hands-on phone and iPad landscape acceptance separately. Check camera feel, target-cue readability, quick tap fire, silhouettes, transparent edges, effect density, mix clarity, and sustained performance before refreshing the two documentation captures. Publishing a formal release requires an explicit owner decision for any missing immutable tag or GitHub Release action. Physical phone and iPad acceptance remains unverified until actually observed.
+Review the Inner Belt's Belt Surge in live motion from the ordinary Stage 1 loadout before expanding the director across the campaign. Check its roughly three-minute pacing target, opening density, batch rhythm, Colossal timing, split-fragment pressure, objective wording, target cues, difficulty, and absence of empty downtime or unfair flooding. Separately review the expanded camera field, complete gameplay art, and sound pass on desktop, then record hands-on phone and iPad landscape acceptance. Publishing a formal release requires an explicit owner decision for any missing immutable tag or GitHub Release action. Physical phone and iPad acceptance remains unverified until actually observed.

@@ -28,7 +28,7 @@ Neon Voyage is a focused space-arcade expedition that begins above a familiar Ea
 | Stage | Encounter | Purpose | Clear reward |
 | --- | --- | --- | --- |
 | 1 | Earth Orbit | Learn movement and fire against a safe opening asteroid field | — |
-| 2 | Inner Belt | Introduce crystal, volatile, and armored hazards | — |
+| 2 | Inner Belt | Sustain one finite pressure-bounded surge, introduce crystal/volatile/armored hazards, then break a Colossal mass | — |
 | 3 | Deep Drift | Increase mixed asteroid pressure as familiar space recedes | Homing Salvo tier |
 | 4 | Shattered Frontier | Introduce Auric Colossi, mixed shard counterplay, and colossal split pressure | — |
 | 5 | Titan Gate | Break the Titan and an Auric Colossus while controlling their surrounding hazards | — |
@@ -48,7 +48,7 @@ Neon Voyage is a focused space-arcade expedition that begins above a familiar Ea
 | 19 | Sovereign Guard | Clear the Leviathan's densest mixed fleet and Corona screen | — |
 | 20 | Leviathan Field | Defeat the Leviathan and every surviving escort | Boss-core upgrade or capped overflow |
 
-Stages 1–5 form an accessible asteroid-and-anomaly opening; ordinary alien spacecraft do not appear before Stage 6. Stages 6–9 introduce scout, striker, bomber, and carrier roles in sequence before the first command-ship battle. Stages 11–15 add evolved asteroid counterplay, while Stages 16–19 introduce lancer, Gunship, then Brood Carrier novelty before the Stage 20 boss. Authored group counts and the bounded health, damage, speed, fire-rate, and score curves increase pressure across the journey without turning any stage into endless spawning. Later sectors repeat the complete journey at the bounded final reward band and with deep-space scenery rather than returning visually to Earth.
+Stages 1–5 form an accessible asteroid-and-anomaly opening; ordinary alien spacecraft do not appear before Stage 6. Stage 2 is the first continuous set-piece: sixteen authored roots remain finite and visible in the objective count, six begin the encounter, small batches replenish only after live weighted pressure falls, and a single Colossal arrives after the opening formation. Its stage-owned durability keeps the denser field aimed at a compact roughly three-minute session rather than a health grind. Stages 6–9 introduce scout, striker, bomber, and carrier roles in sequence before the first command-ship battle. Stages 11–15 add evolved asteroid counterplay, while Stages 16–19 introduce lancer, Gunship, then Brood Carrier novelty before the Stage 20 boss. Authored group counts and the bounded health, damage, speed, fire-rate, and score curves increase pressure across the journey without turning any stage into endless spawning. Later sectors repeat the complete journey at the bounded final reward band and with deep-space scenery rather than returning visually to Earth.
 
 ## Player systems
 
@@ -68,7 +68,7 @@ Alien families have distinct staged roles: scouts strafe and fire, strikers tele
 
 Every ordinary and boss stage occupies the same larger finite rectangular field. The camera follows the ship through a restrained viewport-relative dead zone and velocity lookahead, but clamps before the viewport can reveal beyond the hard field boundary. Capped edge cues reuse target art, cluster nearby off-screen objectives, and prioritize actionable boss nodes and spacecraft without replacing exploration or aiming. The Harrower and Leviathan retain distinct phase sets, silhouettes, attacks, and escorts; while any Leviathan shield node survives, its reflector cycles through warning, active, and cooldown phases.
 
-A wave is complete only when all of its configured spawns are exhausted and the field is clean. Required objectives, optional hazards, fragments, carrier children, escorts, pending spawns, and hard-cull requeues all belong to that rule. Once the final encounter-owned threat is gone, the run enters a one-second locked clear presentation: combat, input, damage, rewards, and encounter advancement stay frozen while only bounded final effects and floaters finish. The existing 1.65-second hyperspace flight then begins with its established travel direction, ship anchor, scenery crossfade, and clean-world handoff. Hyperspace never begins over a living encounter threat.
+A wave is complete only when all of its configured spawns are exhausted and the field is clean. An authored reinforcement wave builds its complete seeded reserve up front, releases only bounded batches, and counts every live descendant as at least one unit of release pressure even when that fragment carries no reward value. Required objectives, optional hazards, reserve roots, fragments, carrier children, escorts, pending spawns, and hard-cull requeues all belong to the clear rule; requeues regain their place before a fresh reserve batch can enter. No timer creates replacement threats beyond that finite queue. Once the final encounter-owned threat is gone, the run enters a one-second locked clear presentation: combat, input, damage, rewards, and encounter advancement stay frozen while only bounded final effects and floaters finish. The existing 1.65-second hyperspace flight then begins with its established travel direction, ship anchor, scenery crossfade, and clean-world handoff. Hyperspace never begins over a living encounter threat.
 
 ## Weapons and progression
 
