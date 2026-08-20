@@ -238,6 +238,60 @@ module.exports = function register(test) {
     assert.doesNotMatch(renderer, /drawExoticPlanet|type:\s*["']exotic["']|\.rings\b/, "the old procedural ring/band planet path remains in runtime code");
   });
 
+  test("the realistic gameplay proof uses six local rasters only for its representative scopes", () => {
+    const browser = loadVisualRuntime();
+    const debug = browser.window.ND.RenderDebug;
+    const expected = {
+      playerInterceptor: "assets/player-interceptor.webp",
+      commonAsteroid: "assets/common-asteroid.webp",
+      alienScout: "assets/alien-scout.webp",
+      playerPlasma: "assets/player-plasma.webp",
+      plasmaImpact: "assets/plasma-impact.webp",
+      shieldGenerator: "assets/shield-generator.webp"
+    };
+    for (const [name, source] of Object.entries(expected)) assert.equal(debug.proofAssetSource(name), source);
+    assert.equal(debug.proofAssetSource("special-asteroid"), null);
+
+    const canvas = browser.elements.get("game");
+    const context = canvas.getContext("2d");
+    const renderer = new browser.window.ND.Renderer(canvas);
+    const camera = { x: 0, y: 0 };
+    const drawn = [];
+    context.drawImage = (image) => { drawn.push(image.src); };
+    renderer.drawShip({
+      x: 0, y: 0, angle: 0, engine: 1, invulnerable: 0, shield: 0, aegisTimer: 0
+    }, camera, 1, false, {});
+    renderer.drawAsteroid({
+      x: 0, y: 0, radius: 26, kind: "rock", rotation: 0, points: [],
+      health: 3, maxHealth: 3, hitFlash: 0
+    }, camera, 1);
+    renderer.drawAlien({
+      x: 0, y: 0, radius: 18, type: "scout", heading: 0, phase: 0
+    }, camera, 1);
+    renderer.drawProjectiles([{ x: 0, y: 0, vx: 1, vy: 0, kind: "bolt", radius: 2.5 }], camera, false);
+    renderer.drawPickup({ x: 0, y: 0, kind: "shield", phase: 0 }, camera, 1);
+    renderer.drawEffects([{
+      x: 0, y: 0, type: "ring", layer: "front", color: "#8ffcff",
+      life: 0.2, maxLife: 0.3, radius: 20, startRadius: 4, targetRadius: 48
+    }], camera, "front");
+    assert.equal(drawn.length, Object.keys(expected).length);
+    assert.deepEqual(drawn.slice().sort(), Object.values(expected).sort());
+
+    const proofDrawCount = drawn.length;
+    renderer.drawAsteroid({
+      x: 0, y: 0, radius: 26, kind: "crystal", rotation: 0, points: [],
+      health: 3, maxHealth: 3, hitFlash: 0
+    }, camera, 1);
+    renderer.drawAlien({ x: 0, y: 0, radius: 18, type: "striker", heading: 0, phase: 0 }, camera, 1);
+    renderer.drawProjectiles([{ x: 0, y: 0, vx: 1, vy: 0, kind: "rail", radius: 3.5 }], camera, false);
+    renderer.drawPickup({ x: 0, y: 0, kind: "repair", phase: 0 }, camera, 1);
+    renderer.drawEffects([{
+      x: 0, y: 0, type: "ring", layer: "front", color: "#ffffff",
+      life: 0.2, maxLife: 0.3, radius: 80, startRadius: 12, targetRadius: 120
+    }], camera, "front");
+    assert.equal(drawn.length, proofDrawCount, "the proof art leaked into an unapproved gameplay family");
+  });
+
   test("all twenty scene handoffs interpolate continuously, including the sector wrap", () => {
     const debug = loadRenderer();
     const activeMap = (scene) => new Map(scene.bodies.filter((body) => body.alpha > 1e-10).map((body) => [body.id, body]));
