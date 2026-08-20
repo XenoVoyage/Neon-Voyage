@@ -17,6 +17,14 @@
     "fleet-world": "assets/fleet-world.webp",
     "command-world": "assets/command-world.webp"
   });
+  const GAMEPLAY_PROOF_ASSET_SOURCES = Object.freeze({
+    playerInterceptor: "assets/player-interceptor.webp",
+    commonAsteroid: "assets/common-asteroid.webp",
+    alienScout: "assets/alien-scout.webp",
+    playerPlasma: "assets/player-plasma.webp",
+    plasmaImpact: "assets/plasma-impact.webp",
+    shieldGenerator: "assets/shield-generator.webp"
+  });
   const ASTEROID_COLORS = Object.freeze({
     crystal: "#ff66dd",
     volatile: "#ffb84d",
@@ -342,6 +350,16 @@
     return Object.prototype.hasOwnProperty.call(CELESTIAL_ASSET_SOURCES, type)
       ? CELESTIAL_ASSET_SOURCES[type]
       : null;
+  }
+
+  function proofAssetSource(type) {
+    return Object.prototype.hasOwnProperty.call(GAMEPLAY_PROOF_ASSET_SOURCES, type)
+      ? GAMEPLAY_PROOF_ASSET_SOURCES[type]
+      : null;
+  }
+
+  function readyImage(image) {
+    return Boolean(image && image.complete && image.naturalWidth && image.naturalHeight);
   }
 
   function previewAsset(type, canvas, stage, sector) {
@@ -728,7 +746,8 @@
     cinematicProfile,
     screenAnchor,
     asteroidCrackStage,
-    assetSource
+    assetSource,
+    proofAssetSource
   });
   ND.StagePreview = Object.freeze({ render: renderStagePreview });
   ND.EnigmaPreview = Object.freeze({ render: renderEnigmaPreview });
@@ -752,7 +771,11 @@
 
     loadAssets() {
       if (typeof global.Image !== "function") return;
-      const sources = { space: "assets/deep-space.webp", ...CELESTIAL_ASSET_SOURCES };
+      const sources = {
+        space: "assets/deep-space.webp",
+        ...CELESTIAL_ASSET_SOURCES,
+        ...GAMEPLAY_PROOF_ASSET_SOURCES
+      };
       for (const [name, source] of Object.entries(sources)) {
         const image = new global.Image();
         image.decoding = "async";
@@ -1373,7 +1396,32 @@
       ctx.translate(point.x, point.y);
       ctx.rotate(ship.angle);
       if (!cinematic && ship.invulnerable > 0 && Math.floor(time * 18) % 2 === 0) ctx.globalAlpha = 0.34;
-      this.shipPath(1, cinematic ? Math.max(0.9, ship.engine || 0) : ship.engine || 0, time, false);
+      const art = this.assets.playerInterceptor;
+      const engine = cinematic ? Math.max(0.9, ship.engine || 0) : ship.engine || 0;
+      if (readyImage(art)) {
+        if (engine > 0) {
+          const flame = 14 + engine * 10 + (this.reduced ? 0 : Math.sin(time * 42) * 1.5);
+          const gradient = ctx.createLinearGradient(-flame - 25, 0, -22, 0);
+          gradient.addColorStop(0, "rgba(255,79,216,0)");
+          gradient.addColorStop(0.58, "rgba(255,79,216,0.68)");
+          gradient.addColorStop(1, "rgba(184,255,255,0.92)");
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          ctx.fillStyle = gradient;
+          for (const side of [-1, 1]) {
+            ctx.beginPath();
+            ctx.moveTo(-24, side * 8.5 - 2.2);
+            ctx.lineTo(-flame - 25, side * 8.5);
+            ctx.lineTo(-24, side * 8.5 + 2.2);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+        ctx.drawImage(art, -38, -25.5, 76, 51);
+      } else {
+        this.shipPath(1, engine, time, false);
+      }
       ctx.restore();
       if (ship.shield > 0 || ship.aegisTimer > 0) {
         const aegisActive = ship.aegisTimer > 0;
@@ -1468,47 +1516,62 @@
       const ctx = this.ctx;
       const color = asteroid.kind === "auricShard" && asteroid.hazardVariant === "magnetic"
         ? "#72e6ff"
-        : ASTEROID_COLORS[asteroid.kind] || "#72dff3";
+        : asteroid.kind === "rock" ? "#d2cbc0" : ASTEROID_COLORS[asteroid.kind] || "#72dff3";
       ctx.save();
       ctx.translate(point.x, point.y);
       ctx.rotate(asteroid.rotation || 0);
-      ctx.beginPath();
       const points = asteroid.points || [];
       const count = points.length || 10;
-      for (let i = 0; i < count; i += 1) {
-        const angle = points.length ? points[i].angle : i / count * TAU;
-        const radius = points.length ? points[i].radius : asteroid.radius * (0.8 + ((i * 17) % 5) * 0.045);
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fillStyle = asteroid.kind === "crystal" || asteroid.kind === "prismatic"
-        ? "rgba(38,15,48,0.95)"
-        : asteroid.kind === "razor"
-          ? "rgba(8, 31, 31, 0.97)"
-          : asteroid.kind === "monolith"
-            ? "rgba(8, 15, 34, 0.98)"
-            : asteroid.kind === "auricColossus"
-              ? "rgba(35, 25, 8, 0.98)"
-              : asteroid.kind === "auricShard"
-                ? asteroid.hazardVariant === "magnetic" ? "rgba(7, 25, 36, 0.97)" : "rgba(40, 20, 8, 0.97)"
-                : asteroid.kind === "corona"
-                  ? "rgba(43, 13, 8, 0.97)"
-            : "rgba(13,21,32,0.97)";
-      ctx.strokeStyle = color;
-      ctx.lineWidth = asteroid.kind === "titan" || asteroid.kind === "auricColossus" ? 3 : 1.6;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = this.reduced || asteroid.radius < 25 ? 0 : Math.min(18, asteroid.radius * 0.13);
-      ctx.fill();
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      if (asteroid.hitFlash > 0) {
-        ctx.globalAlpha = clamp(asteroid.hitFlash, 0, 1) * 0.34;
-        ctx.fillStyle = "#ffffff";
+      const rockArt = asteroid.kind === "rock" && readyImage(this.assets.commonAsteroid)
+        ? this.assets.commonAsteroid
+        : null;
+      if (rockArt) {
+        const diameter = asteroid.radius * 2.2;
+        ctx.drawImage(rockArt, -diameter / 2, -diameter / 2, diameter, diameter);
+        if (asteroid.hitFlash > 0) {
+          ctx.save();
+          ctx.globalCompositeOperation = "screen";
+          ctx.globalAlpha = clamp(asteroid.hitFlash, 0, 1) * 0.58;
+          ctx.drawImage(rockArt, -diameter / 2, -diameter / 2, diameter, diameter);
+          ctx.restore();
+        }
+      } else {
+        ctx.beginPath();
+        for (let i = 0; i < count; i += 1) {
+          const angle = points.length ? points[i].angle : i / count * TAU;
+          const radius = points.length ? points[i].radius : asteroid.radius * (0.8 + ((i * 17) % 5) * 0.045);
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = asteroid.kind === "crystal" || asteroid.kind === "prismatic"
+          ? "rgba(38,15,48,0.95)"
+          : asteroid.kind === "razor"
+            ? "rgba(8, 31, 31, 0.97)"
+            : asteroid.kind === "monolith"
+              ? "rgba(8, 15, 34, 0.98)"
+              : asteroid.kind === "auricColossus"
+                ? "rgba(35, 25, 8, 0.98)"
+                : asteroid.kind === "auricShard"
+                  ? asteroid.hazardVariant === "magnetic" ? "rgba(7, 25, 36, 0.97)" : "rgba(40, 20, 8, 0.97)"
+                  : asteroid.kind === "corona"
+                    ? "rgba(43, 13, 8, 0.97)"
+              : "rgba(13,21,32,0.97)";
+        ctx.strokeStyle = color;
+        ctx.lineWidth = asteroid.kind === "titan" || asteroid.kind === "auricColossus" ? 3 : 1.6;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = this.reduced || asteroid.radius < 25 ? 0 : Math.min(18, asteroid.radius * 0.13);
         ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        if (asteroid.hitFlash > 0) {
+          ctx.globalAlpha = clamp(asteroid.hitFlash, 0, 1) * 0.34;
+          ctx.fillStyle = "#ffffff";
+          ctx.fill();
+        }
       }
 
       const crackStage = asteroidCrackStage(asteroid);
@@ -1660,6 +1723,9 @@
       ctx.lineWidth = 1.7;
       ctx.shadowColor = color;
       ctx.shadowBlur = this.reduced ? 0 : 10;
+      const scoutArt = alien.type === "scout" && readyImage(this.assets.alienScout)
+        ? this.assets.alienScout
+        : null;
       const enginePulse = 4 + Math.sin(time * 16 + (alien.phase || 0)) * 1.6;
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
@@ -1668,12 +1734,17 @@
       ctx.lineWidth = 2;
       for (const side of [-1, 1]) {
         ctx.beginPath();
-        ctx.moveTo(-12, side * 5);
-        ctx.lineTo(-18 - enginePulse, side * 5);
+        ctx.moveTo(scoutArt ? -24 : -12, side * (scoutArt ? 7 : 5));
+        ctx.lineTo((scoutArt ? -30 : -18) - enginePulse, side * (scoutArt ? 7 : 5));
         ctx.stroke();
       }
       ctx.restore();
-      if (alien.type === "scout") {
+      if (scoutArt) {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = this.reduced ? 0 : 6;
+        ctx.drawImage(scoutArt, -34, -23, 68, 46);
+        ctx.shadowBlur = 0;
+      } else if (alien.type === "scout") {
         ctx.beginPath();
         ctx.moveTo(20, 0); ctx.lineTo(1, -11); ctx.lineTo(-14, -8); ctx.lineTo(-6, 0); ctx.lineTo(-14, 8); ctx.lineTo(1, 11); ctx.closePath();
       } else if (alien.type === "striker") {
@@ -1695,35 +1766,37 @@
         ctx.beginPath();
         ctx.moveTo(27, 0); ctx.quadraticCurveTo(5, -21, -25, -14); ctx.lineTo(-14, 0); ctx.lineTo(-25, 14); ctx.quadraticCurveTo(5, 21, 27, 0); ctx.closePath();
       }
-      ctx.fill();
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = color;
-      ctx.globalAlpha = 0.72;
-      ctx.beginPath();
-      const heavy = alien.type === "carrier" || alien.type === "broodCarrier" || alien.type === "gunship";
-      ctx.ellipse(3, 0, heavy ? 12 : 7, heavy ? 7 : 4, 0, 0, TAU);
-      ctx.fill();
-      ctx.globalAlpha = 0.52;
-      ctx.strokeStyle = "#d9ffff";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(8, -4); ctx.lineTo(-8, -9);
-      ctx.moveTo(8, 4); ctx.lineTo(-8, 9);
-      ctx.stroke();
-      if (alien.type === "broodCarrier") {
-        ctx.globalAlpha = 0.78;
-        ctx.fillStyle = "#ffd1a4";
-        for (const side of [-1, 1]) {
-          ctx.beginPath();
-          ctx.arc(-13, side * 11, 3.5, 0, TAU);
-          ctx.fill();
-          ctx.globalAlpha = 0.42;
-          ctx.strokeStyle = color;
-          ctx.beginPath();
-          ctx.arc(-13, side * 11, 7, 0, TAU);
-          ctx.stroke();
+      if (!scoutArt) {
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.72;
+        ctx.beginPath();
+        const heavy = alien.type === "carrier" || alien.type === "broodCarrier" || alien.type === "gunship";
+        ctx.ellipse(3, 0, heavy ? 12 : 7, heavy ? 7 : 4, 0, 0, TAU);
+        ctx.fill();
+        ctx.globalAlpha = 0.52;
+        ctx.strokeStyle = "#d9ffff";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(8, -4); ctx.lineTo(-8, -9);
+        ctx.moveTo(8, 4); ctx.lineTo(-8, 9);
+        ctx.stroke();
+        if (alien.type === "broodCarrier") {
           ctx.globalAlpha = 0.78;
+          ctx.fillStyle = "#ffd1a4";
+          for (const side of [-1, 1]) {
+            ctx.beginPath();
+            ctx.arc(-13, side * 11, 3.5, 0, TAU);
+            ctx.fill();
+            ctx.globalAlpha = 0.42;
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.arc(-13, side * 11, 7, 0, TAU);
+            ctx.stroke();
+            ctx.globalAlpha = 0.78;
+          }
         }
       }
       if (Number.isFinite(alien.aimAngle)) {
@@ -1977,6 +2050,18 @@
         const isRocket = !hostile && bullet.kind === "missile" && bullet.sourceModule === "homingSalvo";
         const isRadial = !hostile && bullet.kind === "radial";
         const isReflected = hostile && bullet.kind === "reflected";
+        const plasmaArt = !hostile && bullet.kind === "bolt" && readyImage(this.assets.playerPlasma)
+          ? this.assets.playerPlasma
+          : null;
+        if (plasmaArt) {
+          ctx.save();
+          ctx.translate(point.x, point.y);
+          ctx.rotate(angle);
+          ctx.globalAlpha = 0.94;
+          ctx.drawImage(plasmaArt, -36, -6, 36, 12);
+          ctx.restore();
+          continue;
+        }
         const length = isLance ? 38 : bullet.kind === "rail" ? 30 : isRocket ? 17 : bullet.kind === "missile" ? 13 : isArc ? 15 : isRadial ? 12 : isReflected ? 16 : 10;
         ctx.strokeStyle = color;
         ctx.lineWidth = isLance ? 5 : bullet.kind === "rail" ? 4 : isArc ? 3 : isRadial ? 1.6 : isRocket ? 2 : isReflected ? 3.2 : 2.5;
@@ -2114,6 +2199,18 @@
       const ctx = this.ctx;
       ctx.save();
       ctx.translate(point.x, point.y);
+      const shieldArt = pickup.kind === "shield" && readyImage(this.assets.shieldGenerator)
+        ? this.assets.shieldGenerator
+        : null;
+      if (shieldArt) {
+        const phase = Number(pickup.phase) || 0;
+        const pulse = this.reduced ? 1 : 1 + Math.sin(time * 4 + phase) * 0.045;
+        ctx.rotate(time * 0.42 + phase);
+        ctx.globalAlpha = 0.96;
+        ctx.drawImage(shieldArt, -21 * pulse, -21 * pulse, 42 * pulse, 42 * pulse);
+        ctx.restore();
+        return;
+      }
       ctx.rotate(time * 1.25 + pickup.phase);
       ctx.strokeStyle = color;
       ctx.fillStyle = "rgba(6,12,25,0.9)";
@@ -2218,6 +2315,18 @@
           ctx.arc(target.x, target.y, 2.4, 0, TAU);
           ctx.fill();
         } else if (effect.type === "ring") {
+          const impactArt = readyImage(this.assets.plasmaImpact) && effect.startRadius <= 6 && effect.targetRadius <= 64
+            ? this.assets.plasmaImpact
+            : null;
+          if (impactArt) {
+            const size = clamp((Number(effect.radius) || 12) * 1.6, 24, 64);
+            ctx.save();
+            ctx.translate(point.x, point.y);
+            ctx.rotate(mod((Number(effect.x) || 0) * 0.031 + (Number(effect.y) || 0) * 0.017, TAU));
+            ctx.globalAlpha = alpha * 0.76;
+            ctx.drawImage(impactArt, -size / 2, -size / 2, size, size);
+            ctx.restore();
+          }
           ctx.strokeStyle = effect.color;
           ctx.lineWidth = 1 + alpha * 4;
           ctx.beginPath(); ctx.arc(point.x, point.y, effect.radius, 0, TAU); ctx.stroke();

@@ -1,8 +1,8 @@
-# Neon Voyage v2026.8.20c — source audit
+# Neon Voyage v2026.8.20d — source audit
 
 - Audited: 2026-08-20
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 179/179 automated source checks**
+- Result: **PASS — 180/180 automated source checks**
 
 Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated layout boxes, viewports, Pointer Events, DOM behavior, and Canvas calls. It is not physical-device acceptance.
 
@@ -12,14 +12,26 @@ Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins onl
 - Build step: **none**
 - Required local server: **none**
 - Remote runtime requests: **0 by design**
-- Runtime files: local HTML, CSS, JavaScript, and nine WebP scenery assets
+- Runtime files: local HTML, CSS, JavaScript, nine WebP scenery assets, and six transparent WebP gameplay-proof assets
 - Persistent data: separate strict local records for high score/preferences and schema-3 per-stage campaign loadouts
 - Saved-data change in this checkpoint: **none**
 - License: MIT
 
-## v2026.8.20c verified changes
+## v2026.8.20d verified changes
 
-Source inspection, focused diff review, and the frozen full-suite gate establish these implemented contracts.
+Source inspection, focused renderer coverage, encoded-asset inspection, and the frozen full-suite gate establish these implemented contracts.
+
+### Ground-up realistic gameplay-art proof
+
+- Six original transparent local WebPs replace the presentation only for the player interceptor, common `rock` asteroid, alien `scout`, starting player `bolt`, selected compact ring impacts, and `shield` pickup. The encoded files total 60,374 bytes and load through the existing repository-relative image cache with no dependency, build, account, request, or executable content.
+- The player and Scout use distinct new orthographic silhouettes and physically lit materials; the common rock uses natural cratered stone; the projectile, impact, and shield generator retain restrained cyan/magenta energy accents. The final encoded assets were alpha-inspected and visually inspected both on a dark field and at their exact renderer dimensions against the existing backdrop/world composition. This is static source-art evidence, not live in-motion acceptance.
+- Image readiness is checked defensively. A failed or pending load returns the selected subject to its established procedural path; special asteroids, every other alien, special/hostile projectiles, other impacts, and other pickups remain outside the proof.
+- Raster drawing changes no entity state, collision radius, hitbox, timing, balance, random sequence, collection cap, input, accessibility, saved-data schema/key, or migration. Reduced-effects branches remain bounded and all resources remain compatible with direct-file and repository-subpath hosting.
+- Renderer coverage freezes the six exact local paths, exercises each approved draw scope, and verifies the proof does not leak into a special asteroid, non-Scout alien, special projectile, other pickup, or large ring effect.
+
+## Prior v2026.8.20c frozen evidence
+
+The following restoration evidence was observed in the prior frozen `v2026.8.20c` audit and remains historical context.
 
 ### Rejected visual-pilot withdrawal
 
@@ -125,15 +137,15 @@ The following properties were observed in the prior frozen `v2026.8.15c` audit (
 
 ## Automated evidence boundary
 
-The frozen run registered and passed 179 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (17), mobile input (45), gameplay (67), visuals (16), and stress (2).
+The frozen run registered and passed 180 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (17), mobile input (45), gameplay (67), visuals (17), and stress (2).
 
-Current `v2026.8.20c` coverage verifies that the rejected geometry paths and their regression contract are absent while the prior renderer and 179-check baseline are restored. It re-exercises the progress-record, README launch, accessibility, Node-24-native workflow, and Pages-artifact contracts retained from `v2026.8.20a`.
+Current `v2026.8.20d` coverage verifies the exact six proof paths, their approved renderer scopes, and isolation from unapproved gameplay families while retaining the restoration, progress-record, README launch, accessibility, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
 
 Retained `v2026.8.20` deterministic coverage exercises shell/viewport disagreement and dynamic resizing; pointer-only reticle rendering; death-effect rendering without ship-owned visuals; clear-versus-travel presentation; terminal-but-delayed game-over focus and effect timing; delayed stationary target acquisition, deterministic tie order, bounded turn and fire; target lock and reacquisition; touch and hybrid-manual takeover; both command ships' live-node protection; and same-landscape orientation cleanup.
 
 The browser VM loads every classic script, constructs the DOM and Canvas surfaces, starts a run, creates real Enigma buttons/previews, projects shield and compact summaries, and keeps one animation loop. Responsive contracts include 568×320 and 667×375 phone landscapes and a 1024×768 tablet-class viewport. This is automated source and simulated-browser evidence, not a pixel-comparison test or hands-on device play.
 
-`SHA256SUMS` exactly covered and verified all 47 release files outside its documented self/exclusion rules.
+`SHA256SUMS` exactly covered and verified all 53 release files outside its documented self/exclusion rules.
 
 ## Reproduce
 
@@ -142,11 +154,11 @@ node tests/run.js
 sha256sum --check SHA256SUMS
 ```
 
-Observed result for this frozen source tree: `179/179 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 47 manifest entries.
+Observed result for this frozen source tree: `180/180 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 53 manifest entries.
 
 ## Browser and publication boundary
 
-- No prepublication hands-on browser play is claimed.
+- No prepublication hands-on browser play or in-motion visual acceptance is claimed. Static gameplay-scale composition and encoded-alpha inspection are reported separately above.
 - No post-change physical phone or iPad play is claimed. Two-thumb feel, browser-toolbar behavior on real devices, target selection feel, balance, readability, and audio acceptance remain pending.
 - After protected merge and Pages deployment, acceptance requires opening the exact live repository-subpath URL, confirming the deployed version, selecting **Play**, exercising a short combat interaction, and checking the browser console.
 - This source audit does not itself prove a pull-request check, merge, Pages deployment, immutable tag, GitHub Release, or live Play result. Those are external publication gates.

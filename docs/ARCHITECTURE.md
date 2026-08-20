@@ -34,7 +34,7 @@ flowchart LR
 | `js/config.js` | Version, stages, milestone rewards, module tiers, pickup pacing, dimensions, timing, difficulty, caps | Mutable run state |
 | `js/core.js` | Pure reusable deterministic utilities and safe storage primitives | Domain orchestration |
 | `js/audio.js` | Optional synthesized cues and active-node cap | Gameplay decisions |
-| `js/render.js` | Scene keyframes, asset loading, previews, cached late/boss washes, field cues, telegraphs, projectiles, and Canvas drawing | Progression or collision outcomes |
+| `js/render.js` | Scene keyframes, local scenery/gameplay-proof asset loading, procedural fallbacks, previews, cached late/boss washes, field cues, telegraphs, projectiles, and Canvas drawing | Progression or collision outcomes |
 | `js/game.js` | Saved progress, modes, input, gated rewards, Enigma drafting, encounter and threat state machines, combat, progression, UI projection, frame loop | Authored balance values or raster provenance |
 | `tests/` | Deterministic contracts and dependency-free browser simulation | Human game-feel acceptance |
 
@@ -67,7 +67,7 @@ The HUD remains a projection of live state. Shield reserve is hidden at zero and
 
 The right touch stick has one finite gesture state. It starts pending at neutral, becomes auto-aim only after `CONFIG.mobileControls.autoAimHoldSeconds`, and retains one target until that target is no longer actionable. It then reuses the bounded nearest-target scan to reacquire. Any shaped manual deflection latches manual aim until the matching release/cancel/cleanup; returning to center cannot re-enter auto-aim in the same gesture. The auto-aim eligibility predicate excludes either command-ship body while live nodes reduce its damage, but leaves those nodes and other threats eligible; Leviathan reflection remains a separate node-dependent defense. Every existing pointer-capture, pause, orientation, visibility, page-lifecycle, and mode cleanup clears the timer, latch, target, and fire intent together. Mouse, keyboard, and gamepad paths do not read this gesture state.
 
-`js/render.js` builds stars and encounter gradients only when the shell-owned renderer size changes. Late-stage intensity derives from encounter progression, boss washes derive from configured `bossType`, and both crossfade with the same scene-handoff weights. Reduced effects use lower static opacity. Tractor arcs read the exact equipped-tier range; subtle field cues read the shared combat-field bounds; telegraphs read the runtime warning/active objects; and Leviathan reflection reads the node-dependent shield object defensively. The cyan/magenta reticle draws only when `js/game.js` projects active mouse/pen pointer aim; touch and neutral aim do not render it, and a later pointer move can restore it on a hybrid device.
+`js/render.js` loads repository-local scenery plus six realistic gameplay-proof WebPs through the existing bounded image cache. It selects those rasters only for the player interceptor, common `rock`, alien `scout`, player `bolt`, selected compact ring impact, and `shield` pickup; failed loads and all other families retain their existing procedural paths. Draw sizing and animation are presentation-only and add no simulation fields, random draws, collections, network access, or persistence changes. Stars and encounter gradients are rebuilt only when the shell-owned renderer size changes. Late-stage intensity derives from encounter progression, boss washes derive from configured `bossType`, and both crossfade with the same scene-handoff weights. Reduced effects use lower static opacity. Tractor arcs read the exact equipped-tier range; subtle field cues read the shared combat-field bounds; telegraphs read the runtime warning/active objects; and Leviathan reflection reads the node-dependent shield object defensively. The cyan/magenta reticle draws only when `js/game.js` projects active mouse/pen pointer aim; touch and neutral aim do not render it, and a later pointer move can restore it on a hybrid device.
 
 ## Large-file routing
 
@@ -97,7 +97,7 @@ See [`SECURITY.md`](../SECURITY.md) for reporting scope.
 ## Verification surfaces
 
 - `ND.Core` exposes pure utility contracts.
-- `ND.RenderDebug` exposes scene, cinematic, anchor, damage, and asset-source contracts.
+- `ND.RenderDebug` exposes scene, cinematic, anchor, damage, scenery-source, and gameplay-proof-source contracts.
 - `ND.StagePreview.render` exposes deterministic checkpoint-card rendering.
 - `ND.EnigmaPreview.render` exposes deterministic, decorative choice-card rendering driven by the existing frame time and reduced-effects setting.
 - `ND.game` exposes the intentional deterministic simulation surface used by tests, including both configured bosses, the Stage 1–20 journey, passive-system state, the Enigma snapshot, and controlled enhancement selection.
