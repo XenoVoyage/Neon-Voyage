@@ -36,9 +36,6 @@ The two current captures are 1200×675 WebP files. The audit enforces a 256 KiB 
 - Planet silhouettes and atmospheres must not resemble HUD rings, repeated stripes, or transparent overlays.
 - Background contrast must leave the central combat field readable.
 - Gameplay entities stay procedural unless a raster asset clearly improves the experience without weakening clarity or performance.
-- Procedural gameplay materials use deep readable masses, restrained role-colored rims, pale structural highlights, and compact emissive cores. Player cyan/magenta, hostile role colors, and mineral asteroid facets must remain distinguishable at combat scale.
-
-The current code-authored Canvas pilot covers the player ship, a representative alien scout plus the shared alien hull foundation, asteroids, player and hostile projectiles, pickups, and impact particles. It introduces no raster, external artwork, runtime request, or third-party dependency. Future alien, ship, projectile, power-up, and effect families should extend this reviewed foundation rather than replacing every silhouette at once.
 
 ## Asset rules
 

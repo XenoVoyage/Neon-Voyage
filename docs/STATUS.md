@@ -7,14 +7,14 @@ This document is the current-state handoff. It records project maturity and open
 | Area | Status |
 | --- | --- |
 | Runtime | 20-stage browser game published from protected `main` |
-| Current runtime version | `v2026.8.20b` in the source checkpoint; Pages follows successful `main` deployments |
+| Current runtime version | `v2026.8.20c` in the source checkpoint; Pages follows successful `main` deployments |
 | Hosting | Direct `file://` launch and GitHub Pages repository subpath |
 | Dependencies and build | No runtime dependencies and no build step |
 | Saved data | Unchanged local high score, preferences, schema-3 20-stage progress, and bounded stacking checkpoint loadouts |
 | Verification | Frozen-source results belong in [`AUDIT.md`](../AUDIT.md); merge, Pages, live-play, and physical-touch evidence remain separate gates |
-| Product work | Mobile viewport alignment, touch-target readability, stage/death presentation polish, progressive rewards, evolved hazards, full-field boss counterplay, and a representative procedural visual-language pilot are implemented |
+| Product work | Mobile viewport alignment, touch-target readability, stage/death presentation polish, progressive rewards, evolved hazards, and full-field boss counterplay are implemented |
 
-The current source checkpoint adds a shared procedural Canvas material language to a representative set: the player ship, alien scout and common alien hull, asteroids, projectiles, pickups, and impact particles. It preserves established silhouettes, role colors, hitboxes, gameplay timing, reduced-effects behavior, and saved data while providing a reviewable foundation for later full-family art work. [`AUDIT.md`](../AUDIT.md) owns frozen automated source evidence; GitHub records and hands-on browser sessions separately own merge, deployment, live-play, and physical-device evidence.
+The current source checkpoint restores the established gameplay presentation after the `v2026.8.20b` procedural geometry pilot failed visual acceptance. Gameplay, saved data, accessibility, deterministic bounds, and offline operation remain unchanged. A ground-up realistic raster proof is the next separate art task and must be reviewed at gameplay size before expansion. [`AUDIT.md`](../AUDIT.md) owns frozen automated source evidence; GitHub records and hands-on browser sessions separately own merge, deployment, live-play, and physical-device evidence.
 
 ## Implemented product
 
@@ -46,10 +46,10 @@ See [`GAME_DESIGN.md`](GAME_DESIGN.md) for intended experience and [`ARCHITECTUR
 
 ## Publication status
 
-`v2026.8.20b` is the current runtime label. A local label, changelog heading, Pages deployment, or version badge does not by itself prove that a matching immutable tag and formal GitHub Release exist; publication status must be confirmed from GitHub.
+`v2026.8.20c` is the current runtime label. A local label, changelog heading, Pages deployment, or version badge does not by itself prove that a matching immutable tag and formal GitHub Release exist; publication status must be confirmed from GitHub.
 
 Creating or backfilling a tag is an explicit publication action. Do not do it during ordinary documentation maintenance, and never move a published tag.
 
 ## Next task boundary
 
-Review the visual-language pilot in motion before extending it across the complete alien, ship, projectile, power-up, and effect families. Physical phone and iPad acceptance remains a separate unverified boundary, and publishing a formal release still requires an explicit owner decision for any missing immutable tag or GitHub Release action.
+Create one ground-up realistic raster proof set—player ship, common asteroid, alien Scout, representative projectile/effect, and power-up—and review it in motion before authoring complete visual families. Publishing a formal release requires an explicit owner decision for any missing immutable tag or GitHub Release action. Physical phone and iPad acceptance remains a separate unverified boundary.
