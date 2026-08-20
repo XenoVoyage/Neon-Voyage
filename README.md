@@ -1,6 +1,6 @@
 # Neon Voyage
 
-[![Version v2026.8.20f](https://img.shields.io/badge/version-v2026.8.20f-63f7f0)](CHANGELOG.md)
+[![Version v2026.8.20g](https://img.shields.io/badge/version-v2026.8.20g-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
@@ -38,7 +38,7 @@ On phones and tablets, play in landscape and touch either half of the battlefiel
 
 Clear each battlefield, stack long-lasting temporary weapons, and grow a stage-gated catalog of 13 permanent modules through Mk V. Reward chances and tier limits rise as the voyage becomes more dangerous. **Enigma** signals slow combat to a halt and offer three compact animated enhancement cards, while six milestone clears guarantee key systems.
 
-Auric Colossi split into explosive and magnetic shards, Coronas sweep the field with rotating beams, and advanced alien gunships and Brood Carriers demand new positioning. Every normal and boss stage now occupies a larger finite field: the camera follows the interceptor through a restrained dead zone, hard borders keep encounters bounded, and clustered edge cues use the real target art to locate off-screen objectives. The Leviathan still reflects direct fire while its nodes survive. **New Game** begins again at Earth; **Continue** restores the selected checkpoint's saved weapons to a fresh battlefield.
+The Inner Belt now plays as one continuous finite surge: a pre-authored reserve replenishes the field in small pressure-bounded groups before a Colossal mass breaks into smaller pieces. Auric Colossi split into explosive and magnetic shards, Coronas sweep the field with rotating beams, and advanced alien gunships and Brood Carriers demand new positioning. Every normal and boss stage occupies a larger finite field: the camera follows the interceptor through a restrained dead zone, hard borders keep encounters bounded, and clustered edge cues use the real target art to locate off-screen objectives. The Leviathan still reflects direct fire while its nodes survive. **New Game** begins again at Earth; **Continue** restores the selected checkpoint's saved weapons to a fresh battlefield.
 
 Every ship, asteroid, projectile, pickup, and impact now shares one realistic deep-space art direction, backed by distinct locally synthesized weapon, material-impact, and destruction cues.
 

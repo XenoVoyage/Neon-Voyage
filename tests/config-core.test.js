@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.20f configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.20f");
+  test("Neon Voyage v2026.8.20g configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.20g");
     assert.ok(CONFIG.presentation.gameoverEffectDuration >= 1 && CONFIG.presentation.gameoverEffectDuration <= 2);
     assert.ok(CONFIG.mobileControls.autoAimHoldSeconds > 0 && CONFIG.mobileControls.autoAimHoldSeconds <= 0.25);
     collectFrozen(CONFIG, new Set());
@@ -84,11 +84,25 @@ module.exports = function register(test) {
       assert.ok(Array.isArray(stage.waves) && stage.waves.length > 0, `${stage.id} needs waves`);
       for (const wave of stage.waves) {
         assert.ok(Array.isArray(wave.required) && wave.required.length > 0, `${stage.id}/${wave.label} needs required groups`);
+        if (wave.reinforcements) {
+          const release = wave.reinforcements;
+          assert.ok(Number.isFinite(release.activePressure) && release.activePressure > 0);
+          assert.ok(Number.isFinite(release.refillAtPressure) && release.refillAtPressure >= 0 &&
+            release.refillAtPressure < release.activePressure);
+          assert.ok(Number.isSafeInteger(release.initialBatch) && release.initialBatch > 0);
+          assert.ok(Number.isSafeInteger(release.batchSize) && release.batchSize > 0 &&
+            release.batchSize <= release.initialBatch);
+          assert.ok(Number.isFinite(release.intervalSeconds) && release.intervalSeconds >= 0 &&
+            release.intervalSeconds <= 2);
+        }
         for (const group of wave.required.concat(wave.hazards || [])) {
           assert.ok(["asteroid", "alien"].includes(group.family), `unknown family ${group.family}`);
           assert.ok(Array.isArray(group.kinds) && group.kinds.length > 0);
           assert.ok(Number.isSafeInteger(group.count) && group.count > 0);
           assert.ok(Number.isSafeInteger(group.cap) && group.cap >= group.count);
+          if ("durabilityScale" in group) {
+            assert.ok(Number.isFinite(group.durabilityScale) && group.durabilityScale >= 0.25 && group.durabilityScale <= 4);
+          }
         }
       }
     }
@@ -134,10 +148,24 @@ module.exports = function register(test) {
     }
     assert.ok(CONFIG.bossArena.warningSeconds > 0);
 
+    const beltSurge = stages[1].waves;
+    assert.equal(beltSurge.length, 1, "Inner Belt must play as one continuous finite surge");
+    assert.equal(beltSurge[0].label, "BELT SURGE");
+    assert.deepEqual(JSON.parse(JSON.stringify(beltSurge[0].reinforcements)), {
+      activePressure: 11,
+      refillAtPressure: 4,
+      initialBatch: 6,
+      batchSize: 2,
+      intervalSeconds: 0.45
+    });
+    assert.equal(beltSurge[0].required.reduce((total, group) => total + group.count, 0), 16);
+    assert.equal(beltSurge[0].required.filter((group) => group.kinds.includes("colossal"))
+      .reduce((total, group) => total + group.count, 0), 1);
+
     const authoredCounts = stages.map((stage) => stage.waves ? stage.waves.reduce((stageTotal, wave) =>
       stageTotal + wave.required.concat(wave.hazards || []).reduce((waveTotal, group) => waveTotal + group.count, 0), 0) : null);
     assert.deepEqual(Array.from(authoredCounts), [
-      12, 14, 16, 18, 7,
+      12, 16, 16, 18, 7,
       12, 14, 16, 18, null,
       14, 16, 18, 20, 16,
       14, 16, 18, 20, null

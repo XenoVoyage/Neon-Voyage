@@ -2,6 +2,19 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.20g] — 2026-08-20
+
+### Added
+
+- Added a finite reinforcement director that releases authored reserves in small batches only when live weighted pressure falls below configured bounds.
+- Added a mid-surge Colossal arrival and dramatic local arena cue to the Inner Belt encounter.
+
+### Changed
+
+- Reworked Stage 2 into one continuous 16-root Belt Surge, with a denser six-root opening, gradual crystal/volatile/armored escalation, and complete split-descendant cleanup before victory.
+- Balanced the denser encounter with stage-owned durability scaling so it targets a compact roughly three-minute play session instead of becoming a health grind.
+- Preserved all twenty campaign checkpoints, schema-3 and legacy save migration, deterministic spawn order, entity caps, accessibility, offline operation, security, and ballistic asteroid behavior.
+
 ## [v2026.8.20f] — 2026-08-20
 
 ### Added

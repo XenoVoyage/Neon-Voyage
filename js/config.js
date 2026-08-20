@@ -89,7 +89,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.20f",
+    version: "v2026.8.20g",
 
     world: {
       fixedStep: 1 / 60,
@@ -227,24 +227,26 @@
           goal: { type: "waves" },
           waves: [
             {
-              label: "CRYSTAL VEIN",
+              label: "BELT SURGE",
+              reinforcements: {
+                activePressure: 11,
+                refillAtPressure: 4,
+                initialBatch: 6,
+                batchSize: 2,
+                intervalSeconds: 0.45
+              },
               required: [
-                { family: "asteroid", kinds: ["rock"], count: 2, cap: 2 },
-                { family: "asteroid", kinds: ["crystal"], count: 2, sectorStep: 0.5, cap: 3 }
-              ]
-            },
-            {
-              label: "VOLATILE POCKET",
-              required: [
-                { family: "asteroid", kinds: ["rock", "crystal"], count: 3, sectorStep: 0.6, cap: 5 },
-                { family: "asteroid", kinds: ["volatile"], count: 2, sectorStep: 0.4, cap: 3 }
-              ]
-            },
-            {
-              label: "ARMORED HEART",
-              required: [
-                { family: "asteroid", kinds: ["crystal", "volatile"], count: 3, sectorStep: 0.6, cap: 5 },
-                { family: "asteroid", kinds: ["armored"], count: 2, sectorStep: 0.5, cap: 4 }
+                { family: "asteroid", kinds: ["rock", "crystal"], count: 10, cap: 10, durabilityScale: 0.8 },
+                {
+                  family: "asteroid",
+                  kinds: ["colossal"],
+                  count: 1,
+                  cap: 1,
+                  durabilityScale: 0.8,
+                  announcement: "COLOSSAL MASS INBOUND"
+                },
+                { family: "asteroid", kinds: ["crystal", "volatile"], count: 3, cap: 3, durabilityScale: 0.8 },
+                { family: "asteroid", kinds: ["crystal", "armored"], count: 2, cap: 2, durabilityScale: 0.8 }
               ]
             }
           ]

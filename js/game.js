@@ -1599,6 +1599,7 @@
       waveRequiredCleared: 0,
       stageRequiredTotal: 0,
       stageRequiredCleared: 0,
+      reinforcementDelay: 0,
       pendingSpawns: [],
       requeue: [],
       playerKills: 0,
@@ -2420,7 +2421,9 @@
     const surfaceDistance = Math.max(0, Math.hypot(position.x - state.ship.x, position.y - state.ship.y) - state.ship.radius - radius);
     const safeSpeed = automaticPosition && state.combatField.active ? surfaceDistance / CONFIG.combatField.spawnMinimumContactSeconds : scaledSpeed;
     const speed = Math.min(scaledSpeed, safeSpeed);
-    const healthScale = CONFIG.difficulty.healthScale(state.sector, state.encounter);
+    const durabilityScale = Number.isFinite(spawnOptions.durabilityScale) ?
+      clamp(spawnOptions.durabilityScale, 0.25, 4) : 1;
+    const healthScale = CONFIG.difficulty.healthScale(state.sector, state.encounter) * durabilityScale;
     const health = Number.isFinite(spawnOptions.health) ? Math.max(0.01, spawnOptions.health) :
       Math.max(1, definition.baseHealth * healthScale * (radius / definition.radius));
     const maxHealth = Number.isFinite(spawnOptions.maxHealth) ? Math.max(health, spawnOptions.maxHealth) : health;
@@ -2478,8 +2481,10 @@
     const position = automaticPosition ? spawnPosition(0.75, 1.1, definition.radius) : spawnOptions;
     if (!position) return null;
     if (automaticPosition && !state.combatField.active) applySpawnClearance(position, definition.radius);
+    const durabilityScale = Number.isFinite(spawnOptions.durabilityScale) ?
+      clamp(spawnOptions.durabilityScale, 0.25, 4) : 1;
     const health = Number.isFinite(spawnOptions.health) ? Math.max(0.01, spawnOptions.health) :
-      definition.baseHealth * CONFIG.difficulty.healthScale(state.sector, state.encounter);
+      definition.baseHealth * CONFIG.difficulty.healthScale(state.sector, state.encounter) * durabilityScale;
     const maxHealth = Number.isFinite(spawnOptions.maxHealth) ? Math.max(health, spawnOptions.maxHealth) : health;
     const alienId = nextEntityId++;
     const lineageId = Number.isFinite(spawnOptions.lineageId) ? spawnOptions.lineageId : alienId;
@@ -2541,6 +2546,36 @@
     return encounterLivingThreats() + data.pendingSpawns.length + data.requeue.length;
   }
 
+  function threatPressure(family, kind, explicitCost) {
+    if (Number.isFinite(explicitCost)) return Math.max(1, explicitCost);
+    const definitions = family === "alien" ? CONFIG.aliens : CONFIG.asteroids;
+    const definition = definitions[kind];
+    return Math.max(1, definition && Number(definition.threatCost) || 1);
+  }
+
+  function currentWavePressure() {
+    const data = state.encounterData;
+    if (!data) return 0;
+    let pressure = 0;
+    for (const name of THREAT_ARRAYS) {
+      for (const entity of state[name]) {
+        if (entity.dead || entity.generation !== data.generation || entity.waveIndex !== data.waveIndex) continue;
+        pressure += Math.max(1, Number(entity.threatCost) || 0);
+      }
+    }
+    return pressure;
+  }
+
+  function currentWaveSpec() {
+    const data = state.encounterData;
+    return data && data.spec.waves && data.spec.waves[data.waveIndex] || null;
+  }
+
+  function currentReinforcements() {
+    const wave = currentWaveSpec();
+    return wave && wave.reinforcements || null;
+  }
+
   function scaledGroupCount(group) {
     const root = Math.sqrt(Math.max(0, state.sector - 1));
     return Math.max(0, Math.min(group.cap || group.count, Math.floor(group.count + root * (group.sectorStep || 0))));
@@ -2566,12 +2601,15 @@
     const add = (group, required) => {
       const count = scaledGroupCount(group);
       const kinds = balancedGroupKinds(group.kinds, count);
-      for (const kind of kinds) {
+      for (let index = 0; index < kinds.length; index += 1) {
+        const kind = kinds[index];
         queue.push({
           family: group.family,
           kind,
           required,
-          waveIndex: state.encounterData.waveIndex
+          waveIndex: state.encounterData.waveIndex,
+          durabilityScale: group.durabilityScale,
+          announcement: index === 0 ? group.announcement : null
         });
       }
     };
@@ -2593,7 +2631,12 @@
     data.waveRequiredTotal = data.pendingSpawns.filter((entry) => entry.required).length;
     data.stageRequiredTotal += data.waveRequiredTotal;
     data.waveDelay = 0;
-    spawnPendingWave();
+    data.reinforcementDelay = 0;
+    spawnPendingWave(true, true);
+    const reinforcements = currentReinforcements();
+    if (reinforcements && data.pendingSpawns.length) {
+      data.reinforcementDelay = reinforcements.intervalSeconds;
+    }
     announce(`Wave ${data.waveNumber}/${data.waveCount} — ${data.waveLabel}`, 1.25);
     return true;
   }
@@ -2628,21 +2671,48 @@
       lineageId: entry.lineageId,
       parentLineageId: entry.parentLineageId
     };
-    return entry.family === "alien" ? spawnAlien(entry.kind, options) : spawnAsteroid(entry.kind, options);
+    options.durabilityScale = entry.durabilityScale;
+    const entity = entry.family === "alien" ? spawnAlien(entry.kind, options) : spawnAsteroid(entry.kind, options);
+    if (entity && entry.announcement) {
+      announce(entry.announcement, 1.8);
+      audio.arena();
+    }
+    return entity;
   }
 
-  function spawnPendingWave() {
+  function spawnPendingWave(releasePending, initialRelease) {
     const data = state.encounterData;
     if (!data) return false;
     let spawned = false;
-    while (data.requeue.length || data.pendingSpawns.length) {
-      const fromRequeue = data.requeue.length > 0;
-      const entry = fromRequeue ? data.requeue[0] : data.pendingSpawns[0];
+    while (data.requeue.length) {
+      const entry = data.requeue[0];
       const entity = spawnQueuedThreat(entry);
-      if (!entity) break;
-      if (fromRequeue) data.requeue.shift();
-      else data.pendingSpawns.shift();
+      if (!entity) {
+        data.waveSpawned = false;
+        return spawned;
+      }
+      data.requeue.shift();
       spawned = true;
+    }
+
+    if (releasePending !== false) {
+      const reinforcements = currentReinforcements();
+      const batchLimit = reinforcements ?
+        Math.max(1, initialRelease ? reinforcements.initialBatch : reinforcements.batchSize) : Number.POSITIVE_INFINITY;
+      const pressureLimit = reinforcements ? Math.max(1, reinforcements.activePressure) : Number.POSITIVE_INFINITY;
+      let pressure = currentWavePressure();
+      let released = 0;
+      while (data.pendingSpawns.length && released < batchLimit) {
+        const entry = data.pendingSpawns[0];
+        const entryPressure = threatPressure(entry.family, entry.kind, entry.threatCost);
+        if (pressure > 0 && pressure + entryPressure > pressureLimit) break;
+        const entity = spawnQueuedThreat(entry);
+        if (!entity) break;
+        data.pendingSpawns.shift();
+        pressure += Math.max(1, Number(entity.threatCost) || 0);
+        released += 1;
+        spawned = true;
+      }
     }
     data.waveSpawned = data.pendingSpawns.length === 0 && data.requeue.length === 0;
     return spawned;
@@ -2657,13 +2727,24 @@
       return;
     }
 
-    if (!data.waveSpawned) {
+    if (data.requeue.length) {
       data.waveDelay -= dt;
       if (data.waveDelay <= 0) {
-        const spawned = spawnPendingWave();
+        const spawned = spawnPendingWave(false, false);
         data.waveDelay = spawned ? 0 : CONFIG.combatField.waveSpawnRetrySeconds;
       }
     }
+    if (data.pendingSpawns.length) {
+      const reinforcements = currentReinforcements();
+      data.reinforcementDelay = Math.max(0, data.reinforcementDelay - dt);
+      const pressureReady = !reinforcements || currentWavePressure() <= reinforcements.refillAtPressure;
+      if (!data.requeue.length && pressureReady && data.reinforcementDelay <= 0) {
+        const spawned = spawnPendingWave(true, false);
+        data.reinforcementDelay = spawned && reinforcements ? reinforcements.intervalSeconds :
+          CONFIG.combatField.waveSpawnRetrySeconds;
+      }
+    }
+    data.waveSpawned = data.pendingSpawns.length === 0 && data.requeue.length === 0;
     const waveClear = data.waveSpawned && data.waveRequiredCleared >= data.waveRequiredTotal && encounterThreatsRemaining() === 0;
     if (!waveClear) return;
     data.goalProgress = Math.max(data.goalProgress, data.waveNumber);
@@ -5142,6 +5223,7 @@
     }
     const remaining = encounterThreatsRemaining();
     if (data.goalType === "titan") return remaining ? `Destroy all threats · ${remaining}` : "Area clear";
+    if (currentReinforcements()) return `${data.waveLabel} · ${remaining} threats`;
     return `Wave ${data.waveNumber}/${data.waveCount} · ${remaining} threats`;
   }
 

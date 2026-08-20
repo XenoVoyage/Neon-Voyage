@@ -1,8 +1,8 @@
-# Neon Voyage v2026.8.20f — source audit
+# Neon Voyage v2026.8.20g — source audit
 
 - Audited: 2026-08-20
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 183/183 automated source checks**
+- Result: **PASS — 184/184 automated source checks**
 
 Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated layout boxes, viewports, Pointer Events, DOM behavior, and Canvas calls. It is not physical-device acceptance.
 
@@ -17,7 +17,21 @@ Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins onl
 - Saved-data change in this checkpoint: **none**
 - License: MIT
 
-## v2026.8.20f verified changes
+## v2026.8.20g verified changes
+
+Source inspection, deterministic reinforcement regressions, the rendered browser harness, the complete Stage 1–20 weapon journey, and the frozen full-suite gate establish these implemented contracts.
+
+### Finite Inner Belt reinforcement surge
+
+- Stage 2 owns one complete seeded reserve of 16 required asteroid roots. Six roots form the opening field; later batches contain at most two roots and release only after a 0.45-second minimum interval while current-wave pressure is at or below four.
+- Live pressure counts every encounter-owned asteroid or alien at least once, including zero-reward split descendants. The director restores hard-cull requeues before fresh reserve roots, so replenishment cannot duplicate, discard, or silently complete an objective.
+- Ten opening roots precede one announced Colossal. Its exact one-to-three-to-six split tree and all later crystal, volatile, armored, and split descendants block stage completion until the authored reserve and field are both empty.
+- Stage-owned 0.8 durability scaling offsets the denser field without changing global asteroid definitions, collision radii, ballistic movement, split geometry, score, or saved data.
+- The objective exposes the complete finite threat count and the Belt Surge label instead of presenting the encounter as endless generation.
+
+## Prior v2026.8.20f frozen evidence
+
+The following expanded-field and quick-fire contracts were observed in the prior frozen `v2026.8.20f` audit and remain historical context.
 
 Source inspection, deterministic camera/input/renderer regressions, and the frozen full-suite gate establish these implemented contracts.
 
@@ -169,9 +183,9 @@ The following properties were observed in the prior frozen `v2026.8.15c` audit (
 
 ## Automated evidence boundary
 
-The frozen run registered and passed 183 checks across configuration/core (13), offline/repository (16), browser VM (4), progress (17), mobile input (46), gameplay (67), visuals (18), and stress (2).
+The frozen run registered and passed 184 checks across configuration/core (13), offline/repository (16), browser VM (4), progress (17), mobile input (46), gameplay (68), visuals (18), and stress (2).
 
-Current `v2026.8.20f` coverage adds expanded-field containment, bounded camera follow, capped clustered off-screen cues, and queued quick-tap fire while retaining complete mapped renderer ownership, safe procedural fallback, material-effect routing, bounded audio vocabulary, progress compatibility, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
+Current `v2026.8.20g` coverage adds the finite seeded Belt Surge reserve, weighted descendant pressure, bounded batch releases, delayed Colossal set-piece, stage-owned durability, and complete-reserve objective wording while retaining expanded-field containment, bounded camera follow, capped clustered off-screen cues, queued quick-tap fire, complete mapped renderer ownership, safe procedural fallback, material-effect routing, bounded audio vocabulary, progress compatibility, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
 
 Retained `v2026.8.20` deterministic coverage exercises shell/viewport disagreement and dynamic resizing; pointer-only reticle rendering; death-effect rendering without ship-owned visuals; clear-versus-travel presentation; terminal-but-delayed game-over focus and effect timing; delayed stationary target acquisition, deterministic tie order, bounded turn and fire; target lock and reacquisition; touch and hybrid-manual takeover; both command ships' live-node protection; and same-landscape orientation cleanup.
 
@@ -186,7 +200,7 @@ node tests/run.js
 sha256sum --check SHA256SUMS
 ```
 
-Observed result for this frozen source tree: `183/183 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 93 manifest entries.
+Observed result for this frozen source tree: `184/184 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 93 manifest entries.
 
 ## Browser and publication boundary
 
