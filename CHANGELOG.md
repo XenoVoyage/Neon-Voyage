@@ -2,6 +2,13 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.20b] — 2026-08-20
+
+### Changed
+
+- Established a shared layered material language for the player ship, a representative alien scout, asteroid surfaces, projectiles, pickups, and impact particles.
+- Preserved the existing silhouettes, threat colors, hitboxes, simulation, reduced-effects behavior, saved data, and dependency-free offline Canvas runtime while preparing a reviewed foundation for later visual families.
+
 ## [v2026.8.20a] — 2026-08-20
 
 ### Changed

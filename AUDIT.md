@@ -1,8 +1,8 @@
-# Neon Voyage v2026.8.20a — source audit
+# Neon Voyage v2026.8.20b — source audit
 
 - Audited: 2026-08-20
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 179/179 automated source checks**
+- Result: **PASS — 180/180 automated source checks**
 
 Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated layout boxes, viewports, Pointer Events, DOM behavior, and Canvas calls. It is not physical-device acceptance.
 
@@ -17,7 +17,18 @@ Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins onl
 - Saved-data change in this checkpoint: **none**
 - License: MIT
 
-## v2026.8.20a verified changes
+## v2026.8.20b verified changes
+
+Source inspection, focused visual regression coverage, and the frozen full-suite gate establish these implemented contracts.
+
+### Procedural visual-language pilot
+
+- The player ship, representative Scout and shared alien hull treatment, asteroids, player and hostile projectiles, pickups, and impact particles now use one immutable procedural material-language contract: deep readable mass, restrained role-colored rim, pale structural highlight, and compact emissive core.
+- Existing entity silhouettes, hostile role colors, special projectile forms, asteroid variant cues, telegraphs, pickup glyphs, reduced-effects behavior, hitboxes, timing, simulation, saved data, and finite collection bounds are unchanged.
+- The pilot is authored entirely with the existing local Canvas renderer. It adds no raster asset, network request, package, build step, random draw, or new animation loop; the documented review boundary precedes any complete family redraw.
+- Regression coverage freezes the material-language revision, palette anchors, representative categories, asteroid faceting, Scout layering, projectile allegiance cores, and directional particle construction without asserting incidental pixel output.
+
+## Prior v2026.8.20a frozen evidence
 
 Source inspection, focused regression coverage, and the frozen full-suite gate establish these implemented contracts.
 
@@ -115,9 +126,9 @@ The following properties were observed in the prior frozen `v2026.8.15c` audit (
 
 ## Automated evidence boundary
 
-The frozen run registered and passed 179 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (17), mobile input (45), gameplay (67), visuals (16), and stress (2).
+The frozen run registered and passed 180 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (17), mobile input (45), gameplay (67), visuals (17), and stress (2).
 
-Current `v2026.8.20a` coverage exercises one progress-record write for each permanent reward route, including boss clears with and without surviving escorts; the linked README launch target; grouped compact assistive-text presentation; the menu metadata size and contrast contract; Node-24-native workflow majors; and explicit hidden-file preservation for the Pages artifact.
+Current `v2026.8.20b` coverage freezes the shared procedural material-language revision, categories, palette anchors, asteroid facets, representative Scout layers, projectile allegiance cores, and directional particles. It also re-exercises the retained progress-record, README launch, accessibility, workflow, and Pages-artifact contracts from `v2026.8.20a`.
 
 Retained `v2026.8.20` deterministic coverage exercises shell/viewport disagreement and dynamic resizing; pointer-only reticle rendering; death-effect rendering without ship-owned visuals; clear-versus-travel presentation; terminal-but-delayed game-over focus and effect timing; delayed stationary target acquisition, deterministic tie order, bounded turn and fire; target lock and reacquisition; touch and hybrid-manual takeover; both command ships' live-node protection; and same-landscape orientation cleanup.
 
@@ -132,7 +143,7 @@ node tests/run.js
 sha256sum --check SHA256SUMS
 ```
 
-Observed result for this frozen source tree: `179/179 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 47 manifest entries.
+Observed result for this frozen source tree: `180/180 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 47 manifest entries.
 
 ## Browser and publication boundary
 

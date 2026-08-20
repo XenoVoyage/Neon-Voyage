@@ -44,6 +44,27 @@ function recordingCanvas() {
 }
 
 module.exports = function register(test) {
+  test("the procedural gameplay pilot shares one immutable material language", () => {
+    const debug = loadRenderer();
+    const language = debug.visualLanguage;
+    assert.ok(Object.isFrozen(language));
+    assert.ok(Object.isFrozen(language.pilotCategories));
+    assert.equal(language.revision, 1);
+    assert.deepEqual(Array.from(language.pilotCategories), [
+      "playerShip", "asteroid", "alienScout", "projectiles", "pickup", "particles"
+    ]);
+    assert.equal(language.voidInk, "#07111f");
+    assert.equal(language.materialHighlight, "#d8ffff");
+    assert.equal(language.playerEdge, "#9afaff");
+    assert.equal(language.hostileCore, "#ff5da9");
+
+    const renderer = readProject("js/render.js");
+    assert.match(renderer, /VISUAL_LANGUAGE\.stoneFacet/);
+    assert.match(renderer, /alien\.type === "scout"/);
+    assert.match(renderer, /hostile \? VISUAL_LANGUAGE\.hostileCore : VISUAL_LANGUAGE\.playerEdge/);
+    assert.match(renderer, /Math\.atan2\(effect\.vy \|\| 0, effect\.vx \|\| 1\)/);
+  });
+
   test("renderer follows the game shell through dynamic viewport changes", () => {
     const browser = buildBrowser({
       now: 1700000000000,
