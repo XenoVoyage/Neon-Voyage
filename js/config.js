@@ -89,7 +89,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.20a",
+    version: "v2026.8.20b",
 
     world: {
       fixedStep: 1 / 60,
