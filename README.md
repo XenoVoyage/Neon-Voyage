@@ -1,6 +1,6 @@
 # Neon Voyage
 
-[![Version v2026.8.20b](https://img.shields.io/badge/version-v2026.8.20b-63f7f0)](CHANGELOG.md)
+[![Version v2026.8.20c](https://img.shields.io/badge/version-v2026.8.20c-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
