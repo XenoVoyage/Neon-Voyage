@@ -2,6 +2,24 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.20h] — 2026-08-20
+
+### Added
+
+- Added short-lived hostile crystal shrapnel, an early Thruster Surge pickup, asteroid-pulling Void Pulse behavior, and deterministic smoke, fire, and electrical damage states for the player ship.
+- Added distinct code-drawn pickup glyphs and readable short labels, plus visible desktop key hints for Dash and Void Pulse.
+
+### Changed
+
+- Compressed the complete expedition from 20 stages to seven: the Titan now arrives at Stage 2, first contact at Stage 3, mixed alien combat at Stage 4, the Harrower at Stage 5, and the Leviathan at Stage 7.
+- Increased natural reward frequency, shortened pity streaks, extended temporary effects to 42–48 seconds, and moved autonomous and passive weapon unlocks earlier so builds become expressive during the opening stages.
+- Replaced oversized straight asteroid crack marks with restrained deterministic branching fractures that follow each rotating body without changing collision or objective state.
+
+### Fixed
+
+- Migrated valid schema-3 twenty-stage checkpoints into the strongest matching seven-stage schema-4 loadouts while preserving exact schema-2 and schema-1 compatibility and the existing storage key.
+- Kept Void Pulse attraction exclusive to asteroids; alien ships take its configured damage but are never pulled.
+
 ## [v2026.8.20g] — 2026-08-20
 
 ### Added

@@ -71,7 +71,7 @@ module.exports = function register(test) {
     browser.emit(browser.document, "DOMContentLoaded");
     const game = browser.window.ND.game;
     game.start();
-    game.setStage(16, 1);
+    game.setStage(7, 1);
     game.setSeed(3817);
     assert.equal(game.applyPickup(game.spawnPickup(0, 0, "enigma")), true);
     const fixedStep = browser.window.ND.CONFIG.world.fixedStep;
@@ -106,13 +106,15 @@ module.exports = function register(test) {
     browser.emit(browser.document, "DOMContentLoaded");
     const game = browser.window.ND.game;
     game.start();
-    game.setStage(16, 1);
+    game.setStage(7, 1);
     for (const id of Object.keys(game.state.ship.modules)) game.state.ship.modules[id] = 0;
     game.state.ship.modules.pulse = 5;
     game.state.ship.modules.homingSalvo = 4;
     game.state.ship.modules.teslaCoil = 3;
     game.state.moduleSignature = "";
-    for (const kind of ["rapid", "amplifier", "aegis"]) game.applyPickup(game.spawnPickup(0, 0, kind));
+    for (const kind of ["rapid", "amplifier", "aegis", "thruster"]) {
+      game.applyPickup(game.spawnPickup(0, 0, kind));
+    }
     for (let frame = 0; frame < 10; frame += 1) game.step(browser.window.ND.CONFIG.world.fixedStep);
 
     const moduleStrip = browser.elements.get("module-strip");
@@ -122,16 +124,16 @@ module.exports = function register(test) {
     assert.equal(moduleSummaries.length, 1);
     assert.equal(effectSummaries.length, 1);
     assert.equal(moduleSummaries[0].textContent, "3 SYSTEMS · 2 AUTO");
-    assert.equal(effectSummaries[0].textContent, "3 EFFECTS · 84s");
+    assert.equal(effectSummaries[0].textContent, "4 EFFECTS · 180s");
     assert.match(moduleSummaries[0].getAttribute("aria-label"), /3 permanent systems\./);
     for (const label of ["Pulse Repeater", "Homing Salvo", "Tesla Coil"]) {
       assert.ok(moduleSummaries[0].getAttribute("aria-label").includes(label), `compact modules omitted ${label}`);
     }
-    assert.match(effectSummaries[0].getAttribute("aria-label"), /3 timed effects\./);
-    for (const label of ["OVERDRIVE", "DAMAGE AMPLIFIER", "AEGIS FIELD"]) {
+    assert.match(effectSummaries[0].getAttribute("aria-label"), /4 timed effects\./);
+    for (const label of ["OVERDRIVE", "DAMAGE AMPLIFIER", "AEGIS FIELD", "THRUSTER SURGE"]) {
       assert.ok(effectSummaries[0].getAttribute("aria-label").includes(label), `compact effects omitted ${label}`);
     }
     assert.equal(moduleStrip.querySelectorAll(".module-slot").length, 3, "desktop module detail was not retained");
-    assert.equal(effectList.querySelectorAll(".active-effect-chip").length, 3, "desktop effect detail was not retained");
+    assert.equal(effectList.querySelectorAll(".active-effect-chip").length, 4, "desktop effect detail was not retained");
   });
 };

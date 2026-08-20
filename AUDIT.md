@@ -1,8 +1,8 @@
-# Neon Voyage v2026.8.20g — source audit
+# Neon Voyage v2026.8.20h — source audit
 
 - Audited: 2026-08-20
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 184/184 automated source checks**
+- Result: **PASS — 188/188 automated source checks**
 
 Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated layout boxes, viewports, Pointer Events, DOM behavior, and Canvas calls. It is not physical-device acceptance.
 
@@ -13,13 +13,38 @@ Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins onl
 - Required local server: **none**
 - Remote runtime requests: **0 by design**
 - Runtime files: local HTML, CSS, JavaScript, nine WebP scenery assets, and 46 transparent WebP gameplay assets
-- Persistent data: separate strict local records for high score/preferences and schema-3 per-stage campaign loadouts
-- Saved-data change in this checkpoint: **none**
+- Persistent data: separate strict local records for high score/preferences and schema-4 per-stage campaign loadouts
+- Saved-data change in this checkpoint: **compatible schema-3/schema-2/schema-1 migration into seven bounded checkpoints**
 - License: MIT
 
-## v2026.8.20g verified changes
+## v2026.8.20h verified changes
 
-Source inspection, deterministic reinforcement regressions, the rendered browser harness, the complete Stage 1–20 weapon journey, and the frozen full-suite gate establish these implemented contracts.
+Source inspection, deterministic progression/combat/renderer regressions, the browser harness, the complete Stage 1–7 weapon journey, and the frozen full-suite gate establish these implemented contracts.
+
+### Seven-stage expedition and earlier variety
+
+- The configured journey now owns exactly seven finite stages. Titan Breach is Stage 2, a single Scout and then a Scout/Striker formation establish first contact at Stage 3, mixed alien and evolved-asteroid combat begins at Stage 4, the Harrower owns Stage 5, the anomaly siege owns Stage 6, and the Leviathan owns Stage 7.
+- Stage 2 owns ten seeded roots with a five-root opening, pressure-bounded two-root reinforcement batches, one announced Colossal, and one announced Titan. Every required descendant, requeue, optional hazard, escort, and reserve root still belongs to the clean-field gate.
+- Homing Salvo, Tractor Field, Guardian Drone, Radial Array, and Seeker Rack are guaranteed at Stages 1, 2, 3, 4, and 6. Five reward bands raise natural drops to 44/48/52/56/60 percent with pity after 3/2/2/2/2 eligible defeats, while Mk ceilings and stage gates remain bounded.
+- Eight temporary effects last 42–48 seconds per pickup and stack to four base durations. Thruster Surge applies bounded acceleration and top-speed multipliers; all temporary timers remain independent and checkpointed.
+
+### Combat and visual readability
+
+- Void Pulse gives nearby asteroids one proximity-scaled inward impulse with an enforced 360 px/s cap, then applies configured damage. Aliens take configured Pulse damage without any velocity change.
+- Destroying a crystal asteroid emits exactly eight seeded hostile crystal projectiles with finite 1.65-second life, capped enemy-projectile ownership, and no objective or split-tree membership. Cap pressure truncates safely instead of exceeding the shared bound.
+- Three immutable normalized fracture patterns replace oversized straight crack marks. Their dark under-stroke and thin material highlight remain clipped to the rotating asteroid and never affect collision, health, descendants, or randomness.
+- Every pickup retains its local chassis but adds a distinct semantic glyph, short readable label, and color treatment. The desktop objective line exposes `Shift` for Dash and `E` for Pulse; touch/coarse/compact layouts hide that keyboard-only hint.
+- The player ship projects deterministic smoke below 60% hull, attached flame below 35%, and restrained electricity below 18%. Reduced-effects mode keeps the signals bounded and calmer.
+
+### Save compatibility and finite state
+
+- The `neon-voyage-progress-v1` key remains unchanged. Strict schema 4 stores seven checkpoints, all 13 module tiers, and all eight timers within the existing 16,384-byte limit.
+- Exact historical schema-3 validation retains its 20-stage, 13-module, seven-timer shape and original timer ceilings before migration. Checkpoints compact through `1→1`, `2–4→2`, `5–7→3`, `8–9→4`, `10→5`, `11–15→6`, and `16–20→7`; converging checkpoints preserve the strongest tier and timer value. Exact schema-2 and schema-1 migrations remain covered.
+- The deterministic 20-minute full-build stress run completes 72,000 fixed steps, visits all seven stages and both bosses repeatedly, exercises crystal shrapnel, evolved hazards, reflection, every Mk V system, and all eight four-stack timers, and keeps every collection finite and capped. Identical seed and input reproduce the same normalized snapshot.
+
+## Prior v2026.8.20g frozen evidence
+
+The following reinforcement contracts were observed in the prior frozen `v2026.8.20g` audit and remain historical context.
 
 ### Finite Inner Belt reinforcement surge
 
@@ -183,9 +208,9 @@ The following properties were observed in the prior frozen `v2026.8.15c` audit (
 
 ## Automated evidence boundary
 
-The frozen run registered and passed 184 checks across configuration/core (13), offline/repository (16), browser VM (4), progress (17), mobile input (46), gameplay (68), visuals (18), and stress (2).
+The frozen run registered and passed 188 checks across configuration/core (13), offline/repository (16), browser VM (4), progress (18), mobile input (46), gameplay (70), visuals (19), and stress (2).
 
-Current `v2026.8.20g` coverage adds the finite seeded Belt Surge reserve, weighted descendant pressure, bounded batch releases, delayed Colossal set-piece, stage-owned durability, and complete-reserve objective wording while retaining expanded-field containment, bounded camera follow, capped clustered off-screen cues, queued quick-tap fire, complete mapped renderer ownership, safe procedural fallback, material-effect routing, bounded audio vocabulary, progress compatibility, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
+Current `v2026.8.20h` coverage adds the seven-stage journey, schema-3 compaction, earlier alien and module variety, higher/longer rewards, Thruster Surge, asteroid-only Pulse attraction, finite crystal shrapnel, semantic pickup presentation, restrained fractures, damaged-ship effects, and desktop action hints while retaining expanded-field containment, bounded camera follow, capped clustered off-screen cues, queued quick-tap fire, complete mapped renderer ownership, bounded audio vocabulary, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
 
 Retained `v2026.8.20` deterministic coverage exercises shell/viewport disagreement and dynamic resizing; pointer-only reticle rendering; death-effect rendering without ship-owned visuals; clear-versus-travel presentation; terminal-but-delayed game-over focus and effect timing; delayed stationary target acquisition, deterministic tie order, bounded turn and fire; target lock and reacquisition; touch and hybrid-manual takeover; both command ships' live-node protection; and same-landscape orientation cleanup.
 
@@ -200,7 +225,7 @@ node tests/run.js
 sha256sum --check SHA256SUMS
 ```
 
-Observed result for this frozen source tree: `184/184 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 93 manifest entries.
+Observed result for this frozen source tree: `188/188 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 93 manifest entries.
 
 ## Browser and publication boundary
 

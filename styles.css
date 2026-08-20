@@ -486,6 +486,39 @@ dd {
   white-space: nowrap;
 }
 
+.desktop-control-hint {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  color: rgba(220, 235, 245, 0.78);
+  font-size: 0.56rem;
+  font-weight: 720;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.desktop-control-hint kbd {
+  min-width: 22px;
+  padding: 2px 5px;
+  border: 1px solid rgba(95, 229, 255, 0.48);
+  border-radius: 3px;
+  background: rgba(4, 13, 25, 0.82);
+  color: #eaffff;
+  font: inherit;
+  letter-spacing: 0.04em;
+}
+
+.desktop-control-hint i {
+  color: rgba(95, 229, 255, 0.54);
+  font-style: normal;
+}
+
+.is-touch-capable .desktop-control-hint {
+  display: none;
+}
+
 .systems-hud {
   position: absolute;
   z-index: 6;
@@ -2227,6 +2260,16 @@ kbd {
     max-height: none;
     overflow-x: auto;
     overflow-y: hidden;
+  }
+
+  .desktop-control-hint {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .desktop-control-hint {
+    display: none;
   }
 }
 
