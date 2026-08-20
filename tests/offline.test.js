@@ -314,13 +314,16 @@ module.exports = function register(test) {
   test("GitHub Pages publishes the repository root without a production build", () => {
     assert.ok(fs.existsSync(path.join(PROJECT_ROOT, ".nojekyll")), ".nojekyll is required");
     const workflow = readProject(".github/workflows/pages.yml");
-    assert.match(workflow, /actions\/configure-pages@v\d+/);
-    assert.match(workflow, /actions\/upload-pages-artifact@v\d+/);
-    assert.match(workflow, /actions\/deploy-pages@v\d+/);
-    assert.match(workflow, /path:\s*[.'"]+/);
+    assert.match(workflow, /actions\/configure-pages@v6/);
+    assert.match(workflow, /actions\/upload-pages-artifact@v5/);
+    assert.match(workflow, /actions\/deploy-pages@v5/);
+    assert.match(workflow,
+      /uses:\s*actions\/upload-pages-artifact@v5\s*\n\s*with:\s*\n\s*path:\s*\.\s*\n\s*include-hidden-files:\s*true/m,
+      "the Pages artifact must preserve repository-root files such as .nojekyll");
     assert.match(workflow, /^\s{4}if:\s*github\.ref\s*==\s*['"]refs\/heads\/main['"]\s*$/m,
       "manual Pages dispatch must not deploy an unmerged branch");
-    assert.match(workflow, /actions\/checkout@v\d+\s*\n\s*with:\s*\n\s*persist-credentials:\s*false/m);
+    assert.match(workflow, /actions\/checkout@v7\s*\n\s*with:\s*\n\s*persist-credentials:\s*false/m);
+    assert.match(workflow, /actions\/setup-node@v7\s*\n\s*with:\s*\n\s*node-version:\s*22/m);
     assert.ok(!/\b(?:npm|yarn|pnpm|bun)\b/i.test(workflow), "Pages must not install or build dependencies");
   });
 
@@ -337,7 +340,8 @@ module.exports = function register(test) {
     assert.match(ci, /^permissions:\s*\n\s*contents:\s*read\s*$/m, "the audit must keep read-only contents permission");
     assert.doesNotMatch(ci, /continue-on-error\s*:\s*true/i, "the required audit cannot be advisory");
     assert.doesNotMatch(ci, /\b(?:contents|actions|checks|pull-requests):\s*write\b/i, "the audit has unnecessary write permission");
-    assert.match(ci, /actions\/checkout@v\d+\s*\n\s*with:\s*\n\s*persist-credentials:\s*false/m);
+    assert.match(ci, /actions\/checkout@v7\s*\n\s*with:\s*\n\s*persist-credentials:\s*false/m);
+    assert.match(ci, /actions\/setup-node@v7\s*\n\s*with:\s*\n\s*node-version:\s*22/m);
     assert.doesNotMatch(pages, /^\s*pull_request:\s*$/m, "Pages must deploy only after merge to main");
     assert.match(pages, /^\s*push:\s*\n\s*branches:\s*\[main\]\s*$/m);
 

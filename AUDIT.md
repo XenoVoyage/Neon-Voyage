@@ -35,6 +35,12 @@ Source inspection, focused regression coverage, and the frozen full-suite gate e
 - Duplicate CSS declarations, impossible selector states, and redundant presentational class tokens were consolidated without hiding accessible text or changing Enigma selection semantics. Repository tests verify the grouped compact assistive-text rules and menu contrast contract.
 - The contributor handoff now owns Git, pull-request, release, and stale-branch policy in one section. Governance tests retain the operational workflow and deletion-proof contracts without locking incidental prose.
 
+### Workflow and deployment integrity
+
+- Both workflows now use the Node-24-native `actions/checkout@v7` and `actions/setup-node@v7` majors while preserving Node 22 as the explicit verification baseline.
+- Pages now uses `actions/configure-pages@v6`, `actions/upload-pages-artifact@v5`, and `actions/deploy-pages@v5`. The artifact step explicitly includes hidden repository-root files so `.nojekyll` remains part of the unchanged static site.
+- Workflow triggers, permissions, the required `Offline audit / audit` context, repository-root deployment, runtime files, dependencies, build behavior, and saved data are unchanged.
+
 ## Prior v2026.8.20 frozen evidence
 
 The following contracts were observed in the prior frozen `v2026.8.20` audit (177/177 checks) and are preserved here as historical context. The current frozen gate re-exercises their registered coverage alongside the maintenance checks above.
@@ -111,7 +117,7 @@ The following properties were observed in the prior frozen `v2026.8.15c` audit (
 
 The frozen run registered and passed 179 checks across configuration/core (13), offline/repository (16), browser VM (3), progress (17), mobile input (45), gameplay (67), visuals (16), and stress (2).
 
-New `v2026.8.20a` coverage exercises one progress-record write for each permanent reward route, including boss clears with and without surviving escorts; the linked README launch target; grouped compact assistive-text presentation; and the menu metadata size and contrast contract.
+Current `v2026.8.20a` coverage exercises one progress-record write for each permanent reward route, including boss clears with and without surviving escorts; the linked README launch target; grouped compact assistive-text presentation; the menu metadata size and contrast contract; Node-24-native workflow majors; and explicit hidden-file preservation for the Pages artifact.
 
 Retained `v2026.8.20` deterministic coverage exercises shell/viewport disagreement and dynamic resizing; pointer-only reticle rendering; death-effect rendering without ship-owned visuals; clear-versus-travel presentation; terminal-but-delayed game-over focus and effect timing; delayed stationary target acquisition, deterministic tie order, bounded turn and fire; target lock and reacquisition; touch and hybrid-manual takeover; both command ships' live-node protection; and same-landscape orientation cleanup.
 
