@@ -17,13 +17,107 @@
     "fleet-world": "assets/fleet-world.webp",
     "command-world": "assets/command-world.webp"
   });
-  const GAMEPLAY_PROOF_ASSET_SOURCES = Object.freeze({
+  const GAMEPLAY_ASSET_SOURCES = Object.freeze({
     playerInterceptor: "assets/player-interceptor.webp",
     commonAsteroid: "assets/common-asteroid.webp",
+    asteroidCrystal: "assets/asteroid-crystal.webp",
+    asteroidVolatile: "assets/asteroid-volatile.webp",
+    asteroidArmored: "assets/asteroid-armored.webp",
+    asteroidColossal: "assets/asteroid-colossal.webp",
+    asteroidTitan: "assets/asteroid-titan.webp",
+    asteroidRazor: "assets/asteroid-razor.webp",
+    asteroidPrismatic: "assets/asteroid-prismatic.webp",
+    asteroidMonolith: "assets/asteroid-monolith.webp",
+    asteroidAuricColossus: "assets/asteroid-auric-colossus.webp",
+    asteroidAuricShardExplosive: "assets/asteroid-auric-shard-explosive.webp",
+    asteroidAuricShardMagnetic: "assets/asteroid-auric-shard-magnetic.webp",
+    asteroidCorona: "assets/asteroid-corona.webp",
     alienScout: "assets/alien-scout.webp",
+    alienStriker: "assets/alien-striker.webp",
+    alienBomber: "assets/alien-bomber.webp",
+    alienCarrier: "assets/alien-carrier.webp",
+    alienLancer: "assets/alien-lancer.webp",
+    alienGunship: "assets/alien-gunship.webp",
+    alienBroodCarrier: "assets/alien-brood-carrier.webp",
+    bossHarrower: "assets/boss-harrower.webp",
+    bossLeviathan: "assets/boss-leviathan.webp",
+    bossNodeHarrower: "assets/boss-node-harrower.webp",
+    bossNodeLeviathan: "assets/boss-node-leviathan.webp",
     playerPlasma: "assets/player-plasma.webp",
+    playerMissile: "assets/player-missile.webp",
+    playerRailSlug: "assets/player-rail-slug.webp",
+    playerPrism: "assets/player-prism.webp",
+    playerRadial: "assets/player-radial.webp",
+    playerArc: "assets/player-arc.webp",
+    playerLance: "assets/player-lance.webp",
+    dronePlasma: "assets/drone-plasma.webp",
+    alienPlasma: "assets/alien-plasma.webp",
+    reflectedPlasma: "assets/reflected-plasma.webp",
     plasmaImpact: "assets/plasma-impact.webp",
-    shieldGenerator: "assets/shield-generator.webp"
+    shieldImpact: "assets/shield-impact.webp",
+    hullImpact: "assets/hull-impact.webp",
+    asteroidBreak: "assets/asteroid-break.webp",
+    explosionBurst: "assets/explosion-burst.webp",
+    shieldGenerator: "assets/shield-generator.webp",
+    pickupChassis: "assets/pickup-chassis.webp",
+    guardianDrone: "assets/guardian-drone.webp",
+    orbitBlade: "assets/orbit-blade.webp",
+    playerMine: "assets/player-mine.webp",
+    alienMine: "assets/alien-mine.webp"
+  });
+  const ASTEROID_ASSET_KEYS = Object.freeze({
+    rock: "commonAsteroid",
+    crystal: "asteroidCrystal",
+    volatile: "asteroidVolatile",
+    armored: "asteroidArmored",
+    colossal: "asteroidColossal",
+    titan: "asteroidTitan",
+    razor: "asteroidRazor",
+    prismatic: "asteroidPrismatic",
+    monolith: "asteroidMonolith",
+    auricColossus: "asteroidAuricColossus",
+    corona: "asteroidCorona"
+  });
+  const ALIEN_ASSET_KEYS = Object.freeze({
+    scout: "alienScout",
+    striker: "alienStriker",
+    bomber: "alienBomber",
+    carrier: "alienCarrier",
+    lancer: "alienLancer",
+    gunship: "alienGunship",
+    broodCarrier: "alienBroodCarrier"
+  });
+  const ALIEN_DRAW_SIZES = Object.freeze({
+    scout: Object.freeze([68, 46]),
+    striker: Object.freeze([76, 51]),
+    bomber: Object.freeze([88, 59]),
+    carrier: Object.freeze([112, 75]),
+    lancer: Object.freeze([82, 55]),
+    gunship: Object.freeze([104, 69]),
+    broodCarrier: Object.freeze([142, 95])
+  });
+  const BOSS_DRAW_SIZES = Object.freeze({
+    harrower: Object.freeze([190, 119]),
+    leviathan: Object.freeze([220, 138])
+  });
+  const PROJECTILE_ART = Object.freeze({
+    bolt: Object.freeze(["playerPlasma", 36, 12]),
+    missile: Object.freeze(["playerMissile", 34, 12]),
+    rail: Object.freeze(["playerRailSlug", 44, 10]),
+    prism: Object.freeze(["playerPrism", 36, 13]),
+    radial: Object.freeze(["playerRadial", 22, 10]),
+    arc: Object.freeze(["playerArc", 32, 13]),
+    lance: Object.freeze(["playerLance", 54, 15]),
+    droneBolt: Object.freeze(["dronePlasma", 26, 10])
+  });
+  const EFFECT_ASSET_KEYS = Object.freeze({
+    plasma: "plasmaImpact",
+    shield: "shieldImpact",
+    hull: "hullImpact",
+    asteroid: "asteroidBreak",
+    alien: "explosionBurst",
+    boss: "explosionBurst",
+    explosion: "explosionBurst"
   });
   const ASTEROID_COLORS = Object.freeze({
     crystal: "#ff66dd",
@@ -352,9 +446,9 @@
       : null;
   }
 
-  function proofAssetSource(type) {
-    return Object.prototype.hasOwnProperty.call(GAMEPLAY_PROOF_ASSET_SOURCES, type)
-      ? GAMEPLAY_PROOF_ASSET_SOURCES[type]
+  function gameplayAssetSource(type) {
+    return Object.prototype.hasOwnProperty.call(GAMEPLAY_ASSET_SOURCES, type)
+      ? GAMEPLAY_ASSET_SOURCES[type]
       : null;
   }
 
@@ -747,7 +841,7 @@
     screenAnchor,
     asteroidCrackStage,
     assetSource,
-    proofAssetSource
+    gameplayAssetSource
   });
   ND.StagePreview = Object.freeze({ render: renderStagePreview });
   ND.EnigmaPreview = Object.freeze({ render: renderEnigmaPreview });
@@ -774,7 +868,7 @@
       const sources = {
         space: "assets/deep-space.webp",
         ...CELESTIAL_ASSET_SOURCES,
-        ...GAMEPLAY_PROOF_ASSET_SOURCES
+        ...GAMEPLAY_ASSET_SOURCES
       };
       for (const [name, source] of Object.entries(sources)) {
         const image = new global.Image();
@@ -1367,22 +1461,28 @@
         ctx.save();
         ctx.translate(point.x, point.y);
         ctx.rotate(Number(blade.angle) || 0);
-        ctx.strokeStyle = "#b8fdff";
-        ctx.fillStyle = "rgba(36, 168, 184, 0.9)";
-        ctx.lineWidth = 1.25;
-        ctx.shadowColor = "#66f7ff";
-        ctx.shadowBlur = this.reduced ? 0 : 8;
-        ctx.beginPath();
-        ctx.moveTo(radius, 0);
-        ctx.lineTo(-radius * 0.28, -radius * 0.5);
-        ctx.lineTo(-radius, 0);
-        ctx.lineTo(-radius * 0.28, radius * 0.5);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(radius * 0.28, -0.75, radius * 0.38, 1.5);
+        const bladeArt = readyImage(this.assets.orbitBlade) ? this.assets.orbitBlade : null;
+        if (bladeArt) {
+          const width = radius * 2.65;
+          ctx.drawImage(bladeArt, -width / 2, -width * 0.1875, width, width * 0.375);
+        } else {
+          ctx.strokeStyle = "#b8fdff";
+          ctx.fillStyle = "rgba(36, 168, 184, 0.9)";
+          ctx.lineWidth = 1.25;
+          ctx.shadowColor = "#66f7ff";
+          ctx.shadowBlur = this.reduced ? 0 : 8;
+          ctx.beginPath();
+          ctx.moveTo(radius, 0);
+          ctx.lineTo(-radius * 0.28, -radius * 0.5);
+          ctx.lineTo(-radius, 0);
+          ctx.lineTo(-radius * 0.28, radius * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(radius * 0.28, -0.75, radius * 0.38, 1.5);
+        }
         ctx.restore();
       }
     }
@@ -1522,17 +1622,18 @@
       ctx.rotate(asteroid.rotation || 0);
       const points = asteroid.points || [];
       const count = points.length || 10;
-      const rockArt = asteroid.kind === "rock" && readyImage(this.assets.commonAsteroid)
-        ? this.assets.commonAsteroid
-        : null;
-      if (rockArt) {
+      const assetKey = asteroid.kind === "auricShard"
+        ? asteroid.hazardVariant === "magnetic" ? "asteroidAuricShardMagnetic" : "asteroidAuricShardExplosive"
+        : ASTEROID_ASSET_KEYS[asteroid.kind];
+      const asteroidArt = assetKey && readyImage(this.assets[assetKey]) ? this.assets[assetKey] : null;
+      if (asteroidArt) {
         const diameter = asteroid.radius * 2.2;
-        ctx.drawImage(rockArt, -diameter / 2, -diameter / 2, diameter, diameter);
+        ctx.drawImage(asteroidArt, -diameter / 2, -diameter / 2, diameter, diameter);
         if (asteroid.hitFlash > 0) {
           ctx.save();
           ctx.globalCompositeOperation = "screen";
           ctx.globalAlpha = clamp(asteroid.hitFlash, 0, 1) * 0.58;
-          ctx.drawImage(rockArt, -diameter / 2, -diameter / 2, diameter, diameter);
+          ctx.drawImage(asteroidArt, -diameter / 2, -diameter / 2, diameter, diameter);
           ctx.restore();
         }
       } else {
@@ -1605,7 +1706,7 @@
         ctx.arc(0, 0, asteroid.radius * 0.27, 0, TAU);
         ctx.fill();
       }
-      if (asteroid.kind === "prismatic") {
+      if (!asteroidArt && asteroid.kind === "prismatic") {
         ctx.globalAlpha = 0.58;
         ctx.strokeStyle = "#e1c9ff";
         ctx.lineWidth = 1;
@@ -1618,7 +1719,7 @@
           ctx.stroke();
         }
       }
-      if (asteroid.kind === "razor") {
+      if (!asteroidArt && asteroid.kind === "razor") {
         ctx.globalAlpha = 0.7;
         ctx.strokeStyle = "#c2fff0";
         ctx.lineWidth = 1.2;
@@ -1629,7 +1730,7 @@
         ctx.lineTo(asteroid.radius * 0.48, asteroid.radius * 0.36);
         ctx.stroke();
       }
-      if (asteroid.kind === "armored" || asteroid.kind === "titan" || asteroid.kind === "monolith") {
+      if (!asteroidArt && (asteroid.kind === "armored" || asteroid.kind === "titan" || asteroid.kind === "monolith")) {
         ctx.globalAlpha = 0.68;
         ctx.strokeStyle = asteroid.kind === "monolith" ? "#9bc4ff" : "#c7d5df";
         ctx.lineWidth = Math.max(2, asteroid.radius * 0.035);
@@ -1639,7 +1740,7 @@
           ctx.stroke();
         }
       }
-      if (asteroid.kind === "auricColossus") {
+      if (!asteroidArt && asteroid.kind === "auricColossus") {
         ctx.globalAlpha = 0.72;
         ctx.strokeStyle = "#fff0a8";
         ctx.lineWidth = Math.max(1.5, asteroid.radius * 0.022);
@@ -1657,15 +1758,17 @@
       }
       if (asteroid.kind === "auricShard") {
         const magnetic = asteroid.hazardVariant === "magnetic";
-        ctx.globalAlpha = 0.78;
-        ctx.strokeStyle = magnetic ? "#d4fbff" : "#ffe0a8";
-        ctx.lineWidth = 1.25;
-        ctx.beginPath();
-        ctx.moveTo(-asteroid.radius * 0.62, asteroid.radius * 0.38);
-        ctx.lineTo(asteroid.radius * 0.54, -asteroid.radius * 0.5);
-        ctx.moveTo(-asteroid.radius * 0.35, -asteroid.radius * 0.48);
-        ctx.lineTo(asteroid.radius * 0.38, asteroid.radius * 0.46);
-        ctx.stroke();
+        if (!asteroidArt) {
+          ctx.globalAlpha = 0.78;
+          ctx.strokeStyle = magnetic ? "#d4fbff" : "#ffe0a8";
+          ctx.lineWidth = 1.25;
+          ctx.beginPath();
+          ctx.moveTo(-asteroid.radius * 0.62, asteroid.radius * 0.38);
+          ctx.lineTo(asteroid.radius * 0.54, -asteroid.radius * 0.5);
+          ctx.moveTo(-asteroid.radius * 0.35, -asteroid.radius * 0.48);
+          ctx.lineTo(asteroid.radius * 0.38, asteroid.radius * 0.46);
+          ctx.stroke();
+        }
         if (magnetic) {
           ctx.globalAlpha = this.reduced ? 0.24 : 0.28 + Math.sin(time * 3.2 + (asteroid.phase || 0)) * 0.06;
           ctx.setLineDash([3, 7]);
@@ -1691,11 +1794,13 @@
         ctx.strokeStyle = "#ff8a55";
         ctx.lineWidth = Math.max(1.2, asteroid.radius * 0.025);
         ctx.globalAlpha = 0.28 + pulse * 0.22;
-        for (let index = 0; index < 5; index += 1) {
-          const angle = index / 5 * TAU + (asteroid.phase || 0);
-          ctx.beginPath();
-          ctx.arc(0, 0, asteroid.radius * (0.68 + index * 0.045), angle, angle + 0.72);
-          ctx.stroke();
+        if (!asteroidArt) {
+          for (let index = 0; index < 5; index += 1) {
+            const angle = index / 5 * TAU + (asteroid.phase || 0);
+            ctx.beginPath();
+            ctx.arc(0, 0, asteroid.radius * (0.68 + index * 0.045), angle, angle + 0.72);
+            ctx.stroke();
+          }
         }
       }
       ctx.restore();
@@ -1723,9 +1828,11 @@
       ctx.lineWidth = 1.7;
       ctx.shadowColor = color;
       ctx.shadowBlur = this.reduced ? 0 : 10;
-      const scoutArt = alien.type === "scout" && readyImage(this.assets.alienScout)
-        ? this.assets.alienScout
-        : null;
+      const alienAssetKey = ALIEN_ASSET_KEYS[alien.type];
+      const alienArt = alienAssetKey && readyImage(this.assets[alienAssetKey]) ? this.assets[alienAssetKey] : null;
+      const drawSize = ALIEN_DRAW_SIZES[alien.type] || [Math.max(54, alien.radius * 3), Math.max(36, alien.radius * 2)];
+      const drawWidth = drawSize[0];
+      const drawHeight = drawSize[1];
       const enginePulse = 4 + Math.sin(time * 16 + (alien.phase || 0)) * 1.6;
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
@@ -1734,15 +1841,15 @@
       ctx.lineWidth = 2;
       for (const side of [-1, 1]) {
         ctx.beginPath();
-        ctx.moveTo(scoutArt ? -24 : -12, side * (scoutArt ? 7 : 5));
-        ctx.lineTo((scoutArt ? -30 : -18) - enginePulse, side * (scoutArt ? 7 : 5));
+        ctx.moveTo(alienArt ? -drawWidth * 0.35 : -12, side * (alienArt ? drawHeight * 0.15 : 5));
+        ctx.lineTo((alienArt ? -drawWidth * 0.45 : -18) - enginePulse, side * (alienArt ? drawHeight * 0.15 : 5));
         ctx.stroke();
       }
       ctx.restore();
-      if (scoutArt) {
+      if (alienArt) {
         ctx.shadowColor = color;
         ctx.shadowBlur = this.reduced ? 0 : 6;
-        ctx.drawImage(scoutArt, -34, -23, 68, 46);
+        ctx.drawImage(alienArt, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
         ctx.shadowBlur = 0;
       } else if (alien.type === "scout") {
         ctx.beginPath();
@@ -1766,7 +1873,7 @@
         ctx.beginPath();
         ctx.moveTo(27, 0); ctx.quadraticCurveTo(5, -21, -25, -14); ctx.lineTo(-14, 0); ctx.lineTo(-25, 14); ctx.quadraticCurveTo(5, 21, 27, 0); ctx.closePath();
       }
-      if (!scoutArt) {
+      if (!alienArt) {
         ctx.fill();
         ctx.stroke();
         ctx.shadowBlur = 0;
@@ -1833,7 +1940,12 @@
       ctx.save();
       ctx.translate(point.x, point.y);
       ctx.rotate(boss.angle || 0);
-      if (boss.type === "leviathan") {
+      const bossAssetKey = boss.type === "leviathan" ? "bossLeviathan" : "bossHarrower";
+      const bossArt = readyImage(this.assets[bossAssetKey]) ? this.assets[bossAssetKey] : null;
+      if (bossArt) {
+        const drawSize = BOSS_DRAW_SIZES[boss.type] || [boss.radius * 2.25, boss.radius * 1.42];
+        ctx.drawImage(bossArt, -drawSize[0] / 2, -drawSize[1] / 2, drawSize[0], drawSize[1]);
+      } else if (boss.type === "leviathan") {
         const radius = boss.radius;
         const pulse = 0.88 + Math.sin(time * 2.4) * 0.08;
         ctx.fillStyle = "rgba(8, 9, 27, 0.99)";
@@ -1908,18 +2020,25 @@
           ctx.save();
           ctx.translate(nodePoint.x, nodePoint.y);
           ctx.rotate(time * 1.4 + node.index);
-          ctx.strokeStyle = leviathan ? "#b79dff" : "#6fffff";
-          ctx.fillStyle = leviathan ? "rgba(28, 18, 54, 0.92)" : "rgba(12,35,48,0.9)";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          for (let i = 0; i < 6; i += 1) {
-            const angle = i / 6 * TAU;
-            const x = Math.cos(angle) * 13;
-            const y = Math.sin(angle) * 13;
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          const nodeAssetKey = leviathan ? "bossNodeLeviathan" : "bossNodeHarrower";
+          const nodeArt = readyImage(this.assets[nodeAssetKey]) ? this.assets[nodeAssetKey] : null;
+          if (nodeArt) {
+            const size = Math.max(32, (Number(node.radius) || 13) * 2.65);
+            ctx.drawImage(nodeArt, -size / 2, -size / 2, size, size);
+          } else {
+            ctx.strokeStyle = leviathan ? "#b79dff" : "#6fffff";
+            ctx.fillStyle = leviathan ? "rgba(28, 18, 54, 0.92)" : "rgba(12,35,48,0.9)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < 6; i += 1) {
+              const angle = i / 6 * TAU;
+              const x = Math.cos(angle) * 13;
+              const y = Math.sin(angle) * 13;
+              if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
           }
-          ctx.closePath();
-          ctx.fill(); ctx.stroke();
           ctx.restore();
         }
       }
@@ -2050,15 +2169,19 @@
         const isRocket = !hostile && bullet.kind === "missile" && bullet.sourceModule === "homingSalvo";
         const isRadial = !hostile && bullet.kind === "radial";
         const isReflected = hostile && bullet.kind === "reflected";
-        const plasmaArt = !hostile && bullet.kind === "bolt" && readyImage(this.assets.playerPlasma)
-          ? this.assets.playerPlasma
+        const projectileSpec = hostile
+          ? isReflected ? ["reflectedPlasma", 30, 12] : ["alienPlasma", 28, 11]
+          : PROJECTILE_ART[bullet.kind];
+        const projectileArt = projectileSpec && readyImage(this.assets[projectileSpec[0]])
+          ? this.assets[projectileSpec[0]]
           : null;
-        if (plasmaArt) {
+        if (projectileArt) {
           ctx.save();
           ctx.translate(point.x, point.y);
           ctx.rotate(angle);
+          ctx.globalCompositeOperation = "source-over";
           ctx.globalAlpha = 0.94;
-          ctx.drawImage(plasmaArt, -36, -6, 36, 12);
+          ctx.drawImage(projectileArt, -projectileSpec[1], -projectileSpec[2] / 2, projectileSpec[1], projectileSpec[2]);
           ctx.restore();
           continue;
         }
@@ -2167,27 +2290,34 @@
       }
       ctx.globalAlpha = 1;
       ctx.rotate((playerOwned ? -1 : 1) * time * 0.8 + (mine.phase || 0));
-      ctx.strokeStyle = playerOwned ? "#8ffcff" : mine.armed ? "#ff5d7a" : "#ffd166";
-      ctx.fillStyle = playerOwned ? "rgba(7, 31, 40, 0.94)" : "rgba(35,15,24,0.92)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (let i = 0; i < 8; i += 1) {
-        const angle = i / 8 * TAU;
-        const radius = i % 2 ? mine.radius * 0.58 : mine.radius;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      if (playerOwned) {
-        ctx.rotate(-Math.PI * 0.25);
-        ctx.fillStyle = "#d8ffff";
+      const mineAssetKey = playerOwned ? "playerMine" : "alienMine";
+      const mineArt = readyImage(this.assets[mineAssetKey]) ? this.assets[mineAssetKey] : null;
+      if (mineArt) {
+        const size = Math.max(28, mine.radius * 2.75);
+        ctx.drawImage(mineArt, -size / 2, -size / 2, size, size);
+      } else {
+        ctx.strokeStyle = playerOwned ? "#8ffcff" : mine.armed ? "#ff5d7a" : "#ffd166";
+        ctx.fillStyle = playerOwned ? "rgba(7, 31, 40, 0.94)" : "rgba(35,15,24,0.92)";
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(4, 0);
-        ctx.lineTo(-2, -2.8);
-        ctx.lineTo(-2, 2.8);
-        ctx.closePath();
-        ctx.fill();
+        for (let i = 0; i < 8; i += 1) {
+          const angle = i / 8 * TAU;
+          const radius = i % 2 ? mine.radius * 0.58 : mine.radius;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        if (playerOwned) {
+          ctx.rotate(-Math.PI * 0.25);
+          ctx.fillStyle = "#d8ffff";
+          ctx.beginPath();
+          ctx.moveTo(4, 0);
+          ctx.lineTo(-2, -2.8);
+          ctx.lineTo(-2, 2.8);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
       ctx.restore();
     }
@@ -2202,12 +2332,34 @@
       const shieldArt = pickup.kind === "shield" && readyImage(this.assets.shieldGenerator)
         ? this.assets.shieldGenerator
         : null;
-      if (shieldArt) {
+      const chassisArt = pickup.kind !== "shield" && readyImage(this.assets.pickupChassis)
+        ? this.assets.pickupChassis
+        : null;
+      const pickupArt = shieldArt || chassisArt;
+      if (pickupArt) {
         const phase = Number(pickup.phase) || 0;
         const pulse = this.reduced ? 1 : 1 + Math.sin(time * 4 + phase) * 0.045;
+        const size = (shieldArt ? 42 : 40) * pulse;
+        ctx.save();
         ctx.rotate(time * 0.42 + phase);
         ctx.globalAlpha = 0.96;
-        ctx.drawImage(shieldArt, -21 * pulse, -21 * pulse, 42 * pulse, 42 * pulse);
+        ctx.drawImage(pickupArt, -size / 2, -size / 2, size, size);
+        ctx.restore();
+        if (chassisArt) {
+          ctx.globalCompositeOperation = "lighter";
+          ctx.globalAlpha = 0.7;
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(0, 0, 5.5, 0, TAU);
+          ctx.fill();
+          ctx.globalCompositeOperation = "source-over";
+          ctx.globalAlpha = 0.98;
+          ctx.fillStyle = "#f4ffff";
+          ctx.font = "900 10px ui-sans-serif, system-ui, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(PICKUP_LABELS[pickup.kind] || "?", 0, 0.5);
+        }
         ctx.restore();
         return;
       }
@@ -2262,14 +2414,20 @@
       const ctx = this.ctx;
       for (const drone of state.ship.drones) {
         const point = this.worldToScreen(drone.x, drone.y, state.camera);
+        if (!this.onScreen(point.x, point.y, 22)) continue;
         ctx.save();
         ctx.translate(point.x, point.y);
         ctx.rotate(drone.angle || 0);
-        ctx.strokeStyle = "#7dffcf";
-        ctx.fillStyle = "rgba(6,24,27,0.9)";
-        ctx.beginPath();
-        ctx.moveTo(10, 0); ctx.lineTo(-7, -6); ctx.lineTo(-4, 0); ctx.lineTo(-7, 6); ctx.closePath();
-        ctx.fill(); ctx.stroke();
+        const droneArt = readyImage(this.assets.guardianDrone) ? this.assets.guardianDrone : null;
+        if (droneArt) {
+          ctx.drawImage(droneArt, -19, -12.5, 38, 25);
+        } else {
+          ctx.strokeStyle = "#7dffcf";
+          ctx.fillStyle = "rgba(6,24,27,0.9)";
+          ctx.beginPath();
+          ctx.moveTo(10, 0); ctx.lineTo(-7, -6); ctx.lineTo(-4, 0); ctx.lineTo(-7, 6); ctx.closePath();
+          ctx.fill(); ctx.stroke();
+        }
         ctx.restore();
       }
     }
@@ -2283,7 +2441,27 @@
         const point = this.worldToScreen(effect.x, effect.y, camera);
         const alpha = clamp(effect.life / effect.maxLife, 0, 1);
         ctx.globalAlpha = alpha;
-        if (effect.type === "chain") {
+        if (effect.type === "sprite") {
+          const assetKey = EFFECT_ASSET_KEYS[effect.material] || EFFECT_ASSET_KEYS.plasma;
+          const effectArt = readyImage(this.assets[assetKey]) ? this.assets[assetKey] : null;
+          if (effectArt) {
+            const authoredSize = Math.max(12, Number(effect.size) || 36);
+            const size = authoredSize * (0.72 + (1 - alpha) * 0.38);
+            ctx.save();
+            ctx.translate(point.x, point.y);
+            ctx.rotate(mod((Number(effect.x) || 0) * 0.031 + (Number(effect.y) || 0) * 0.017, TAU));
+            ctx.globalCompositeOperation = "source-over";
+            ctx.globalAlpha = alpha * 0.94;
+            ctx.drawImage(effectArt, -size / 2, -size / 2, size, size);
+            ctx.restore();
+          } else {
+            ctx.fillStyle = effect.color || "#ffffff";
+            ctx.globalAlpha = alpha * 0.7;
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, Math.max(3, (Number(effect.size) || 36) * 0.18), 0, TAU);
+            ctx.fill();
+          }
+        } else if (effect.type === "chain") {
           const target = this.worldToScreen(effect.targetX, effect.targetY, camera);
           const dx = target.x - point.x;
           const dy = target.y - point.y;

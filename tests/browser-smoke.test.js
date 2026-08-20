@@ -1,9 +1,37 @@
 "use strict";
 
-const { assert } = require("./_harness");
+const { assert, readProject } = require("./_harness");
 const { buildBrowser, loadRuntimeScripts } = require("./_browser-harness");
 
 module.exports = function register(test) {
+  test("bounded synthesized audio exposes material and weapon-specific cues", () => {
+    const browser = buildBrowser();
+    loadRuntimeScripts(browser);
+    const audio = new browser.window.ND.AudioEngine({ maxNodes: 999 });
+    assert.equal(audio.maxNodes, 24);
+    for (const method of [
+      "weapon", "impact", "destruction", "pickup", "upgrade", "dash", "pulse",
+      "playerDamage", "enemyWeapon", "bossWeapon", "bossCue", "arena", "musicTick"
+    ]) assert.equal(typeof audio[method], "function", `missing audio cue ${method}`);
+    for (const retired of ["shoot", "hit", "explode", "damage", "alienShot", "weaponSwitch"]) {
+      assert.equal(audio[retired], undefined, `retired generic cue remains: ${retired}`);
+    }
+    const source = readProject("js/audio.js");
+    for (const weapon of [
+      "pulse", "massDriver", "prism", "seeker", "homingSalvo", "radialArray", "drone",
+      "teslaCoil", "mineLayer", "arcBurst", "novaLance"
+    ]) assert.ok(source.includes(`weapon === "${weapon}"`), `missing authored cue for ${weapon}`);
+    assert.doesNotThrow(() => {
+      audio.weapon("pulse");
+      audio.impact("asteroid", 1);
+      audio.destruction("alien", 40);
+      audio.pickup("shield");
+      audio.playerDamage("hull");
+      audio.enemyWeapon("gunship");
+      audio.bossWeapon("beam");
+    }, "locked or unavailable Web Audio must remain optional");
+  });
+
   test("browser VM boots local scripts, renders frames, and starts a run", () => {
     const browser = buildBrowser();
     loadRuntimeScripts(browser);

@@ -238,19 +238,59 @@ module.exports = function register(test) {
     assert.doesNotMatch(renderer, /drawExoticPlanet|type:\s*["']exotic["']|\.rings\b/, "the old procedural ring/band planet path remains in runtime code");
   });
 
-  test("the realistic gameplay proof uses six local rasters only for its representative scopes", () => {
+  test("the complete gameplay presentation uses the authored local raster set", () => {
     const browser = loadVisualRuntime();
     const debug = browser.window.ND.RenderDebug;
     const expected = {
       playerInterceptor: "assets/player-interceptor.webp",
       commonAsteroid: "assets/common-asteroid.webp",
+      asteroidCrystal: "assets/asteroid-crystal.webp",
+      asteroidVolatile: "assets/asteroid-volatile.webp",
+      asteroidArmored: "assets/asteroid-armored.webp",
+      asteroidColossal: "assets/asteroid-colossal.webp",
+      asteroidTitan: "assets/asteroid-titan.webp",
+      asteroidRazor: "assets/asteroid-razor.webp",
+      asteroidPrismatic: "assets/asteroid-prismatic.webp",
+      asteroidMonolith: "assets/asteroid-monolith.webp",
+      asteroidAuricColossus: "assets/asteroid-auric-colossus.webp",
+      asteroidAuricShardExplosive: "assets/asteroid-auric-shard-explosive.webp",
+      asteroidAuricShardMagnetic: "assets/asteroid-auric-shard-magnetic.webp",
+      asteroidCorona: "assets/asteroid-corona.webp",
       alienScout: "assets/alien-scout.webp",
+      alienStriker: "assets/alien-striker.webp",
+      alienBomber: "assets/alien-bomber.webp",
+      alienCarrier: "assets/alien-carrier.webp",
+      alienLancer: "assets/alien-lancer.webp",
+      alienGunship: "assets/alien-gunship.webp",
+      alienBroodCarrier: "assets/alien-brood-carrier.webp",
+      bossHarrower: "assets/boss-harrower.webp",
+      bossLeviathan: "assets/boss-leviathan.webp",
+      bossNodeHarrower: "assets/boss-node-harrower.webp",
+      bossNodeLeviathan: "assets/boss-node-leviathan.webp",
       playerPlasma: "assets/player-plasma.webp",
+      playerMissile: "assets/player-missile.webp",
+      playerRailSlug: "assets/player-rail-slug.webp",
+      playerPrism: "assets/player-prism.webp",
+      playerRadial: "assets/player-radial.webp",
+      playerArc: "assets/player-arc.webp",
+      playerLance: "assets/player-lance.webp",
+      dronePlasma: "assets/drone-plasma.webp",
+      alienPlasma: "assets/alien-plasma.webp",
+      reflectedPlasma: "assets/reflected-plasma.webp",
       plasmaImpact: "assets/plasma-impact.webp",
-      shieldGenerator: "assets/shield-generator.webp"
+      shieldImpact: "assets/shield-impact.webp",
+      hullImpact: "assets/hull-impact.webp",
+      asteroidBreak: "assets/asteroid-break.webp",
+      explosionBurst: "assets/explosion-burst.webp",
+      shieldGenerator: "assets/shield-generator.webp",
+      pickupChassis: "assets/pickup-chassis.webp",
+      guardianDrone: "assets/guardian-drone.webp",
+      orbitBlade: "assets/orbit-blade.webp",
+      playerMine: "assets/player-mine.webp",
+      alienMine: "assets/alien-mine.webp"
     };
-    for (const [name, source] of Object.entries(expected)) assert.equal(debug.proofAssetSource(name), source);
-    assert.equal(debug.proofAssetSource("special-asteroid"), null);
+    for (const [name, source] of Object.entries(expected)) assert.equal(debug.gameplayAssetSource(name), source);
+    assert.equal(debug.gameplayAssetSource("unknown-gameplay-art"), null);
 
     const canvas = browser.elements.get("game");
     const context = canvas.getContext("2d");
@@ -261,35 +301,53 @@ module.exports = function register(test) {
     renderer.drawShip({
       x: 0, y: 0, angle: 0, engine: 1, invulnerable: 0, shield: 0, aegisTimer: 0
     }, camera, 1, false, {});
-    renderer.drawAsteroid({
-      x: 0, y: 0, radius: 26, kind: "rock", rotation: 0, points: [],
+    const asteroidCases = [
+      ["rock"], ["crystal"], ["volatile"], ["armored"], ["colossal"], ["titan"],
+      ["razor"], ["prismatic"], ["monolith"], ["auricColossus"],
+      ["auricShard", "explosive"], ["auricShard", "magnetic"], ["corona"]
+    ];
+    for (const [kind, hazardVariant] of asteroidCases) renderer.drawAsteroid({
+      x: 0, y: 0, radius: 30, kind, hazardVariant, rotation: 0, phase: 0, points: [],
       health: 3, maxHealth: 3, hitFlash: 0
     }, camera, 1);
-    renderer.drawAlien({
-      x: 0, y: 0, radius: 18, type: "scout", heading: 0, phase: 0
+    for (const type of ["scout", "striker", "bomber", "carrier", "lancer", "gunship", "broodCarrier"]) {
+      renderer.drawAlien({ x: 0, y: 0, radius: 24, type, heading: 0, phase: 0 }, camera, 1);
+    }
+    for (const type of ["harrower", "leviathan"]) renderer.drawBoss({
+      x: 0, y: 0, radius: type === "leviathan" ? 96 : 82, type, angle: 0,
+      nodes: [{ x: 12, y: 0, radius: 13, index: 0, health: 1 }]
     }, camera, 1);
-    renderer.drawProjectiles([{ x: 0, y: 0, vx: 1, vy: 0, kind: "bolt", radius: 2.5 }], camera, false);
-    renderer.drawPickup({ x: 0, y: 0, kind: "shield", phase: 0 }, camera, 1);
-    renderer.drawEffects([{
+    renderer.drawProjectiles([
+      { x: 0, y: 0, vx: 1, vy: 0, kind: "bolt" },
+      { x: 0, y: 0, vx: 1, vy: 0, kind: "missile" },
+      { x: 0, y: 0, vx: 1, vy: 0, kind: "rail" },
+      { x: 0, y: 0, vx: 1, vy: 0, kind: "prism" },
+      { x: 0, y: 0, vx: 1, vy: 0, kind: "radial" },
+      { x: 0, y: 0, vx: 1, vy: 0, kind: "arc" },
+      { x: 0, y: 0, vx: 1, vy: 0, kind: "lance" },
+      { x: 0, y: 0, vx: 1, vy: 0, kind: "droneBolt" }
+    ], camera, false);
+    renderer.drawProjectiles([
+      { x: 0, y: 0, vx: 1, vy: 0 },
+      { x: 0, y: 0, vx: 1, vy: 0, kind: "reflected" }
+    ], camera, true);
+    for (const kind of ["shield", "repair", "rapid", "module", "triShot", "piercing", "arcBurst", "novaLance", "enigma"]) {
+      renderer.drawPickup({ x: 0, y: 0, kind, phase: 0 }, camera, 1);
+    }
+    renderer.drawMine({ x: 0, y: 0, radius: 11, owner: "player", triggerRadius: 0, phase: 0 }, camera, 1);
+    renderer.drawMine({ x: 0, y: 0, radius: 15, owner: "enemy", phase: 0, armed: true }, camera, 1);
+    renderer.drawDrones({ ship: { drones: [{ x: 0, y: 0, angle: 0 }] }, camera });
+    renderer.drawOrbitBlades({ ship: { orbitBlades: [{ x: 0, y: 0, angle: 0, radius: 9 }] }, camera });
+    const effects = ["plasma", "shield", "hull", "asteroid", "alien", "boss", "explosion"].map((material) => ({
+      x: 0, y: 0, type: "sprite", material, layer: "front", color: "#ffffff",
+      life: 0.2, maxLife: 0.3, size: 48
+    }));
+    effects.push({
       x: 0, y: 0, type: "ring", layer: "front", color: "#8ffcff",
       life: 0.2, maxLife: 0.3, radius: 20, startRadius: 4, targetRadius: 48
-    }], camera, "front");
-    assert.equal(drawn.length, Object.keys(expected).length);
-    assert.deepEqual(drawn.slice().sort(), Object.values(expected).sort());
-
-    const proofDrawCount = drawn.length;
-    renderer.drawAsteroid({
-      x: 0, y: 0, radius: 26, kind: "crystal", rotation: 0, points: [],
-      health: 3, maxHealth: 3, hitFlash: 0
-    }, camera, 1);
-    renderer.drawAlien({ x: 0, y: 0, radius: 18, type: "striker", heading: 0, phase: 0 }, camera, 1);
-    renderer.drawProjectiles([{ x: 0, y: 0, vx: 1, vy: 0, kind: "rail", radius: 3.5 }], camera, false);
-    renderer.drawPickup({ x: 0, y: 0, kind: "repair", phase: 0 }, camera, 1);
-    renderer.drawEffects([{
-      x: 0, y: 0, type: "ring", layer: "front", color: "#ffffff",
-      life: 0.2, maxLife: 0.3, radius: 80, startRadius: 12, targetRadius: 120
-    }], camera, "front");
-    assert.equal(drawn.length, proofDrawCount, "the proof art leaked into an unapproved gameplay family");
+    });
+    renderer.drawEffects(effects, camera, "front");
+    assert.deepEqual([...new Set(drawn)].sort(), Object.values(expected).sort());
   });
 
   test("all twenty scene handoffs interpolate continuously, including the sector wrap", () => {

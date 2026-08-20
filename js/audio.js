@@ -15,7 +15,7 @@
       this.activeNodes = 0;
       this.maxNodes = Math.min(24, Math.max(1, Math.floor(config.maxNodes || 24)));
       this.volume = clamp(Number(config.volume) || 0.32, 0, 1);
-      this.lastShotAt = -Infinity;
+      this.lastCueAt = Object.create(null);
       this.nextAmbientAt = 0;
       this.ambientStep = 0;
     }
@@ -95,6 +95,16 @@
 
     canPlay() {
       return !this.muted && !this.failed && this.context && this.master && this.activeNodes < this.maxNodes;
+    }
+
+    allowCue(name, interval) {
+      if (!this.context) return false;
+      const key = String(name || "cue");
+      const now = this.context.currentTime;
+      const previous = Number(this.lastCueAt[key]);
+      if (Number.isFinite(previous) && now - previous < Math.max(0, Number(interval) || 0)) return false;
+      this.lastCueAt[key] = now;
+      return true;
     }
 
     trackSource(source, nodes) {
@@ -183,68 +193,146 @@
       }
     }
 
-    shoot(weapon) {
-      if (!this.context || this.context.currentTime - this.lastShotAt < 0.035) return;
-      this.lastShotAt = this.context.currentTime;
-      if (weapon === "scatter") {
-        this.noise(0.075, 0.045, 1800, "highpass");
-        this.tone(230, 0.09, "square", 0.035, 0.55);
-      } else if (weapon === "rail") {
-        this.tone(880, 0.14, "sawtooth", 0.045, 0.18);
-        this.tone(1760, 0.06, "square", 0.018, 0.5);
-      } else if (weapon === "plasma") {
-        this.tone(180, 0.2, "sine", 0.055, 2.8);
+    weapon(weapon) {
+      if (!this.allowCue("player-weapon", 0.035)) return;
+      if (weapon === "massDriver") {
+        this.tone(920, 0.15, "sawtooth", 0.046, 0.16);
+        this.tone(1840, 0.055, "square", 0.017, 0.46);
+      } else if (weapon === "prism") {
+        this.noise(0.075, 0.042, 2100, "highpass");
+        this.tone(260, 0.1, "square", 0.034, 0.52);
+      } else if (weapon === "seeker" || weapon === "homingSalvo") {
+        this.tone(175, 0.18, "sine", 0.05, 2.45);
+        this.noise(0.055, 0.018, 1650, "highpass");
+      } else if (weapon === "radialArray") {
+        this.tone(560, 0.085, "triangle", 0.035, 0.62);
+        this.tone(840, 0.06, "sine", 0.018, 0.78, 0.025);
+      } else if (weapon === "drone") {
+        this.tone(520, 0.05, "triangle", 0.024, 0.66);
+      } else if (weapon === "teslaCoil") {
+        this.tone(690, 0.11, "sawtooth", 0.038, 1.65);
+        this.tone(1380, 0.05, "square", 0.016, 0.72);
+      } else if (weapon === "mineLayer") {
+        this.tone(128, 0.12, "triangle", 0.038, 0.7);
+        this.tone(310, 0.06, "sine", 0.018, 1.15, 0.045);
+      } else if (weapon === "arcBurst") {
+        this.noise(0.06, 0.026, 2600, "highpass");
+        this.tone(640, 0.1, "sawtooth", 0.038, 1.72);
+      } else if (weapon === "novaLance") {
+        this.tone(1040, 0.22, "sawtooth", 0.05, 0.12);
+        this.tone(2080, 0.07, "square", 0.018, 0.4);
+      } else if (weapon === "pulse") {
+        this.tone(430, 0.055, "square", 0.03, 0.44);
       } else {
         this.tone(430, 0.055, "square", 0.03, 0.44);
       }
     }
 
-    hit() {
-      this.tone(132, 0.065, "sawtooth", 0.035, 0.68);
+    impact(material, strength) {
+      if (!this.allowCue("impact", 0.045)) return;
+      const weight = clamp(Number(strength) || 0.5, 0.2, 1);
+      if (material === "shield") {
+        this.tone(620, 0.08, "sine", 0.03 + weight * 0.018, 0.54);
+        this.tone(1180, 0.05, "triangle", 0.014 + weight * 0.009, 1.12);
+      } else if (material === "asteroid") {
+        this.noise(0.07 + weight * 0.045, 0.025 + weight * 0.028, 900, "lowpass");
+        this.tone(126, 0.08, "sawtooth", 0.026 + weight * 0.015, 0.66);
+      } else if (material === "alien") {
+        this.tone(220, 0.075, "sawtooth", 0.028 + weight * 0.014, 0.56);
+        this.tone(510, 0.045, "triangle", 0.012, 0.72);
+      } else if (material === "boss") {
+        this.tone(86, 0.12, "sawtooth", 0.04 + weight * 0.02, 0.72);
+      } else if (material === "hull") {
+        this.noise(0.1, 0.045 + weight * 0.035, 560, "lowpass");
+        this.tone(94, 0.13, "square", 0.035, 0.52);
+      } else {
+        this.tone(150, 0.07, "sawtooth", 0.032, 0.68);
+      }
     }
 
-    explode(large) {
-      const isLarge = large === true || Number(large) > 0.65;
-      this.noise(isLarge ? 0.34 : 0.17, isLarge ? 0.11 : 0.065, isLarge ? 360 : 760);
-      this.tone(isLarge ? 72 : 118, isLarge ? 0.3 : 0.15, "sawtooth", isLarge ? 0.075 : 0.042, 0.42);
+    destruction(kind, size) {
+      const scale = Math.max(0, Number(size) || 0);
+      const large = kind === "boss" || kind === "player" || scale > 70;
+      if (!this.allowCue(large ? "destruction-large" : "destruction", large ? 0.12 : 0.065)) return;
+      if (kind === "alien") {
+        this.noise(large ? 0.28 : 0.16, large ? 0.09 : 0.055, large ? 420 : 820, "lowpass");
+        this.tone(large ? 76 : 148, large ? 0.28 : 0.14, "sawtooth", large ? 0.07 : 0.04, 0.38);
+        this.tone(large ? 330 : 470, 0.09, "triangle", 0.018, 1.34);
+      } else {
+        this.noise(large ? 0.36 : 0.18, large ? 0.115 : 0.066, kind === "asteroid" ? 430 : 650, "lowpass");
+        this.tone(large ? 68 : kind === "mine" ? 104 : 118, large ? 0.34 : 0.17, "sawtooth", large ? 0.08 : 0.043, 0.4);
+        if (kind === "boss" || kind === "player") this.tone(41, 0.5, "triangle", 0.05, 0.66, 0.06);
+      }
     }
 
-    pickup() {
-      this.tone(510, 0.08, "sine", 0.05, 1.5);
-      this.tone(780, 0.13, "triangle", 0.035, 1.28, 0.055);
+    pickup(kind) {
+      if (!this.allowCue("pickup", 0.08)) return;
+      const base = kind === "repair" ? 620 : kind === "shield" || kind === "aegis" ? 520 : kind === "enigma" ? 440 : kind === "module" ? 700 : 560;
+      this.tone(base, 0.08, "sine", 0.048, 1.48);
+      this.tone(base * 1.52, 0.13, "triangle", 0.033, 1.24, 0.055);
     }
 
-    weaponSwitch() {
+    upgrade() {
+      if (!this.allowCue("upgrade", 0.12)) return;
       this.tone(290, 0.07, "triangle", 0.035, 1.8);
       this.tone(620, 0.06, "sine", 0.025, 1.12, 0.045);
     }
 
     dash() {
+      if (!this.allowCue("dash", 0.08)) return;
       this.noise(0.1, 0.05, 1450, "highpass");
       this.tone(155, 0.14, "sawtooth", 0.045, 2.3);
     }
 
     pulse() {
+      if (!this.allowCue("pulse", 0.3)) return;
       this.tone(102, 0.62, "sine", 0.105, 4.4);
       this.tone(205, 0.4, "triangle", 0.06, 2.15, 0.055);
     }
 
-    damage() {
-      this.noise(0.2, 0.1, 480);
-      this.tone(76, 0.28, "square", 0.06, 0.52);
+    playerDamage(material) {
+      if (!this.allowCue("player-damage", 0.16)) return;
+      if (material === "shield") {
+        this.tone(480, 0.18, "sine", 0.065, 0.42);
+        this.tone(920, 0.08, "triangle", 0.026, 0.74);
+      } else {
+        this.noise(0.22, 0.105, 460, "lowpass");
+        this.tone(74, 0.29, "square", 0.062, 0.5);
+      }
     }
 
-    alienShot() {
-      this.tone(245, 0.13, "sawtooth", 0.028, 0.46);
+    enemyWeapon(source) {
+      if (!this.allowCue("enemy-weapon", 0.065)) return;
+      if (source === "harrower" || source === "leviathan") {
+        this.tone(source === "leviathan" ? 118 : 142, 0.18, "sawtooth", 0.044, 0.4);
+        this.tone(360, 0.07, "triangle", 0.018, 0.72);
+      } else if (source === "bomber" || source === "carrier" || source === "broodCarrier") {
+        this.tone(185, 0.15, "sawtooth", 0.034, 0.42);
+        this.noise(0.065, 0.018, 1400, "highpass");
+      } else if (source === "lancer" || source === "gunship") {
+        this.tone(390, 0.11, "square", 0.031, 0.48);
+      } else {
+        this.tone(245, 0.13, "sawtooth", 0.028, 0.46);
+      }
+    }
+
+    bossWeapon(kind) {
+      if (!this.allowCue("boss-weapon", 0.18)) return;
+      if (kind === "beam") {
+        this.noise(0.28, 0.09, 520, "lowpass");
+        this.tone(58, 0.42, "sawtooth", 0.082, 2.2);
+      }
     }
 
     bossCue() {
+      if (!this.allowCue("boss-cue", 0.5)) return;
       this.noise(0.32, 0.085, 310);
       this.tone(55, 0.65, "sawtooth", 0.085, 0.78);
       this.tone(82.4, 0.52, "triangle", 0.05, 0.9, 0.12);
     }
 
     arena() {
+      if (!this.allowCue("arena", 0.5)) return;
       this.tone(92, 0.48, "sine", 0.07, 2.4);
       this.tone(184, 0.28, "square", 0.026, 0.72, 0.08);
     }
@@ -269,7 +357,7 @@
     resetTimeline() {
       this.nextAmbientAt = 0;
       this.ambientStep = 0;
-      this.lastShotAt = -Infinity;
+      this.lastCueAt = Object.create(null);
     }
 
   }

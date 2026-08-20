@@ -1890,7 +1890,7 @@
         const spread = count === 1 ? 0 : ((index / (count - 1)) - 0.5) * spreadWidth;
         spawnPlayerBullet(id, ship.x + Math.cos(ship.angle) * 23, ship.y + Math.sin(ship.angle) * 23, ship.angle + spread, values);
       }
-      audio.shoot(id === "massDriver" ? "rail" : id === "prism" ? "scatter" : id === "seeker" ? "plasma" : "pulse");
+      audio.weapon(id);
     }
     fireTemporaryWeapons(dt);
   }
@@ -1907,7 +1907,7 @@
           const offset = values.projectiles === 1 ? 0 : (index / (values.projectiles - 1) - 0.5) * values.spread;
           spawnTemporaryBullet("arc", ship.angle + offset, values);
         }
-        audio.shoot("scatter");
+        audio.weapon("arcBurst");
       }
     }
     if (ship.novaLanceTimer > 0) {
@@ -1916,7 +1916,7 @@
         const values = CONFIG.powerups.novaLance;
         ship.weaponTimers.novaLance = values.cooldown * overclock;
         spawnTemporaryBullet("lance", ship.angle, values);
-        audio.shoot("rail");
+        audio.weapon("novaLance");
       }
     }
   }
@@ -1996,7 +1996,7 @@
         drone.angle = Math.atan2(target.y - drone.y, target.x - drone.x);
         if (drone.cooldown <= 0) {
           drone.cooldown = values.cooldown * overclockCooldownMultiplier(ship);
-          spawnPlayerBullet("drone", drone.x, drone.y, drone.angle, values);
+          if (spawnPlayerBullet("drone", drone.x, drone.y, drone.angle, values)) audio.weapon("drone");
         }
       } else {
         drone.angle = orbit + Math.PI / 2;
@@ -2112,7 +2112,7 @@
       if (state.mode === "gameover") break;
       hits += 1;
     }
-    if (hits) audio.shoot("plasma");
+    if (hits) audio.weapon("teslaCoil");
     return hits;
   }
 
@@ -2165,6 +2165,7 @@
     for (let index = 0; index < count; index += 1) if (spawnPlayerMine(values, index, count)) spawned += 1;
     if (!spawned) return;
     ship.weaponTimers.mineLayer = values.cooldown * overclockCooldownMultiplier(ship);
+    audio.weapon("mineLayer");
     if (!settings.reducedEffects) addRing(ship.x, ship.y, CONFIG.weapons.modules.mineLayer.color, 4, 0.24, 32);
   }
 
@@ -2177,6 +2178,7 @@
     ship.shield = Math.min(CONFIG.powerups.shield.cap, ship.shield + values.amount);
     ship.weaponTimers.shieldReactor = values.cooldown;
     addRing(ship.x, ship.y, CONFIG.weapons.modules.shieldReactor.color, 5, 0.34, 48);
+    audio.pickup("shield");
   }
 
   function updatePassiveModules(dt) {
@@ -2199,14 +2201,14 @@
           const angle = targetAngle + offset;
           if (spawnPlayerBullet(id, ship.x + Math.cos(angle) * 23, ship.y + Math.sin(angle) * 23, angle, values)) spawned += 1;
         }
-        if (spawned) audio.shoot("plasma");
+        if (spawned) audio.weapon("homingSalvo");
       } else {
         const baseAngle = ship.angle + state.time * 0.42;
         for (let index = 0; index < values.projectiles; index += 1) {
           const angle = baseAngle + index / values.projectiles * TAU;
           if (spawnPlayerBullet(id, ship.x + Math.cos(angle) * 19, ship.y + Math.sin(angle) * 19, angle, values)) spawned += 1;
         }
-        if (spawned) audio.shoot("scatter");
+        if (spawned) audio.weapon("radialArray");
       }
       if (spawned && !settings.reducedEffects) addRing(ship.x, ship.y, definition.color, 5, 0.26, id === "homingSalvo" ? 34 : 46);
     }
@@ -3043,7 +3045,7 @@
           alien.cooldown = CONFIG.difficulty.scaledCooldown(definition.baseCooldown, state.sector, state.encounter);
           const lead = leadPoint(alien.x, alien.y, definition.pattern.projectileSpeed);
           fireEnemyAt(alien.x, alien.y, lead.x, lead.y, definition.pattern.projectileSpeed, definition.pattern.damage,
-            definition.pattern.projectiles || 1, definition.pattern.spread || 0, "#63f7c8");
+            definition.pattern.projectiles || 1, definition.pattern.spread || 0, "#63f7c8", alien.type);
         }
       } else if (definition.pattern.type === "sweepingLaser") {
         const pattern = definition.pattern;
@@ -3083,6 +3085,7 @@
               alien.state = "beamActive";
               alien.stateTimer = Math.max(CONFIG.world.fixedStep, Number(pattern.active) || 1);
               alien.damageTimer = 0;
+              audio.enemyWeapon(alien.type);
             } else {
               alien.state = "approach";
               alien.cooldown = CONFIG.difficulty.scaledCooldown(Number(pattern.cooldown) || definition.baseCooldown, state.sector, state.encounter);
@@ -3109,6 +3112,7 @@
             const chargeAngle = Math.atan2(lead.y - alien.y, lead.x - alien.x);
             alien.vx = Math.cos(chargeAngle) * alien.speed * definition.pattern.speedMultiplier;
             alien.vy = Math.sin(chargeAngle) * alien.speed * definition.pattern.speedMultiplier;
+            audio.enemyWeapon(alien.type);
           }
         } else if (alien.state === "charge") {
           if (alien.stateTimer <= 0) {
@@ -3133,7 +3137,7 @@
         if (alien.cooldown <= 0 && distance < 650) {
           alien.cooldown = CONFIG.difficulty.scaledCooldown(CONFIG.aliens.bomber.baseCooldown, state.sector, state.encounter);
           const predicted = leadPoint(alien.x, alien.y, 260);
-          spawnMine(alien.x, alien.y, predicted.x, predicted.y, CONFIG.aliens.bomber.pattern);
+          spawnMine(alien.x, alien.y, predicted.x, predicted.y, CONFIG.aliens.bomber.pattern, alien.type);
         }
       } else if (definition.pattern.type === "droneLaunch") {
         const carrierPattern = definition.pattern;
@@ -3266,14 +3270,14 @@
     return bullet;
   }
 
-  function fireEnemyAt(x, y, targetX, targetY, speed, damage, count, spread, color) {
+  function fireEnemyAt(x, y, targetX, targetY, speed, damage, count, spread, color, source) {
     const total = Math.max(1, count || 1);
     const center = Math.atan2(targetY - y, targetX - x);
     for (let index = 0; index < total; index += 1) {
       const offset = total === 1 ? 0 : ((index / (total - 1)) - 0.5) * (spread || 0);
       spawnEnemyBullet(x, y, center + offset, speed, damage, color);
     }
-    audio.alienShot();
+    audio.enemyWeapon(source);
   }
 
   function bossSpawnPosition(boss, preferredAngle) {
@@ -3316,7 +3320,7 @@
     return { x: arena.x + best.x, y: arena.y + best.y };
   }
 
-  function spawnMine(x, y, targetX, targetY, pattern) {
+  function spawnMine(x, y, targetX, targetY, pattern, source) {
     if (state.mines.length >= CONFIG.caps.mines) return;
     const angle = Math.atan2(targetY - y, targetX - x);
     state.mines.push({
@@ -3333,6 +3337,7 @@
       armed: false,
       dead: false
     });
+    audio.enemyWeapon(source || "bomber");
   }
 
   function spawnBoss() {
@@ -3607,7 +3612,7 @@
     }
     addRing(boss.x + Math.cos(boss.actionAngle) * 80, boss.y + Math.sin(boss.actionAngle) * 80, "#ff58df", 6, 0.32, 120);
     state.shake = Math.max(state.shake, 10);
-    if (loud) audio.explode(true);
+    if (loud) audio.bossWeapon("beam");
   }
 
   function performBossAttack(boss, attack) {
@@ -3620,9 +3625,9 @@
       const lead = leadPoint(boss.x, boss.y, 950);
       boss.actionAngle = Math.atan2(lead.y - boss.y, lead.x - boss.x);
     } else if (attack.type === "crossVolley") {
-      fireEnemyAt(boss.x, boss.y, state.ship.x, state.ship.y, attack.speed, attack.damage, attack.projectiles, attack.spread, color);
+      fireEnemyAt(boss.x, boss.y, state.ship.x, state.ship.y, attack.speed, attack.damage, attack.projectiles, attack.spread, color, boss.type);
     } else if (attack.type === "dashVolley") {
-      fireEnemyAt(boss.x, boss.y, state.ship.x, state.ship.y, attack.speed, attack.damage, attack.projectiles, attack.spread, color);
+      fireEnemyAt(boss.x, boss.y, state.ship.x, state.ship.y, attack.speed, attack.damage, attack.projectiles, attack.spread, color, boss.type);
       const dashAngle = Math.atan2(state.ship.y - boss.y, state.ship.x - boss.x);
       const dashSpeed = attack.dashSpeed * CONFIG.difficulty.speedScale(state.sector, state.encounter);
       boss.vx = Math.cos(dashAngle) * dashSpeed;
@@ -3658,7 +3663,7 @@
           fuse: attack.fuse + index * (attack.fuseStep || 0),
           blastRadius: attack.blastRadius,
           damage: attack.damage
-        });
+        }, boss.type);
       }
     }
   }
@@ -3716,7 +3721,7 @@
     const multiplier = reflectionActive ? clamp(Number(reflectionValues.damageMultiplier) || 0.25, 0.05, 1) : shielded ? 0.42 : 1;
     boss.health -= amount * multiplier;
     addFloater(boss.x, boss.y - boss.radius, shielded ? (reflectionActive ? "REFLECT" : "SHIELD") : Math.max(1, Math.round(amount)), shielded ? "#6fffff" : "#ffffff", 12);
-    audio.hit();
+    audio.impact(shielded ? "shield" : "boss", clamp(amount / 36, 0.2, 1));
     if (boss.health <= 0) killBoss();
   }
 
@@ -3736,7 +3741,8 @@
     state.bossesDefeated += 1;
     state.stats.kills += 1;
     state.ship.hull = Math.min(state.ship.maxHull, state.ship.hull + CONFIG.bossArena.victoryHeal);
-    burst(boss.x, boss.y, "#ff58df", settings.reducedEffects ? 45 : 100, 2.5);
+    const bossImpact = burst(boss.x, boss.y, "#ff58df", settings.reducedEffects ? 45 : 100, 2.5);
+    styleImpactSprite(bossImpact, boss.x, boss.y, "boss", Math.min(240, boss.radius * 2.35), "#ff58df");
     addRing(boss.x, boss.y, "#ffffff", 12, 1.1, state.arena.radius * 0.85);
     state.enemyBullets.length = 0;
     state.mines.length = 0;
@@ -3744,7 +3750,7 @@
     state.shake = 20;
     state.flash = 1;
     state.flashColor = "#ffffff";
-    audio.explode(true);
+    audio.destruction("boss", boss.radius);
     const rewardResult = state.upgradeDraft.phase === "idle" ? grantBossCoreReward() : null;
     state.boss = null;
     show(dom.bossHud, false);
@@ -3866,16 +3872,18 @@
       }
       if (state.boss && distanceSquared(mine.x, mine.y, state.boss.x, state.boss.y) <= radiusSquared) damageBoss(mine.damage);
       addRing(mine.x, mine.y, CONFIG.weapons.modules.mineLayer.color, 5, 0.45, mine.blastRadius);
-      burst(mine.x, mine.y, CONFIG.weapons.modules.mineLayer.color, settings.reducedEffects ? 8 : 18, 1.2);
-      audio.explode(false);
+      const mineImpact = burst(mine.x, mine.y, CONFIG.weapons.modules.mineLayer.color, settings.reducedEffects ? 8 : 18, 1.2);
+      styleImpactSprite(mineImpact, mine.x, mine.y, "explosion", Math.min(120, mine.blastRadius * 0.9), CONFIG.weapons.modules.mineLayer.color);
+      audio.destruction("mine", mine.blastRadius);
       return;
     }
     if (distanceSquared(state.ship.x, state.ship.y, mine.x, mine.y) <= mine.blastRadius * mine.blastRadius) {
       damagePlayer(mine.damage, mine.x, mine.y);
     }
     addRing(mine.x, mine.y, "#ff6278", 5, 0.45, mine.blastRadius);
-    burst(mine.x, mine.y, "#ff7c72", settings.reducedEffects ? 8 : 18, 1.2);
-    audio.explode(false);
+    const mineImpact = burst(mine.x, mine.y, "#ff7c72", settings.reducedEffects ? 8 : 18, 1.2);
+    styleImpactSprite(mineImpact, mine.x, mine.y, "explosion", Math.min(120, mine.blastRadius * 0.9), "#ff7c72");
+    audio.destruction("mine", mine.blastRadius);
   }
 
   function hitTargetWithBullet(bullet, target) {
@@ -3900,7 +3908,12 @@
       }
       addRing(x, y, bullet.color, 3, 0.32, bullet.blastRadius);
     }
-    burst(x, y, bullet.color, settings.reducedEffects ? 2 : 4, 0.55);
+    const impactMaterial = directTarget
+      ? directTarget.kind ? "asteroid" : directTarget === state.boss ? "boss" : directTarget.type ? "alien" : "plasma"
+      : "plasma";
+    audio.impact(impactMaterial, clamp(bullet.damage / 40, 0.2, 1));
+    const projectileImpact = burst(x, y, bullet.color, settings.reducedEffects ? 2 : 4, 0.55);
+    styleImpactSprite(projectileImpact, x, y, "plasma", directTarget ? clamp(directTarget.radius * 0.9, 26, 62) : 30, bullet.color);
     if (bullet.pierce > 0) bullet.pierce -= 1;
     else bullet.dead = true;
   }
@@ -3919,7 +3932,8 @@
               resolveBulletImpact(bullet, node.x, node.y, null);
               if (node.health <= 0) {
                 node.health = 0;
-                burst(node.x, node.y, "#6fffff", settings.reducedEffects ? 10 : 22, 1.2);
+                const nodeImpact = burst(node.x, node.y, "#6fffff", settings.reducedEffects ? 10 : 22, 1.2);
+                styleImpactSprite(nodeImpact, node.x, node.y, "explosion", 54, "#6fffff");
                 state.score += 420;
                 announce("Shield node destroyed", 0.85);
               }
@@ -3968,8 +3982,9 @@
       reflected.sourceBoss = boss.type;
     }
     addFloater(bullet.x, bullet.y, "REFLECT", "#d7c0ff", 11);
-    burst(bullet.x, bullet.y, "#b99cff", settings.reducedEffects ? 2 : 6, 0.7);
-    audio.hit();
+    const reflectionImpact = burst(bullet.x, bullet.y, "#b99cff", settings.reducedEffects ? 2 : 6, 0.7);
+    styleImpactSprite(reflectionImpact, bullet.x, bullet.y, "shield", 46, "#b99cff");
+    audio.impact("shield", 0.7);
     return true;
   }
 
@@ -4166,10 +4181,17 @@
     const deathColor = entity.kind === "volatile" || entity.hazardVariant === "explosive" ? "#ff9a45" :
       entity.kind === "auricColossus" || entity.kind === "auricShard" || entity.kind === "corona" ? "#ffd166" :
         entity.type ? "#79ffd4" : "#72e9ff";
-    burst(entity.x, entity.y, deathColor, settings.reducedEffects ? 6 : clamp(Math.round(entity.radius * 0.32), 8, 36), entity.radius > 70 ? 1.8 : 1.15);
+    const deathImpact = burst(entity.x, entity.y, deathColor, settings.reducedEffects ? 6 : clamp(Math.round(entity.radius * 0.32), 8, 36), entity.radius > 70 ? 1.8 : 1.15);
+    styleImpactSprite(
+      deathImpact,
+      entity.x,
+      entity.y,
+      entity.kind ? "asteroid" : "alien",
+      clamp(entity.radius * 2.05, 44, 250),
+      deathColor
+    );
     state.shake = Math.max(state.shake, clamp(entity.radius * 0.06, 2, 10));
-    if (entity.radius > 70 || entity.type === "carrier") audio.explode(true);
-    else audio.explode(false);
+    audio.destruction(entity.kind ? "asteroid" : "alien", entity.radius);
     if (rewarded && !entity.noDrops) {
       if (encounter) encounter.killsSincePowerup += 1;
       const dropBand = currentDropBand();
@@ -4193,9 +4215,11 @@
     if (!ship || ship.invulnerable > 0 || state.mode !== "playing") return false;
     const aegisReduction = ship.aegisTimer > 0 ? clamp(Number(CONFIG.powerups.aegis.damageReduction) || 0, 0, 0.9) : 0;
     let remaining = Math.max(0, Number(amount) || 0) * (1 - aegisReduction);
+    let shieldAbsorbed = false;
     if (ship.shield > 0) {
       const drainMultiplier = Math.max(1, Number(CONFIG.powerups.shield.drainMultiplier) || 1);
       const shieldSpent = Math.min(ship.shield, remaining * drainMultiplier);
+      shieldAbsorbed = shieldSpent > 0;
       ship.shield -= shieldSpent;
       remaining -= shieldSpent / drainMultiplier;
     }
@@ -4209,12 +4233,14 @@
     state.shake = Math.max(state.shake, 13);
     state.flash = Math.max(state.flash, 0.9);
     state.flashColor = "#ff516d";
-    burst(ship.x, ship.y, "#ff6b7c", settings.reducedEffects ? 9 : 21, 1.3);
-    audio.damage();
+    const damageImpact = burst(ship.x, ship.y, "#ff6b7c", settings.reducedEffects ? 9 : 21, 1.3);
+    styleImpactSprite(damageImpact, ship.x, ship.y, remaining > 0 || !shieldAbsorbed ? "hull" : "shield", 72, remaining > 0 ? "#ff6b7c" : "#8ffcff");
+    audio.playerDamage(remaining > 0 || !shieldAbsorbed ? "hull" : "shield");
     if (ship.hull <= 0) {
       ship.hull = 0;
-      burst(ship.x, ship.y, "#ffffff", settings.reducedEffects ? 34 : 80, 2.4);
-      audio.explode(true);
+      const playerExplosion = burst(ship.x, ship.y, "#ffffff", settings.reducedEffects ? 34 : 80, 2.4);
+      styleImpactSprite(playerExplosion, ship.x, ship.y, "explosion", 150, "#ffffff");
+      audio.destruction("player", ship.radius);
       endRun();
     }
     return true;
@@ -4595,7 +4621,7 @@
     }
     if (pickup.kind !== "enigma") saveCurrentStageCheckpoint();
     burst(pickup.x, pickup.y, pickup.kind === "enigma" ? "#c584ff" : "#ffffff", settings.reducedEffects ? 6 : 14, 0.9);
-    audio.pickup();
+    audio.pickup(pickup.kind);
     return true;
   }
 
@@ -4623,7 +4649,7 @@
     const summary = `${label} Mk ${roman(modules[selected])} · permanent`;
     if (shouldShowStatus !== false) showPowerup(`${source} // PERMANENT · ${label} MK ${roman(modules[selected])}`);
     if (shouldAnnounce !== false) announce(summary, 1.7);
-    audio.weaponSwitch();
+    audio.upgrade();
     state.moduleSignature = "";
     return { moduleId: selected, tier: modules[selected], title: label, summary, overflow: false };
   }
@@ -4635,6 +4661,21 @@
 
   function roman(value) {
     return ["—", "I", "II", "III", "IV", "V"][clamp(Math.floor(value), 0, CONFIG.weapons.maxModuleTier)];
+  }
+
+  function styleImpactSprite(effect, x, y, material, size, color) {
+    if (!effect) return null;
+    effect.x = x;
+    effect.y = y;
+    effect.vx = 0;
+    effect.vy = 0;
+    effect.type = "sprite";
+    effect.material = String(material || "plasma");
+    effect.layer = "front";
+    effect.radius = 0;
+    effect.color = color || "#ffffff";
+    effect.size = clamp(Number(size) || 36, 18, 260);
+    return effect;
   }
 
   function addRing(x, y, color, startRadius, life, targetRadius) {
@@ -4660,11 +4701,12 @@
   function burst(x, y, color, count, force) {
     const cap = settings.reducedEffects ? CONFIG.caps.reducedParticles : CONFIG.caps.particles;
     const total = Math.min(count, Math.max(0, cap - state.effects.length));
+    let lastEffect = null;
     for (let index = 0; index < total; index += 1) {
       const angle = rng.range(0, TAU);
       const speed = rng.range(35, 155) * (force || 1);
       const life = rng.range(0.25, 0.72) * Math.min(1.5, force || 1);
-      state.effects.push({
+      lastEffect = {
         x, y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
@@ -4676,8 +4718,10 @@
         maxLife: life,
         size: rng.range(2, 6) * Math.min(1.6, force || 1),
         dead: false
-      });
+      };
+      state.effects.push(lastEffect);
     }
+    return lastEffect;
   }
 
   function addFloater(x, y, text, color, size) {
