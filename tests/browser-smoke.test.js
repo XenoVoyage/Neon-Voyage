@@ -10,6 +10,8 @@ module.exports = function register(test) {
     const audio = new browser.window.ND.AudioEngine({ maxNodes: 999 });
     assert.equal(audio.maxNodes, 24);
     assert.equal(audio.volume, 0.8, "new sessions did not receive the louder configured mix");
+    assert.equal(audio.mixGain, 1.7, "action voices did not receive the configured mix lift");
+    assert.equal(audio.maxVoiceGain, 0.22, "voice peaks lost their bounded ceiling");
     for (const method of [
       "weapon", "impact", "destruction", "pickup", "upgrade", "dash", "pulse",
       "playerDamage", "enemyWeapon", "bossWeapon", "bossCue", "arena", "musicTick", "setVolume"
@@ -51,6 +53,74 @@ module.exports = function register(test) {
     assert.equal(audio.setVolume(9), 1);
     assert.equal(audio.setVolume(-3), 0);
     assert.equal(audio.setVolume(Number.NaN), 0, "invalid volume replaced the last valid level");
+
+    const createdNodes = [];
+    const makeParam = (value) => ({
+      value,
+      calls: [],
+      setValueAtTime(next, time) { this.calls.push(["set", next, time]); this.value = next; },
+      exponentialRampToValueAtTime(next, time) { this.calls.push(["ramp", next, time]); this.value = next; },
+      cancelScheduledValues(time) { this.calls.push(["cancel", time]); },
+      setTargetAtTime(next, time, duration) { this.calls.push(["target", next, time, duration]); this.value = next; }
+    });
+    const makeNode = (type, fields) => {
+      const node = Object.assign({
+        type,
+        connections: [],
+        connect(target) { this.connections.push(target); return target; },
+        disconnect() {}
+      }, fields || {});
+      createdNodes.push(node);
+      return node;
+    };
+    class FakeAudioContext {
+      constructor() {
+        this.currentTime = 2;
+        this.sampleRate = 8000;
+        this.state = "running";
+        this.destination = makeNode("destination");
+      }
+      createGain() { return makeNode("gain", { gain: makeParam(1) }); }
+      createDynamicsCompressor() {
+        return makeNode("limiter", {
+          threshold: makeParam(0),
+          knee: makeParam(0),
+          ratio: makeParam(0),
+          attack: makeParam(0),
+          release: makeParam(0)
+        });
+      }
+      createBuffer(_channels, frames) {
+        const channel = new Float32Array(frames);
+        return { getChannelData: () => channel };
+      }
+      createOscillator() {
+        return makeNode("oscillator", {
+          frequency: makeParam(0),
+          start() {},
+          stop() {},
+          onended: null
+        });
+      }
+      resume() { return Promise.resolve(); }
+    }
+    browser.window.AudioContext = FakeAudioContext;
+    const staged = new browser.window.ND.AudioEngine({ volume: 0.8 });
+    assert.equal(staged.unlock(), true, "the bounded mix chain did not initialize");
+    assert.equal(staged.master.connections[0], staged.limiter, "master gain bypassed the peak limiter");
+    assert.equal(staged.limiter.connections[0], staged.context.destination, "limiter did not own final output");
+    assert.equal(staged.limiter.threshold.value, -8);
+    assert.equal(staged.limiter.knee.value, 6);
+    assert.equal(staged.limiter.ratio.value, 8);
+    assert.equal(staged.limiter.attack.value, 0.003);
+    assert.equal(staged.limiter.release.value, 0.18);
+
+    staged.weapon("pulse");
+    const voice = createdNodes.filter((node) => node.type === "gain").at(-1);
+    assert.ok(voice && voice !== staged.master, "player cue did not create a bounded voice gain");
+    assert.ok(voice.gain.calls.some((call) => call[0] === "ramp" && call[1] === 0.03 * 1.7),
+      "player cue did not receive the configured +4.6 dB mix lift");
+    assert.equal(staged.voiceGain(1, 0.04), 0.22, "voice gain exceeded its configured ceiling");
   });
 
   test("browser VM boots local scripts, renders frames, and starts a run", () => {

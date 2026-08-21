@@ -14,15 +14,22 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.21b configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.21b");
+  test("Neon Voyage v2026.8.21c configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.21c");
     assert.ok(CONFIG.presentation.gameoverEffectDuration >= 1 && CONFIG.presentation.gameoverEffectDuration <= 2);
     assert.ok(CONFIG.mobileControls.autoAimHoldSeconds > 0 && CONFIG.mobileControls.autoAimHoldSeconds <= 0.25);
     assert.deepEqual(JSON.parse(JSON.stringify(CONFIG.audio)), {
       defaultVolume: 0.8,
       minVolume: 0,
       maxVolume: 1,
-      volumeStep: 0.05
+      volumeStep: 0.05,
+      mixGain: 1.7,
+      maxVoiceGain: 0.22,
+      limiterThreshold: -8,
+      limiterKnee: 6,
+      limiterRatio: 8,
+      limiterAttack: 0.003,
+      limiterRelease: 0.18
     });
     collectFrozen(CONFIG, new Set());
   });

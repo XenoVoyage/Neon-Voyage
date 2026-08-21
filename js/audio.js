@@ -9,6 +9,7 @@
       const config = options || {};
       this.context = null;
       this.master = null;
+      this.limiter = null;
       this.noiseBuffer = null;
       this.muted = Boolean(config.muted);
       this.failed = false;
@@ -23,6 +24,9 @@
         0,
         1
       );
+      const audioConfig = ND.CONFIG && ND.CONFIG.audio || {};
+      this.mixGain = clamp(Number(audioConfig.mixGain) || 1, 1, 3);
+      this.maxVoiceGain = clamp(Number(audioConfig.maxVoiceGain) || 0.22, 0.05, 0.35);
       this.lastCueAt = Object.create(null);
       this.nextAmbientAt = 0;
       this.ambientStep = 0;
@@ -42,16 +46,25 @@
       try {
         const context = new Context();
         const master = context.createGain();
+        const limiter = context.createDynamicsCompressor();
         master.gain.value = this.muted ? 0 : this.volume;
-        master.connect(context.destination);
+        limiter.threshold.value = Number(ND.CONFIG.audio.limiterThreshold);
+        limiter.knee.value = Number(ND.CONFIG.audio.limiterKnee);
+        limiter.ratio.value = Number(ND.CONFIG.audio.limiterRatio);
+        limiter.attack.value = Number(ND.CONFIG.audio.limiterAttack);
+        limiter.release.value = Number(ND.CONFIG.audio.limiterRelease);
+        master.connect(limiter);
+        limiter.connect(context.destination);
         this.context = context;
         this.master = master;
+        this.limiter = limiter;
         this.noiseBuffer = this.createNoiseBuffer();
         this.resume();
         return true;
       } catch {
         this.context = null;
         this.master = null;
+        this.limiter = null;
         this.noiseBuffer = null;
         this.failed = true;
         return false;
@@ -146,6 +159,12 @@
       return cleanup;
     }
 
+    voiceGain(volume, fallback) {
+      const requested = Number(volume);
+      const base = Number.isFinite(requested) && requested > 0 ? requested : fallback;
+      return clamp(base * this.mixGain, 0.0001, this.maxVoiceGain);
+    }
+
     tone(frequency, duration, type, volume, slide, delay) {
       if (!this.canPlay()) return false;
       const context = this.context;
@@ -163,7 +182,7 @@
         oscillator.frequency.setValueAtTime(startFrequency, start);
         oscillator.frequency.exponentialRampToValueAtTime(endFrequency, start + length);
         gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, Number(volume) || 0.04), start + Math.min(0.01, length * 0.25));
+        gain.gain.exponentialRampToValueAtTime(this.voiceGain(volume, 0.04), start + Math.min(0.01, length * 0.25));
         gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
         oscillator.connect(gain);
         gain.connect(this.master);
@@ -197,7 +216,7 @@
         filter.type = filterType || "lowpass";
         filter.frequency.value = clamp(Number(filterFrequency) || 700, 80, 10000);
         const now = context.currentTime;
-        gain.gain.setValueAtTime(Math.max(0.0001, Number(volume) || 0.06), now);
+        gain.gain.setValueAtTime(this.voiceGain(volume, 0.06), now);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + length);
         source.connect(filter);
         filter.connect(gain);

@@ -216,12 +216,71 @@ module.exports = function register(test) {
     assert.deepEqual(effectLayers, ["back", "front"], "pending defeat did not retain both death-effect layers");
 
     state.presentation.gameoverPending = false;
+    effectLayers.length = 0;
+    renderer.render(state, 3, true);
+    assert.deepEqual(shipOwnedCalls, [], "defeated ship returned behind the game-over dialog");
+    assert.deepEqual(effectLayers, ["back", "front"]);
+
     state.mode = "playing";
     effectLayers.length = 0;
     renderer.render(state, 3, true);
     assert.deepEqual(shipOwnedCalls, ["fields", "drones", "ship", "blades", "reticle"],
       "positive control did not exercise every ship-owned renderer path");
     assert.deepEqual(effectLayers, ["back", "front"]);
+  });
+
+  test("camera shake and full-screen flashes are independent opt-in presentation settings", () => {
+    const browser = buildBrowser({ now: 1700000000000 });
+    loadRuntimeScripts(browser);
+    browser.document.readyState = "interactive";
+    browser.emit(browser.document, "DOMContentLoaded");
+    const canvas = browser.elements.get("game");
+    const game = browser.window.ND.game;
+    const renderer = new browser.window.ND.Renderer(canvas);
+    game.start();
+    const state = game.state;
+    state.shake = 12;
+    state.flash = 1;
+    state.settings.cameraShake = false;
+    state.settings.damageFlash = false;
+
+    const translations = [];
+    const fullScreenFills = [];
+    const context = canvas.getContext("2d");
+    context.translate = (x, y) => { translations.push([x, y]); };
+    context.fillRect = (x, y, width, height) => { fullScreenFills.push([x, y, width, height]); };
+    renderer.drawBackground = () => {};
+    renderer.drawCombatField = () => {};
+    renderer.drawEffects = () => {};
+    renderer.drawPlayerFields = () => {};
+    renderer.drawPickup = () => {};
+    renderer.drawMine = () => {};
+    renderer.drawAsteroid = () => {};
+    renderer.drawAlien = () => {};
+    renderer.drawBoss = () => {};
+    renderer.drawProjectiles = () => {};
+    renderer.drawDrones = () => {};
+    renderer.drawShip = () => {};
+    renderer.drawOrbitBlades = () => {};
+    renderer.drawFloaters = () => {};
+    renderer.drawReticle = () => {};
+    renderer.drawOffscreenIndicators = () => {};
+    renderer.drawTimeFracture = () => {};
+
+    renderer.render(state, 3, true);
+    assert.equal(Math.abs(translations.at(-1)[0]) + Math.abs(translations.at(-1)[1]), 0,
+      "default-off camera shake moved the view");
+    assert.deepEqual(fullScreenFills, [], "default-off screen flashes painted the viewport");
+
+    const originalRandom = browser.window.Math.random;
+    browser.window.Math.random = () => 1;
+    state.settings.cameraShake = true;
+    state.settings.damageFlash = true;
+    renderer.render(state, 3, true);
+    browser.window.Math.random = originalRandom;
+    assert.deepEqual(translations.at(-1), [12, 12], "enabled camera shake did not use the bounded impact value");
+    assert.deepEqual(fullScreenFills.at(-1), [0, 0, renderer.width, renderer.height],
+      "enabled screen flash did not cover the renderer viewport");
   });
 
   test("normal stars remain point-only regardless of ship angle and velocity", () => {

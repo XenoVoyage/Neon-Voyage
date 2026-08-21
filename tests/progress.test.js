@@ -162,17 +162,25 @@ function register(test) {
     assert.equal(browser.window.ND.StagePreview.render(browser.elements.get("game"), 1, 1), true);
   });
 
-  test("legacy audio settings adopt the louder default and the volume control persists explicit silence", () => {
+  test("legacy preferences adopt safe feedback defaults and persist independent audio and impact controls", () => {
     const legacy = { highScore: 321, settings: { sound: true, reducedEffects: false } };
     const storage = new Map([[SAVE_KEY, JSON.stringify(legacy)]]);
     const first = boot({ storage });
     const slider = first.browser.elements.get("settings-volume-input");
     const output = first.browser.elements.get("settings-volume-value");
+    const shake = first.browser.elements.get("settings-shake-button");
+    const flash = first.browser.elements.get("settings-flash-button");
 
     assert.equal(first.game.state.settings.volume, 0.8);
+    assert.equal(first.game.state.settings.cameraShake, false);
+    assert.equal(first.game.state.settings.damageFlash, false);
     assert.equal(slider.value, "80");
     assert.equal(slider.getAttribute("aria-valuetext"), "80 percent");
     assert.equal(output.textContent, "80%");
+    assert.equal(shake.textContent, "Off");
+    assert.equal(shake.getAttribute("aria-pressed"), "false");
+    assert.equal(flash.textContent, "Off");
+    assert.equal(flash.getAttribute("aria-pressed"), "false");
     assert.deepEqual(JSON.parse(storage.get(SAVE_KEY)), legacy, "boot rewrote an otherwise valid legacy record");
 
     slider.value = "35";
@@ -182,8 +190,22 @@ function register(test) {
     slider.dispatchEvent({ type: "change" });
     assert.deepEqual(JSON.parse(storage.get(SAVE_KEY)), {
       highScore: 321,
-      settings: { sound: true, volume: 0.35, reducedEffects: false }
+      settings: {
+        sound: true,
+        volume: 0.35,
+        reducedEffects: false,
+        cameraShake: false,
+        damageFlash: false
+      }
     });
+
+    shake.click();
+    flash.click();
+    assert.equal(first.game.state.settings.cameraShake, true);
+    assert.equal(first.game.state.settings.damageFlash, true);
+    const reloaded = boot({ storage });
+    assert.equal(reloaded.game.state.settings.cameraShake, true);
+    assert.equal(reloaded.game.state.settings.damageFlash, true);
 
     slider.value = "0";
     slider.dispatchEvent({ type: "input" });
