@@ -91,7 +91,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.21d",
+    version: "v2026.8.21e",
 
     world: {
       fixedStep: 1 / 60,
@@ -543,7 +543,7 @@
       scout: {
         label: "Scout",
         radius: 17,
-        baseHealth: 3,
+        baseHealth: 7,
         baseSpeed: 155,
         baseCooldown: 1.65,
         score: 115,
@@ -554,7 +554,7 @@
       striker: {
         label: "Striker",
         radius: 23,
-        baseHealth: 6,
+        baseHealth: 12,
         baseSpeed: 122,
         baseCooldown: 1.3,
         score: 190,
@@ -565,7 +565,7 @@
       bomber: {
         label: "Bomber",
         radius: 29,
-        baseHealth: 10,
+        baseHealth: 17,
         baseSpeed: 88,
         baseCooldown: 2.45,
         score: 285,
@@ -576,7 +576,7 @@
       carrier: {
         label: "Carrier",
         radius: 40,
-        baseHealth: 20,
+        baseHealth: 30,
         baseSpeed: 58,
         baseCooldown: 2.2,
         score: 520,
@@ -586,7 +586,7 @@
           type: "droneLaunch",
           spawnType: "scout",
           count: 2,
-          maxChildren: 4,
+          maxChildren: 3,
           childScore: 35,
           preferredRange: 300,
           retreatRange: 210,
@@ -596,7 +596,7 @@
       lancer: {
         label: "Lancer",
         radius: 22,
-        baseHealth: 8,
+        baseHealth: 15,
         baseSpeed: 142,
         baseCooldown: 1.1,
         score: 250,
@@ -607,7 +607,7 @@
       gunship: {
         label: "Gunship",
         radius: 34,
-        baseHealth: 16,
+        baseHealth: 27,
         baseSpeed: 92,
         baseCooldown: 4.8,
         score: 390,
@@ -630,7 +630,7 @@
       broodCarrier: {
         label: "Brood Carrier",
         radius: 50,
-        baseHealth: 40,
+        baseHealth: 60,
         baseSpeed: 50,
         baseCooldown: 4.4,
         score: 820,
@@ -641,7 +641,7 @@
           type: "droneLaunch",
           spawnType: "lancer",
           count: 2,
-          maxChildren: 6,
+          maxChildren: 4,
           childScore: 45,
           preferredRange: 270,
           retreatRange: 180,

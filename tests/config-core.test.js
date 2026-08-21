@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.21d configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.21d");
+  test("Neon Voyage v2026.8.21e configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.21e");
     assert.ok(CONFIG.presentation.gameoverEffectDuration >= 1 && CONFIG.presentation.gameoverEffectDuration <= 2);
     assert.ok(CONFIG.mobileControls.autoAimHoldSeconds > 0 && CONFIG.mobileControls.autoAimHoldSeconds <= 0.25);
     assert.deepEqual(JSON.parse(JSON.stringify(CONFIG.audio)), {
@@ -237,16 +237,28 @@ module.exports = function register(test) {
 
     assert.ok(Object.keys(CONFIG.aliens).length >= 7);
     assert.ok(Object.values(CONFIG.aliens).every((alien) => alien.pattern && alien.pattern.type));
+    assert.deepEqual(Object.fromEntries(Object.entries(CONFIG.aliens).map(([kind, alien]) => [kind, alien.baseHealth])), {
+      scout: 7,
+      striker: 12,
+      bomber: 17,
+      carrier: 30,
+      lancer: 15,
+      gunship: 27,
+      broodCarrier: 60
+    });
+    const stageThreeScoutHealth = CONFIG.aliens.scout.baseHealth * CONFIG.difficulty.healthScale(1, 3);
+    assert.ok(Math.ceil(stageThreeScoutHealth / CONFIG.weapons.modules.pulse.tiers[0].damage) >= 8,
+      "first contact still collapses in fewer than eight starting-weapon hits");
     assert.equal(CONFIG.aliens.carrier.pattern.spawnType, "scout");
     assert.equal(CONFIG.aliens.carrier.pattern.count, 2);
-    assert.equal(CONFIG.aliens.carrier.pattern.maxChildren, 4);
+    assert.equal(CONFIG.aliens.carrier.pattern.maxChildren, 3);
     assert.equal(CONFIG.aliens.carrier.pattern.childScore, 35);
     assert.equal(CONFIG.aliens.gunship.pattern.type, "sweepingLaser");
     assert.ok(CONFIG.aliens.gunship.pattern.warning > 0 && CONFIG.aliens.gunship.pattern.active > 0);
     assert.ok(CONFIG.aliens.gunship.pattern.range > CONFIG.aliens.gunship.pattern.preferredRange);
     assert.equal(CONFIG.aliens.gunship.pattern.sweepAngularSpeed, 0.42);
     assert.equal(CONFIG.aliens.broodCarrier.pattern.spawnType, "lancer");
-    assert.equal(CONFIG.aliens.broodCarrier.pattern.maxChildren, 6);
+    assert.equal(CONFIG.aliens.broodCarrier.pattern.maxChildren, 4);
     assert.deepEqual(JSON.parse(JSON.stringify(CONFIG.aliens.broodCarrier.rangeArmor)), {
       distance: 300,
       multiplier: 0.3

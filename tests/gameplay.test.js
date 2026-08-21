@@ -347,7 +347,7 @@ module.exports = function register(test) {
     assert.equal(children.length, pattern.maxChildren);
   });
 
-  test("Brood Carrier lineage survives repeated hard-culls without exceeding its six-child cap", () => {
+  test("Brood Carrier lineage survives repeated hard-culls without exceeding its configured child cap", () => {
     const { browser, game, CONFIG } = boot(232, { width: 640, height: 360 });
     const state = game.state;
     game.setStage(6, 1);

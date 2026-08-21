@@ -89,13 +89,13 @@
     broodCarrier: "alienBroodCarrier"
   });
   const ALIEN_DRAW_SIZES = Object.freeze({
-    scout: Object.freeze([68, 46]),
-    striker: Object.freeze([76, 51]),
-    bomber: Object.freeze([88, 59]),
-    carrier: Object.freeze([112, 75]),
-    lancer: Object.freeze([82, 55]),
-    gunship: Object.freeze([104, 69]),
-    broodCarrier: Object.freeze([142, 95])
+    scout: Object.freeze([76, 51]),
+    striker: Object.freeze([84, 56]),
+    bomber: Object.freeze([96, 64]),
+    carrier: Object.freeze([122, 81]),
+    lancer: Object.freeze([90, 60]),
+    gunship: Object.freeze([114, 76]),
+    broodCarrier: Object.freeze([154, 103])
   });
   const BOSS_DRAW_SIZES = Object.freeze({
     harrower: Object.freeze([190, 119]),
@@ -430,6 +430,13 @@
     const hull = Number(ship && ship.hull);
     const maximum = Number(ship && ship.maxHull);
     const ratio = maximum > 0 && Number.isFinite(hull) ? clamp(hull / maximum, 0, 1) : 1;
+    return ratio < 0.18 ? 3 : ratio < 0.35 ? 2 : ratio < 0.6 ? 1 : 0;
+  }
+
+  function alienDamageStage(alien) {
+    const health = Number(alien && alien.health);
+    const maximum = Number(alien && alien.maxHealth);
+    const ratio = maximum > 0 && Number.isFinite(health) ? clamp(health / maximum, 0, 1) : 1;
     return ratio < 0.18 ? 3 : ratio < 0.35 ? 2 : ratio < 0.6 ? 1 : 0;
   }
 
@@ -1043,6 +1050,7 @@
     asteroidCrackStage,
     asteroidFracturePattern,
     playerDamageStage,
+    alienDamageStage,
     pickupIdentity,
     assetSource,
     gameplayAssetSource,
@@ -2174,6 +2182,52 @@
       const drawWidth = drawSize[0];
       const drawHeight = drawSize[1];
       const enginePulse = this.reduced ? 4 : 4 + Math.sin(time * 16 + (alien.phase || 0)) * 1.6;
+      const damageStage = alienDamageStage(alien);
+      if (alienArt) {
+        ctx.save();
+        const signalX = drawWidth * 0.08;
+        const signalRadius = Math.max(7, drawHeight * 0.22);
+        const signal = ctx.createRadialGradient(signalX, 0, 0, signalX, 0, signalRadius);
+        signal.addColorStop(0, color);
+        signal.addColorStop(0.38, color);
+        signal.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = this.reduced ? 0.16 : 0.22 + Math.sin(time * 5.5 + (alien.phase || 0)) * 0.035;
+        ctx.fillStyle = signal;
+        ctx.beginPath();
+        ctx.arc(signalX, 0, signalRadius, 0, TAU);
+        ctx.fill();
+        ctx.restore();
+      }
+      if (damageStage > 0) {
+        ctx.save();
+        const identityPhase = mod(Math.abs(Number(alien.id) || 0) * 0.73, TAU);
+        const originX = -drawWidth * 0.06;
+        const originY = Math.sin(identityPhase) * drawHeight * 0.19;
+        const smokeCount = this.reduced ? Math.min(2, damageStage) : 1 + damageStage;
+        for (let index = 0; index < smokeCount; index += 1) {
+          const drift = this.reduced ? index * 7 : mod(time * (8 + index * 1.4) + identityPhase * 5 + index * 8, 24);
+          const radius = 3.2 + damageStage * 0.75 + index * 0.8;
+          ctx.globalAlpha = clamp(0.34 - drift * 0.009, 0.1, 0.34);
+          ctx.fillStyle = index % 2 ? "#555c65" : "#222830";
+          ctx.beginPath();
+          ctx.arc(originX - drift, originY + Math.sin(time * 2.8 + identityPhase + index) * 3.5, radius, 0, TAU);
+          ctx.fill();
+        }
+        if (damageStage >= 2) {
+          const flame = this.reduced ? 0 : Math.sin(time * 17 + identityPhase) * 1.6;
+          ctx.globalCompositeOperation = "lighter";
+          ctx.globalAlpha = 0.84;
+          ctx.fillStyle = "#ff7438";
+          ctx.beginPath();
+          ctx.moveTo(originX - 3, originY - 1);
+          ctx.quadraticCurveTo(originX - 8 - flame, originY - 9, originX - 4, originY - 15 - flame);
+          ctx.quadraticCurveTo(originX + 3, originY - 9, originX + 4, originY);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
       if (alien.state === "telegraph") {
         const warningRadius = Math.max(alien.radius + 12, drawHeight * 0.58);
         const warning = ctx.createRadialGradient(0, 0, warningRadius * 0.45, 0, 0, warningRadius);
@@ -2274,6 +2328,24 @@
             ctx.globalAlpha = 0.78;
           }
         }
+      }
+      if (alienArt && damageStage >= 2) {
+        const identityPhase = mod(Math.abs(Number(alien.id) || 0) * 0.73, TAU);
+        const damageX = -drawWidth * 0.06;
+        const damageY = Math.sin(identityPhase) * drawHeight * 0.19;
+        const damageRadius = 5 + damageStage * 1.3;
+        const damageGlow = ctx.createRadialGradient(damageX, damageY, 0, damageX, damageY, damageRadius);
+        damageGlow.addColorStop(0, "rgba(255,242,170,0.96)");
+        damageGlow.addColorStop(0.28, "rgba(255,112,52,0.78)");
+        damageGlow.addColorStop(1, "rgba(255,80,32,0)");
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = this.reduced ? 0.54 : 0.62 + Math.sin(time * 21 + identityPhase) * 0.12;
+        ctx.fillStyle = damageGlow;
+        ctx.beginPath();
+        ctx.arc(damageX, damageY, damageRadius, 0, TAU);
+        ctx.fill();
+        ctx.restore();
       }
       ctx.restore();
       if (alien.telegraph && alien.telegraph.active !== false) {
