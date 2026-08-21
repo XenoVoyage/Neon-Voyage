@@ -7,7 +7,7 @@ node tests/run.js
 ```
 
 The browser game does not require Node.js. Node is used only for local and continuous verification.
-Node.js 22 is the minimum verification baseline because both GitHub workflows run on Node 22. `AUDIT.md` records the exact environment used for its frozen evidence.
+Node.js 22 is the minimum local verification baseline. Both GitHub workflows pin Node.js `22.22.0`; `AUDIT.md` records the exact local environment used for its frozen evidence.
 
 ## Suite map
 

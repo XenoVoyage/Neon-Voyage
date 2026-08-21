@@ -12,6 +12,12 @@
 
 -
 
+## Deletions and consolidation
+
+<!-- List removed files, dependencies, settings, or duplicated ownership. Write "None" when not applicable. -->
+
+-
+
 ## Validation
 
 <!-- List exact commands and results. Separate automated, rendered, deployed, and manually observed evidence. -->
@@ -34,6 +40,7 @@
 - [ ] The change is the smallest complete solution and contains no unrelated work.
 - [ ] Targeted checks and every required final check passed on the final candidate.
 - [ ] Documentation, status, tests, and examples match the implemented behavior.
+- [ ] The engineering-standard status is accurate; unavailable or non-applicable checks are recorded.
 - [ ] Security, privacy, compatibility, accessibility, and data or physical safety were reviewed where applicable.
 - [ ] No secrets, private data, generated output, stale files, or unsupported claims were added.
 - [ ] Automated evidence and manual or unverified acceptance are labeled honestly.

@@ -1,59 +1,30 @@
 # Project status
 
-This document is the current-state handoff. It records project maturity and open decisions, not enduring engineering rules or release history.
+This is the current-state handoff. Enduring engineering rules belong in [`AGENTS.md`](../AGENTS.md), player intent in [`GAME_DESIGN.md`](GAME_DESIGN.md), implementation ownership in [`ARCHITECTURE.md`](ARCHITECTURE.md), and historical product changes in [`CHANGELOG.md`](../CHANGELOG.md).
 
 ## Current state
 
-| Area | Status |
+| Area | Verified state |
 | --- | --- |
-| Runtime | Seven-stage browser game; protected `main` publishes to Pages after audit |
-| Current runtime version | `v2026.8.21b` in the source checkpoint; Pages follows successful `main` deployments |
-| Hosting | Direct `file://` launch and GitHub Pages repository subpath |
-| Dependencies and build | No runtime dependencies and no build step |
-| Saved data | Unchanged local keys; schema-4 seven-stage progress with exact schema-3/schema-2/schema-1 migration and bounded stacking checkpoint loadouts |
-| Verification | Frozen-source results belong in [`AUDIT.md`](../AUDIT.md); merge, Pages, live-play, and physical-touch evidence remain separate gates |
-| Product work | Seven-stage pacing, early Titan and alien contact, frequent longer rewards with clean-field salvage, asteroid-only Pulse attraction, crystal shrapnel, semantic pickups, damage-state effects, expanded finite scrolling fields, raster-led gameplay effects, and louder adjustable synthesized audio are implemented |
+| Product | Complete seven-stage offline browser campaign with Harrower and Leviathan command-ship encounters |
+| Runtime version | `v2026.8.21b`; `js/config.js` is canonical and intentional mirrors are consistency-tested |
+| Runtime surface | Repository-local HTML, CSS, five classic scripts, Canvas, Web Audio, and 55 WebP runtime rasters |
+| Dependencies and build | No runtime or development packages, package manager, installation, or build step |
+| Hosting | Direct `file://` launch and the GitHub Pages `/Neon-Voyage/` repository subpath |
+| Saved data | Unchanged local keys; strict schema-4 checkpoints with exact schema-3/schema-2/schema-1 migration |
+| Repository | `main` is protected by an active ruleset requiring pull requests, an up-to-date `audit` check, and blocking deletion and non-fast-forward updates |
+| Automation | Official GitHub Actions are commit-pinned; workflows use least-privilege permissions and Node.js `22.22.0` only for verification |
+| Evidence | [`AUDIT.md`](../AUDIT.md) owns the current frozen-source result; GitHub owns PR, check, merge, and deployment records |
 
-The current source checkpoint compresses the complete expedition to seven stages. Stage 2 owns one pre-authored ten-root Titan breach with five opening roots, bounded later pairs, a Colossal, and the Titan; Stage 3 begins alien contact; Stage 4 mixes ordinary fleet roles with evolved asteroids; the Harrower and Leviathan now own Stages 5 and 7. Rewards arrive at 44–60% with two- or three-defeat pity, temporary effects last 42–48 seconds, and Homing Salvo, Tractor Field, Guardian Drone, Radial Array, and Seeker Rack are guaranteed during the run. Once the encounter is genuinely clean, any remaining beneficial field pickups are salvaged before the locked clear beat; a salvaged Enigma still suspends travel until its accessible choice resolves. Crystal deaths emit finite hostile shrapnel, Void Pulse pulls asteroids but never ships, pickups expose distinct glyphs and labels, and the damaged interceptor gains restrained smoke/fire/electricity. Raster-backed objects now remain visually authoritative: attached gradient exhaust and soft state auras replace obsolete decorative line work, while true warnings and ranges remain explicit. Synthesized audio starts at 80% master volume and exposes a persistent accessible 0–100% control. A restrained dead-zone camera remains inside hard field bounds, capped clustered edge cues identify off-screen objectives, and ultra-short desktop fire taps remain queued for one fixed step. Exact save migration, accessibility, deterministic caps, security, offline operation, art ownership, and bounded audio remain enforced. [`AUDIT.md`](../AUDIT.md) owns frozen automated source evidence; GitHub records and hands-on browser sessions separately own merge, deployment, live-play, balance, visual-quality, audio-quality, and physical-device evidence.
+The game-design, architecture, asset, security, contributor, and test documents have distinct owners. `AUDIT.md` contains current observed evidence only; older results remain available through Git and the changelog instead of being mirrored in active status documentation.
 
-## Implemented product
+## Acceptance boundary
 
-- Seven finite stages advance on every clear from Earth Orbit through the Stage 2 Titan breach, Stage 3 first contact, Stage 4 mixed front, Harrower at Stage 5, anomaly siege, and Leviathan at Stage 7. Every reserve and descendant tree is finite, deterministic, pressure-bounded, and counted by the objective where required.
-- Keyboard and mouse, gamepad, and independent floating two-stick touch input are implemented. Enlarged stick bases follow drag overshoot, and the reserved Dash/Pulse slots become visible and interactive only while ready. A neutral right-stick hold waits 0.10 seconds, then locks and reacquires the nearest actionable threat; any deflection keeps manual aim in control for the rest of that touch. A damage-reduced command-ship body is excluded while its nodes live.
-- Enigma pickups slow combat to a full stop and require one of three accessible enhancement cards. Each card has a deterministic local Canvas preview, and a draft may omit permanent choices when its stage band does not offer one.
-- Five reward bands begin at Stages 1, 2, 3, 5, and 7. Their drop chances are 44%, 48%, 52%, 56%, and 60%; pity triggers after three kills at Stage 1 and two thereafter.
-- A genuinely clean field applies every remaining beneficial pickup before transition cleanup. Ordinary rewards take effect immediately; Enigma retains its normal slowdown, mandatory three-card choice, and neutral-input resume before the clear presentation can begin.
-- The 13-module catalog opens by stage and its reward ceiling advances from Mk I to Mk V. Stages 1, 2, 3, 4, and 6 guarantee Homing Salvo, Tractor Field, Guardian Drone, Radial Array, and Seeker Rack respectively.
-- Eight temporary effects last 42–48 seconds per pickup and stack to four base durations. Thruster Surge adds bounded acceleration and top-speed multipliers alongside the seven weapon/defense effects.
-- Crystal asteroids emit eight finite hostile shards on destruction without adding objectives. Auric Colossi split through an exact 1→3→6 explosive/magnetic shard tree. Coronas own a warning/active rotating beam and local death blast; Gunships use a warning/active laser; Brood Carriers trade long-range armor for close-range vulnerability and retain a bounded lancer lineage through requeues. Seeded mixed asteroid groups distribute kinds within one count of each other, and late anomaly waves limit guaranteed massive roots.
-- Every normal and boss encounter uses the same expanded finite rectangular field. The camera follows the ship inside a viewport-scaled dead zone with bounded lookahead, while hard borders prevent the player and encounter objects from leaving the authored play space. The Leviathan retains its node-dependent reflector.
-- At most six off-screen objective cues are drawn inside a safe viewport margin. They reuse authored target art, cluster nearby objectives with counts, exclude stale or visible objects, and favor exposed boss nodes over a protected command-ship body.
-- The Canvas renderer derives its CSS-space dimensions from the actual `#game-shell` layout box and uses device-pixel ratio only for its bounded backing store. Mobile browser-toolbar changes therefore resize the combat field and its top/bottom cues with the surrounding responsive shell.
-- The cyan/magenta aim reticle appears only for active mouse or pen pointer aim. Touch input hides it; a later pointer move can restore it on a hybrid device without changing mouse, keyboard, or gamepad control.
-- Forty-six local transparent gameplay WebPs cover the player, every asteroid and spacecraft family, projectiles, equipment, pickups, and material effects. Raster-backed craft receive only attached exhaust and soft state auras; old aim spines, engine strokes, hard halos, duplicate impact circles, and square debris are absent. Deterministic procedural fallbacks remain available, while telegraphs, ranges, restrained irregular fracture stages, pickup identities, and damage states preserve live-state readability.
-- Optional Web Audio owns bounded, cooldown-limited cues for each player weapon family, alien and boss weapons, shield/hull/asteroid/alien/boss impacts, destruction scale, pickups, upgrades, Dash, Pulse, and arena events. It starts at a clearly audible 80% master level, exposes an accessible persistent 0–100% slider, loads no media or network resource, and retains the 24-node ceiling.
-- Clearing a stage enters a one-second locked presentation that preserves only bounded final effects and floaters before the existing unchanged 1.65-second hyperspace flight. A lethal hit makes the run terminal immediately, freezes combat and input, advances only bounded death effects for 1.2 seconds, then reveals and focuses the game-over dialog.
-- Shield reserve is visible only while charged, capped at a weaker 60 points, and consumed at 1.25 points per absorbed damage. Passive acquisition and attraction use their exact equipped-tier ranges.
-- The live HUD lists equipped permanent modules and active timed countdowns; compact touch layouts replace each long row with one pointer-transparent accessible summary chip. Late-stage and boss scenes add cached restrained nebula washes.
-- Progress remains deliberately narrow and schema-compatible: strict schema 4 stores up to seven bounded checkpoints within 16,384 bytes, compacts valid schema-3 twenty-stage saves by preserving the strongest converging loadout, preserves exact schema-2/schema-1 migrations, and restores a fresh battlefield rather than live combat state.
-- Fixed-step simulation, finite encounter queues, hard collection caps, local assets, and a restrictive Content Security Policy are enforced by tests.
-- GitHub Actions audit pull requests and deploys the unchanged repository root to Pages after `main` updates.
+- Automated coverage exercises offline boot, strict CSP and local resources, all supported input families, responsive simulated viewports, accessibility and focus, saved-progress migrations, the complete Stage 1–7 campaign, both bosses, renderer ownership, audio bounds, and deterministic long-run caps.
+- Published desktop smoke is required after every Pages deployment. Candidate previews and hands-on device evidence are reported separately when actually available.
+- No physical phone or iPad session, subjective audio listening, or uninterrupted human-controlled seven-stage completion is currently claimed. Those are product-feel observations, not hidden source-gate results.
+- No immutable Git tag or GitHub Release exists for `v2026.8.21b`. Creating one remains an explicit owner publication decision and is not implied by a changelog heading or Pages deployment.
 
-See [`GAME_DESIGN.md`](GAME_DESIGN.md) for intended experience and [`ARCHITECTURE.md`](ARCHITECTURE.md) for implementation ownership.
+## Next decision boundary
 
-## Evidence and acceptance
-
-- [`AUDIT.md`](../AUDIT.md) owns the exact frozen-source command results and coverage for this checkpoint, including browser-VM boot, simulated responsive/input contracts, both finite presentation phases, the Stage 1–7 journey, deterministic long-run stress, and checksum coverage.
-- Pull-request checks, post-merge audit, Pages deployment, deployed-version inspection, and live Play are publication gates recorded outside the source checkpoint.
-- Simulated shell/viewport mismatches and Pointer Events are not physical-device acceptance.
-- Compact 568×320, 667×375, and iPad-class automated layout coverage must be reported separately from hands-on phone and iPad results. Physical-device acceptance remains pending.
-
-## Publication status
-
-`v2026.8.21b` is the current runtime label. A local label, changelog heading, Pages deployment, or version badge does not by itself prove that a matching immutable tag and formal GitHub Release exist; publication status must be confirmed from GitHub.
-
-Creating or backfilling a tag is an explicit publication action. Do not do it during ordinary documentation maintenance, and never move a published tag.
-
-## Next task boundary
-
-The frozen source gate and deterministic campaign acceptance cover the complete Stage 1–7 journey, closing-field reward salvage, pressure bounds, all threat families, both bosses, renderer ownership, and input/accessibility contracts. A short deployed-baseline desktop interaction separately confirmed Play, aim/fire, Pulse, pause, the 80% Settings control, and no page-origin console errors; it is not candidate-preview evidence. A full uninterrupted human-controlled campaign, subjective listening, and physical phone/iPad landscape acceptance remain unverified until directly observed. Publishing a formal tagged release still requires an explicit owner decision.
+Select new player-facing work only from reproduced defects, observed accessibility problems, or a separately authorized product goal. Do not reopen architecture, balance, visual direction, saved-data shape, or repository surface speculatively.

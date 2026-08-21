@@ -15,6 +15,25 @@ const RELEASE_IGNORED_DIRECTORIES = new Set([
   ".git", ".idea", ".vscode", ".test-output", ".pw-tmp", "coverage", "dist", "node_modules"
 ]);
 const RUNTIME_IGNORED_DIRECTORIES = new Set([...RELEASE_IGNORED_DIRECTORIES, ".github", "tests"]);
+const VERIFICATION_NODE_VERSION = "22.22.0";
+const WORKFLOW_ACTION_PINS = Object.freeze({
+  "actions/checkout": { major: "v7", sha: "3d3c42e5aac5ba805825da76410c181273ba90b1" },
+  "actions/setup-node": { major: "v7", sha: "820762786026740c76f36085b0efc47a31fe5020" },
+  "actions/configure-pages": { major: "v6", sha: "45bfe0192ca1faeb007ade9deae92b16b8254a0d" },
+  "actions/upload-pages-artifact": { major: "v5", sha: "fc324d3547104276b827a68afc52ff2a11cc49c9" },
+  "actions/deploy-pages": { major: "v5", sha: "cd2ce8fcbc39b97be8ca5fce6e763baed58fa128" }
+});
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function assertPinnedAction(workflow, action) {
+  const pin = WORKFLOW_ACTION_PINS[action];
+  assert.ok(pin, `missing expected pin for ${action}`);
+  assert.match(workflow, new RegExp(`uses:\\s*${escapeRegExp(action)}@${pin.sha}\\s+#\\s*${pin.major}\\b`),
+    `${action} must use its reviewed immutable ${pin.major} commit`);
+}
 
 function htmlReferences(html) {
   return Array.from(html.matchAll(/\b(?:src|href|poster)\s*=\s*["']([^"']+)["']/gi), (match) => match[1]);
@@ -166,6 +185,7 @@ module.exports = function register(test) {
     assert.match(readme, /docs\/STATUS\.md/);
     assert.match(readme, /CONTRIBUTING\.md/);
     assert.match(readme, /\[MIT License\]\(LICENSE\)/);
+    assert.doesNotMatch(readme, /shields\.io/i, "README should not depend on an unnecessary badge service");
     assert.doesNotMatch(readme, /\b\d+\/\d+ tests passed\b|\bNode v\d+|Content Security Policy|fixed[- ]step|Pointer Events/i,
       "README contains implementation or audit detail that belongs in technical documentation");
   });
@@ -314,16 +334,22 @@ module.exports = function register(test) {
   test("GitHub Pages publishes the repository root without a production build", () => {
     assert.ok(fs.existsSync(path.join(PROJECT_ROOT, ".nojekyll")), ".nojekyll is required");
     const workflow = readProject(".github/workflows/pages.yml");
-    assert.match(workflow, /actions\/configure-pages@v6/);
-    assert.match(workflow, /actions\/upload-pages-artifact@v5/);
-    assert.match(workflow, /actions\/deploy-pages@v5/);
+    for (const action of [
+      "actions/checkout",
+      "actions/setup-node",
+      "actions/configure-pages",
+      "actions/upload-pages-artifact",
+      "actions/deploy-pages"
+    ]) assertPinnedAction(workflow, action);
+    assert.doesNotMatch(workflow, /uses:\s*[^\s@]+@v\d+\b/, "workflow actions must not use mutable major tags");
     assert.match(workflow,
-      /uses:\s*actions\/upload-pages-artifact@v5\s*\n\s*with:\s*\n\s*path:\s*\.\s*\n\s*include-hidden-files:\s*true/m,
+      new RegExp(`uses:\\s*actions/upload-pages-artifact@${WORKFLOW_ACTION_PINS["actions/upload-pages-artifact"].sha}[^\\n]*\\n\\s*with:\\s*\\n\\s*path:\\s*\\.\\s*\\n\\s*include-hidden-files:\\s*true`, "m"),
       "the Pages artifact must preserve repository-root files such as .nojekyll");
     assert.match(workflow, /^\s{4}if:\s*github\.ref\s*==\s*['"]refs\/heads\/main['"]\s*$/m,
       "manual Pages dispatch must not deploy an unmerged branch");
-    assert.match(workflow, /actions\/checkout@v7\s*\n\s*with:\s*\n\s*persist-credentials:\s*false/m);
-    assert.match(workflow, /actions\/setup-node@v7\s*\n\s*with:\s*\n\s*node-version:\s*22/m);
+    assert.match(workflow,
+      new RegExp(`uses:\\s*actions/checkout@${WORKFLOW_ACTION_PINS["actions/checkout"].sha}[^\\n]*\\n\\s*with:\\s*\\n\\s*persist-credentials:\\s*false`, "m"));
+    assert.match(workflow, new RegExp(`node-version:\\s*${escapeRegExp(VERIFICATION_NODE_VERSION)}\\s*$`, "m"));
     assert.ok(!/\b(?:npm|yarn|pnpm|bun)\b/i.test(workflow), "Pages must not install or build dependencies");
   });
 
@@ -340,10 +366,25 @@ module.exports = function register(test) {
     assert.match(ci, /^permissions:\s*\n\s*contents:\s*read\s*$/m, "the audit must keep read-only contents permission");
     assert.doesNotMatch(ci, /continue-on-error\s*:\s*true/i, "the required audit cannot be advisory");
     assert.doesNotMatch(ci, /\b(?:contents|actions|checks|pull-requests):\s*write\b/i, "the audit has unnecessary write permission");
-    assert.match(ci, /actions\/checkout@v7\s*\n\s*with:\s*\n\s*persist-credentials:\s*false/m);
-    assert.match(ci, /actions\/setup-node@v7\s*\n\s*with:\s*\n\s*node-version:\s*22/m);
+    assertPinnedAction(ci, "actions/checkout");
+    assertPinnedAction(ci, "actions/setup-node");
+    assert.doesNotMatch(ci, /uses:\s*[^\s@]+@v\d+\b/, "workflow actions must not use mutable major tags");
+    assert.match(ci,
+      new RegExp(`uses:\\s*actions/checkout@${WORKFLOW_ACTION_PINS["actions/checkout"].sha}[^\\n]*\\n\\s*with:\\s*\\n\\s*persist-credentials:\\s*false`, "m"));
+    assert.match(ci, new RegExp(`node-version:\\s*${escapeRegExp(VERIFICATION_NODE_VERSION)}\\s*$`, "m"));
     assert.doesNotMatch(pages, /^\s*pull_request:\s*$/m, "Pages must deploy only after merge to main");
     assert.match(pages, /^\s*push:\s*\n\s*branches:\s*\[main\]\s*$/m);
+
+    assert.match(agents, /^\*\*Project Engineering Standard:\*\* v1\.0$/m);
+    const standardStatus = agents.match(/^\*\*Standard Status:\*\* (adopting|verified)$/m);
+    assert.ok(standardStatus, "AGENTS.md needs one valid engineering-standard status");
+    if (standardStatus[1] === "adopting") {
+      assert.match(readProject("AUDIT.md"), /Standard status remains `adopting`/,
+        "an adopting standard needs an explicit current audit disposition");
+    }
+    assert.match(agents, /\bDone means\b/);
+    assert.match(agents, /`node tests\/run\.js`/);
+    assert.match(agents, /`sha256sum --check SHA256SUMS`/);
 
     const agentHeadings = Array.from(agents.matchAll(/^##\s+(.+)$/gm), (match) => match[1].toLowerCase());
     for (const topic of ["priorities", "boundaries", "ownership", "verification", "documentation", "git"]) {
@@ -384,7 +425,7 @@ module.exports = function register(test) {
     }
     assert.match(contributing, /Read \[`AGENTS\.md`\]/);
     assert.match(contributing, /node tests\/run\.js/);
-    for (const heading of ["Summary", "Context", "Changes", "Validation", "Risk and rollback", "Checklist"]) {
+    for (const heading of ["Summary", "Context", "Changes", "Deletions and consolidation", "Validation", "Risk and rollback", "Checklist"]) {
       assert.match(pullRequestTemplate, new RegExp(`^## ${heading}$`, "m"), `pull request template is missing ${heading}`);
     }
   });
