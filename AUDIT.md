@@ -1,8 +1,8 @@
-# Neon Voyage v2026.8.21 — source audit
+# Neon Voyage v2026.8.21a — source audit
 
 - Audited: 2026-08-21
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 188/188 automated source checks**
+- Result: **PASS — 190/190 automated source checks**
 
 Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated layout boxes, viewports, Pointer Events, DOM behavior, and Canvas calls. It is not physical-device acceptance.
 
@@ -14,12 +14,30 @@ Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins onl
 - Remote runtime requests: **0 by design**
 - Runtime files: local HTML, CSS, JavaScript, nine WebP scenery assets, and 46 transparent WebP gameplay assets
 - Persistent data: separate strict local records for high score/preferences and schema-4 per-stage campaign loadouts
-- Saved-data change in this checkpoint: **compatible schema-3/schema-2/schema-1 migration into seven bounded checkpoints**
+- Saved-data change in this checkpoint: **optional bounded master-volume preference; historical records without it remain valid**
 - License: MIT
 
-## v2026.8.21 verified changes
+## v2026.8.21a verified changes
 
-Source inspection, deterministic progression/combat/renderer regressions, the browser harness, the complete Stage 1–7 weapon journey, and the frozen full-suite gate establish these implemented contracts.
+Source inspection, renderer call recording, browser-VM preference/audio regressions, the complete gameplay matrix, deterministic stress, and the frozen full-suite gate establish these implemented contracts.
+
+### Raster-led gameplay presentation
+
+- The 46 gameplay WebPs remain byte-for-byte unchanged and continue to cover every physical gameplay family. Asset inspection and renderer coverage establish that the orange lines in the supplied alien-craft capture were not baked pixels; they came from post-raster engine and aim strokes plus a colored shadow halo.
+- Ready alien rasters now receive two short tapered gradient exhaust plumes with no `stroke()` decoration, aim spine, or colored Canvas shadow. A ship-owned warning state uses a soft radial wash; actual Gunship laser targeting continues through the separate warning/active telegraph system.
+- Charged player shields and magnetic Auric Shards use soft radial material auras instead of rotating/dashed circles. Compact impact rings use their authored impact raster without a second stroked circle, and ordinary debris uses round particles instead of square pixels.
+- Functional live-state cues remain explicit: laser/radiation warnings, boss reflection, equipment ranges, bounded fractures, field boundaries, pickup identity, target indicators, and damage-state electricity still communicate behavior rather than decorate static art. Procedural fallbacks remain available only when a mapped raster is pending or unavailable.
+
+### Louder persistent audio
+
+- `CONFIG.audio` owns a default 0.8 master level and bounded 0–1 range. The prior implicit 0.32 default is removed, so new sessions and valid historical preference records without `volume` start about 8 dB louder.
+- Settings exposes one labeled 0–100% range control with 5% steps, visible percentage output, live gain updates, and persisted changes. Explicit 0% is preserved rather than replaced by the default; mute remains independent and never loses the chosen level.
+- `AudioEngine.setVolume()` clamps finite input, smoothly updates an active master gain, leaves muted gain at zero, and keeps optional-context failure, cue cooldowns, disconnection cleanup, and the 24-source ceiling unchanged.
+- The existing `neon-voyage-v1` key is unchanged. Exact historical `{sound,reducedEffects}` records remain accepted and are not rewritten merely by booting; a settings commit adds the bounded volume field. Campaign schema 4 and all schema-3/schema-2/schema-1 progress migrations remain unchanged.
+
+## Prior v2026.8.21 frozen evidence
+
+The following seven-stage campaign contracts were observed in the prior frozen `v2026.8.21` audit and remain historical context.
 
 ### Seven-stage expedition and earlier variety
 
@@ -208,9 +226,9 @@ The following properties were observed in the prior frozen `v2026.8.15c` audit (
 
 ## Automated evidence boundary
 
-The frozen run registered and passed 188 checks across configuration/core (13), offline/repository (16), browser VM (4), progress (18), mobile input (46), gameplay (70), visuals (19), and stress (2).
+The frozen run registered and passed 190 checks across configuration/core (13), offline/repository (16), browser VM (4), progress (19), mobile input (46), gameplay (70), visuals (20), and stress (2).
 
-Current `v2026.8.21` coverage adds the seven-stage journey, schema-3 compaction, earlier alien and module variety, higher/longer rewards, Thruster Surge, asteroid-only Pulse attraction, finite crystal shrapnel, semantic pickup presentation, restrained fractures, damaged-ship effects, and desktop action hints while retaining expanded-field containment, bounded camera follow, capped clustered off-screen cues, queued quick-tap fire, complete mapped renderer ownership, bounded audio vocabulary, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
+Current `v2026.8.21a` coverage adds the 80% configured master default, explicit-silence and live-gain behavior, persistent backward-compatible volume preferences, portrait-gated slider interaction, and a raster-led renderer contract for every alien class, charged player shields, magnetic shards, compact impacts, and generic particles. It retains the seven-stage journey, save compaction, expanded-field containment, bounded camera follow, capped clustered off-screen cues, queued quick-tap fire, complete mapped renderer ownership, bounded audio vocabulary, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
 
 Retained `v2026.8.20` deterministic coverage exercises shell/viewport disagreement and dynamic resizing; pointer-only reticle rendering; death-effect rendering without ship-owned visuals; clear-versus-travel presentation; terminal-but-delayed game-over focus and effect timing; delayed stationary target acquisition, deterministic tie order, bounded turn and fire; target lock and reacquisition; touch and hybrid-manual takeover; both command ships' live-node protection; and same-landscape orientation cleanup.
 
@@ -225,11 +243,11 @@ node tests/run.js
 sha256sum --check SHA256SUMS
 ```
 
-Observed result for this frozen source tree: `188/188 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 93 manifest entries.
+Observed result for this frozen source tree: `190/190 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 93 manifest entries.
 
 ## Browser and publication boundary
 
-- No prepublication hands-on browser acceptance of the new camera, target cues, or complete-set visual/audio motion is claimed by this source audit. Automated browser-VM and deterministic renderer evidence are reported separately above.
+- No prepublication hands-on browser acceptance of the revised overlay motion or perceived loudness is claimed by this source audit. Automated browser-VM and deterministic renderer evidence are reported separately above.
 - No post-change physical phone or iPad play is claimed. Two-thumb feel, browser-toolbar behavior on real devices, target selection feel, balance, readability, and audio acceptance remain pending.
 - After protected merge and Pages deployment, acceptance requires opening the exact live repository-subpath URL, confirming the deployed version, selecting **Play**, exercising a short combat interaction, and checking the browser console.
 - This source audit does not itself prove a pull-request check, merge, Pages deployment, immutable tag, GitHub Release, or live Play result. Those are external publication gates.

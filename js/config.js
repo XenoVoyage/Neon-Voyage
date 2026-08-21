@@ -91,7 +91,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.21",
+    version: "v2026.8.21a",
 
     world: {
       fixedStep: 1 / 60,
@@ -129,6 +129,13 @@
 
     presentation: {
       gameoverEffectDuration: 1.2
+    },
+
+    audio: {
+      defaultVolume: 0.8,
+      minVolume: 0,
+      maxVolume: 1,
+      volumeStep: 0.05
     },
 
     combatField: {

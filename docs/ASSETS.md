@@ -66,7 +66,7 @@ All 55 runtime rasters are original project assets. The six worlds beyond Mars w
 
 The 46 gameplay sources were created on 2026-08-20 with OpenAI's built-in image generator in stylized-concept mode from original Neon Voyage briefs. The existing game screenshot was used only to judge composition, gameplay scale, and the worlds' believable lighting; no screenshot pixels or outside artwork were supplied as source art. Briefs consistently requested orthographic silhouettes, believable upper-left self-lighting, restrained cyan/magenta player technology, violet/green biomechanical alien technology, natural asteroid materials, transparent backgrounds, and no floor, cast shadow, drop shadow, text, logo, watermark, or background glow box. Generated PNGs were alpha-inspected, trimmed where needed, resized and centered on transparent canvases, then encoded with ImageMagick 6.9 to WebP at quality 88–90 with full alpha quality. No third-party license or runtime service is required.
 
-The six previously accepted subjects remain byte-for-byte unchanged. The additional 40 rasters complete every physical asteroid, ship, boss/node, projectile, mine, pickup chassis, drone, blade, impact, and destruction family. If a raster is pending or fails to load, the established procedural fallback remains available. Telegraphs, shields, bounded irregular fracture stages, hazard pulses, semantically distinct pickup glyphs and labels, player damage emission, and target cues stay code-drawn because they communicate live gameplay state. Crystal shrapnel reuses the local prism projectile source, and no new runtime asset or network dependency is required.
+The six previously accepted subjects remain byte-for-byte unchanged. The additional 40 rasters complete every physical asteroid, ship, boss/node, projectile, mine, pickup chassis, drone, blade, impact, and destruction family. If a raster is pending or fails to load, the established procedural fallback remains available. Raster-backed objects receive only attached gradient exhaust and soft state auras; code-drawn decoration must not duplicate their silhouette, outline, aim, or impact. Telegraphs, bounded irregular fracture stages, hazard ranges, semantically distinct pickup glyphs and labels, player damage emission, and target cues stay code-drawn because they communicate live gameplay state. Crystal shrapnel reuses the local prism projectile source, and no new runtime asset or network dependency is required.
 
 ## Documentation images
 
@@ -87,7 +87,7 @@ The two current captures are 1200×675 WebP files. The audit enforces a 256 KiB 
 - Background contrast must leave the central combat field readable.
 - Gameplay rasters use believable material, lighting, and surface detail at actual play size while preserving distinct silhouettes and restrained identity colors.
 - Physical objects use self-shading and restrained contact occlusion only. Never bake a directional cast/drop shadow into a rotating sprite; attached engine, weapon, shield, and hazard emission may rotate with its owner.
-- Procedural fallbacks remain mandatory for pending or failed image loads. Code-drawn overlays remain reserved for live state and accessibility cues.
+- Procedural fallbacks remain mandatory for pending or failed image loads. Code-drawn overlays remain reserved for live state and accessibility cues; never paint legacy decorative line work over a ready gameplay raster.
 
 ## Asset rules
 

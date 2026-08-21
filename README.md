@@ -1,6 +1,6 @@
 # Neon Voyage
 
-[![Version v2026.8.21](https://img.shields.io/badge/version-v2026.8.21-63f7f0)](CHANGELOG.md)
+[![Version v2026.8.21a](https://img.shields.io/badge/version-v2026.8.21a-63f7f0)](CHANGELOG.md)
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
@@ -40,7 +40,7 @@ Clear each battlefield, stack long-lasting temporary weapons, and grow a stage-g
 
 The voyage now reaches its full escalation in seven distinct stages. A finite Titan breach arrives at Stage 2, first contact begins at Stage 3, asteroid and alien formations mix by Stage 4, the Harrower attacks at Stage 5, and the Leviathan closes Stage 7. Crystal asteroids burst into short-lived hostile shards, the Titan and Colossal masses break through finite descendant trees, and advanced gunships and Brood Carriers demand new positioning. Void Pulse pulls nearby asteroids inward without moving alien ships, while frequent longer-lived upgrades—including Thruster Surge—bring autonomous fire and build variety online early. Every normal and boss stage occupies a larger finite field: the camera follows the interceptor through a restrained dead zone, hard borders keep encounters bounded, and clustered edge cues use the real target art to locate off-screen objectives. **New Game** begins again at Earth; **Continue** restores the selected checkpoint's saved weapons to a fresh battlefield.
 
-Every ship, asteroid, projectile, pickup, and impact now shares one realistic deep-space art direction, backed by distinct locally synthesized weapon, material-impact, and destruction cues.
+Every ship, asteroid, projectile, pickup, and impact now shares one realistic deep-space art direction. Raster-backed craft use attached gradient exhaust and soft state auras rather than old procedural line decoration; locally synthesized weapon, material-impact, and destruction cues start at a clearly audible 80% master level and can be adjusted from 0–100% in Settings.
 
 ![The Neon Voyage ship confronting the Harrower across the full battlefield.](docs/assets/neon-voyage-command-arena.webp)
 

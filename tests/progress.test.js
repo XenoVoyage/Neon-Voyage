@@ -162,6 +162,37 @@ function register(test) {
     assert.equal(browser.window.ND.StagePreview.render(browser.elements.get("game"), 1, 1), true);
   });
 
+  test("legacy audio settings adopt the louder default and the volume control persists explicit silence", () => {
+    const legacy = { highScore: 321, settings: { sound: true, reducedEffects: false } };
+    const storage = new Map([[SAVE_KEY, JSON.stringify(legacy)]]);
+    const first = boot({ storage });
+    const slider = first.browser.elements.get("settings-volume-input");
+    const output = first.browser.elements.get("settings-volume-value");
+
+    assert.equal(first.game.state.settings.volume, 0.8);
+    assert.equal(slider.value, "80");
+    assert.equal(slider.getAttribute("aria-valuetext"), "80 percent");
+    assert.equal(output.textContent, "80%");
+    assert.deepEqual(JSON.parse(storage.get(SAVE_KEY)), legacy, "boot rewrote an otherwise valid legacy record");
+
+    slider.value = "35";
+    slider.dispatchEvent({ type: "input" });
+    assert.equal(first.game.state.settings.volume, 0.35);
+    assert.deepEqual(JSON.parse(storage.get(SAVE_KEY)), legacy, "live preview wrote storage before change commit");
+    slider.dispatchEvent({ type: "change" });
+    assert.deepEqual(JSON.parse(storage.get(SAVE_KEY)), {
+      highScore: 321,
+      settings: { sound: true, volume: 0.35, reducedEffects: false }
+    });
+
+    slider.value = "0";
+    slider.dispatchEvent({ type: "input" });
+    slider.dispatchEvent({ type: "change" });
+    assert.equal(first.game.state.settings.volume, 0);
+    assert.equal(output.textContent, "0%");
+    assert.equal(boot({ storage }).game.state.settings.volume, 0, "explicit silence did not survive reload");
+  });
+
   test("corrupt, oversized, or unknown progress falls back without discarding the existing local record", () => {
     for (const raw of [
       "{bad-json",

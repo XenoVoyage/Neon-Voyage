@@ -1113,6 +1113,29 @@ kbd {
   min-width: 64px;
 }
 
+.volume-control {
+  display: grid;
+  grid-template-columns: minmax(112px, 180px) 42px;
+  align-items: center;
+  gap: 10px;
+}
+
+.volume-control input[type="range"] {
+  width: 100%;
+  min-height: 32px;
+  margin: 0;
+  accent-color: var(--cyan-strong);
+  cursor: pointer;
+}
+
+.volume-control output {
+  color: var(--cyan-strong);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 850;
+  text-align: right;
+}
+
 .settings-note {
   margin: -6px 22px 20px;
   color: var(--ink-faint);

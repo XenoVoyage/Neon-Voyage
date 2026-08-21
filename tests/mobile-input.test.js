@@ -1548,6 +1548,7 @@ module.exports = function register(test) {
     const { browser, game } = bootMobile({ width: 390, height: 844 });
     const overlay = browser.elements.get("orientation-overlay");
     const initialSound = game.state.settings.sound;
+    const initialVolume = game.state.settings.volume;
     const initialEffects = game.state.settings.reducedEffects;
     const coveredActions = [
       "start-button", "restart-button", "restart-pause-button", "resume-button",
@@ -1573,6 +1574,13 @@ module.exports = function register(test) {
       assert.equal(overlay.getAttribute("aria-hidden"), "false");
     }
 
+    const volume = browser.elements.get("settings-volume-input");
+    volume.value = "10";
+    volume.dispatchEvent({ type: "input" });
+    volume.dispatchEvent({ type: "change" });
+    assert.equal(game.state.settings.volume, initialVolume, "volume changed through the portrait gate");
+    assert.equal(volume.value, String(Math.round(initialVolume * 100)), "blocked volume control kept a false value");
+
     rotate(browser, game, 844, 390);
     assert.equal(game.mobile.orientationBlocked, false);
     browser.elements.get("controls-button").click();
@@ -1586,6 +1594,10 @@ module.exports = function register(test) {
     browser.elements.get("settings-button").click();
     browser.elements.get("settings-effects-button").click();
     assert.equal(game.state.settings.reducedEffects, !initialEffects, "landscape FX remained blocked");
+    volume.value = "45";
+    volume.dispatchEvent({ type: "input" });
+    volume.dispatchEvent({ type: "change" });
+    assert.equal(game.state.settings.volume, 0.45, "landscape volume remained blocked");
     browser.elements.get("settings-fullscreen-button").click();
     assert.equal(browser.document.fullscreenElement, browser.document.documentElement, "landscape fullscreen remained blocked");
     browser.elements.get("settings-close-button").click();

@@ -1853,17 +1853,25 @@
         const aegisActive = ship.aegisTimer > 0;
         const shieldCap = Math.max(1, Number(CONFIG.powerups.shield.cap) || 1);
         const shieldRatio = clamp(Number(ship.shield) / shieldCap, 0, 1);
+        const radius = aegisActive ? 33 : 30;
+        const innerRadius = radius * (0.72 + shieldRatio * 0.05);
+        const shieldGradient = ctx.createRadialGradient(
+          point.x, point.y, innerRadius,
+          point.x, point.y, radius
+        );
+        shieldGradient.addColorStop(0, "rgba(85,245,255,0)");
+        shieldGradient.addColorStop(0.58, "rgba(85,245,255,0)");
+        shieldGradient.addColorStop(0.82, aegisActive
+          ? "rgba(178,224,255,0.34)"
+          : `rgba(85,245,255,${0.1 + shieldRatio * 0.22})`);
+        shieldGradient.addColorStop(1, "rgba(85,245,255,0)");
         ctx.save();
-        ctx.translate(point.x, point.y);
-        ctx.rotate(time * 0.55);
-        ctx.strokeStyle = aegisActive
-          ? "rgba(178, 224, 255, 0.82)"
-          : `rgba(85,245,255,${0.25 + shieldRatio * 0.55})`;
-        ctx.lineWidth = aegisActive ? 2.5 : 2;
-        ctx.setLineDash(aegisActive ? [10, 4] : [6, 8]);
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = this.reduced ? 0.72 : 0.82 + Math.sin(time * 3.4) * 0.08;
+        ctx.fillStyle = shieldGradient;
         ctx.beginPath();
-        ctx.arc(0, 0, aegisActive ? 31 : 28, 0, aegisActive ? TAU : TAU * clamp(shieldRatio, 0.18, 1));
-        ctx.stroke();
+        ctx.arc(point.x, point.y, radius, 0, TAU);
+        ctx.fill();
         ctx.restore();
       }
     }
@@ -2100,12 +2108,18 @@
           ctx.stroke();
         }
         if (magnetic) {
-          ctx.globalAlpha = this.reduced ? 0.24 : 0.28 + Math.sin(time * 3.2 + (asteroid.phase || 0)) * 0.06;
-          ctx.setLineDash([3, 7]);
+          const auraRadius = asteroid.radius * 1.32;
+          const magneticAura = ctx.createRadialGradient(0, 0, asteroid.radius * 0.62, 0, 0, auraRadius);
+          magneticAura.addColorStop(0, "rgba(114,230,255,0)");
+          magneticAura.addColorStop(0.56, "rgba(114,230,255,0)");
+          magneticAura.addColorStop(0.82, "rgba(114,230,255,0.28)");
+          magneticAura.addColorStop(1, "rgba(114,230,255,0)");
+          ctx.globalCompositeOperation = "lighter";
+          ctx.globalAlpha = this.reduced ? 0.46 : 0.56 + Math.sin(time * 3.2 + (asteroid.phase || 0)) * 0.08;
+          ctx.fillStyle = magneticAura;
           ctx.beginPath();
-          ctx.arc(0, 0, asteroid.radius * 1.16, 0, TAU);
-          ctx.stroke();
-          ctx.setLineDash([]);
+          ctx.arc(0, 0, auraRadius, 0, TAU);
+          ctx.fill();
         } else {
           ctx.globalAlpha = this.reduced ? 0.34 : 0.42 + Math.sin(time * 6 + (asteroid.phase || 0)) * 0.12;
           ctx.fillStyle = "#ff9d4d";
@@ -2153,34 +2167,58 @@
       const heading = Number.isFinite(alien.heading) ? alien.heading : Number.isFinite(alien.angle) ? alien.angle : 0;
       ctx.rotate(heading);
       const color = ALIEN_COLORS[alien.type] || "#62f7c8";
-      ctx.strokeStyle = color;
-      ctx.fillStyle = "rgba(9,15,29,0.96)";
-      ctx.lineWidth = 1.7;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = this.reduced ? 0 : 10;
       const alienAssetKey = ALIEN_ASSET_KEYS[alien.type];
       const alienArt = alienAssetKey && readyImage(this.assets[alienAssetKey]) ? this.assets[alienAssetKey] : null;
       const drawSize = ALIEN_DRAW_SIZES[alien.type] || [Math.max(54, alien.radius * 3), Math.max(36, alien.radius * 2)];
       const drawWidth = drawSize[0];
       const drawHeight = drawSize[1];
-      const enginePulse = 4 + Math.sin(time * 16 + (alien.phase || 0)) * 1.6;
+      const enginePulse = this.reduced ? 4 : 4 + Math.sin(time * 16 + (alien.phase || 0)) * 1.6;
+      if (alien.state === "telegraph") {
+        const warningRadius = Math.max(alien.radius + 12, drawHeight * 0.58);
+        const warning = ctx.createRadialGradient(0, 0, warningRadius * 0.45, 0, 0, warningRadius);
+        warning.addColorStop(0, "rgba(255,255,255,0)");
+        warning.addColorStop(0.56, "rgba(255,255,255,0)");
+        warning.addColorStop(0.82, "rgba(255,255,255,0.24)");
+        warning.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = this.reduced ? 0.42 : 0.48 + Math.sin(time * 18) * 0.14;
+        ctx.fillStyle = warning;
+        ctx.beginPath();
+        ctx.arc(0, 0, warningRadius, 0, TAU);
+        ctx.fill();
+        ctx.restore();
+      }
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
-      ctx.globalAlpha = 0.58;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.globalAlpha = this.reduced ? 0.4 : 0.5;
       for (const side of [-1, 1]) {
+        const tailX = alienArt ? -drawWidth * 0.35 : -12;
+        const tailY = side * (alienArt ? drawHeight * 0.15 : 5);
+        const plumeLength = 9 + enginePulse;
+        const plumeWidth = alienArt ? Math.max(1.7, drawHeight * 0.035) : 1.8;
+        const plume = ctx.createLinearGradient(tailX - plumeLength, tailY, tailX + 2, tailY);
+        plume.addColorStop(0, "rgba(0,0,0,0)");
+        plume.addColorStop(0.58, color);
+        plume.addColorStop(1, "rgba(226,255,255,0.92)");
+        ctx.fillStyle = plume;
         ctx.beginPath();
-        ctx.moveTo(alienArt ? -drawWidth * 0.35 : -12, side * (alienArt ? drawHeight * 0.15 : 5));
-        ctx.lineTo((alienArt ? -drawWidth * 0.45 : -18) - enginePulse, side * (alienArt ? drawHeight * 0.15 : 5));
-        ctx.stroke();
+        ctx.moveTo(tailX + 1, tailY - plumeWidth);
+        ctx.quadraticCurveTo(tailX - plumeLength * 0.56, tailY - plumeWidth * 1.35, tailX - plumeLength, tailY);
+        ctx.quadraticCurveTo(tailX - plumeLength * 0.56, tailY + plumeWidth * 1.35, tailX + 1, tailY + plumeWidth);
+        ctx.closePath();
+        ctx.fill();
       }
       ctx.restore();
-      if (alienArt) {
+      if (!alienArt) {
+        ctx.strokeStyle = color;
+        ctx.fillStyle = "rgba(9,15,29,0.96)";
+        ctx.lineWidth = 1.7;
         ctx.shadowColor = color;
-        ctx.shadowBlur = this.reduced ? 0 : 6;
+        ctx.shadowBlur = this.reduced ? 0 : 10;
+      }
+      if (alienArt) {
         ctx.drawImage(alienArt, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
-        ctx.shadowBlur = 0;
       } else if (alien.type === "scout") {
         ctx.beginPath();
         ctx.moveTo(20, 0); ctx.lineTo(1, -11); ctx.lineTo(-14, -8); ctx.lineTo(-6, 0); ctx.lineTo(-14, 8); ctx.lineTo(1, 11); ctx.closePath();
@@ -2235,26 +2273,6 @@
             ctx.globalAlpha = 0.78;
           }
         }
-      }
-      if (Number.isFinite(alien.aimAngle)) {
-        ctx.save();
-        ctx.rotate(alien.aimAngle - heading);
-        ctx.globalAlpha = 0.82;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(4, 0);
-        ctx.lineTo(Math.max(15, Math.min(24, (alien.radius || 18) * 0.9)), 0);
-        ctx.stroke();
-        ctx.restore();
-      }
-      if (alien.state === "telegraph") {
-        ctx.globalAlpha = 0.62 + Math.sin(time * 18) * 0.28;
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, alien.radius + 7, 0, TAU);
-        ctx.stroke();
       }
       ctx.restore();
       if (alien.telegraph && alien.telegraph.active !== false) {
@@ -2835,14 +2853,19 @@
             ctx.globalAlpha = alpha * 0.76;
             ctx.drawImage(impactArt, -size / 2, -size / 2, size, size);
             ctx.restore();
+          } else {
+            ctx.strokeStyle = effect.color;
+            ctx.lineWidth = 1 + alpha * 4;
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, effect.radius, 0, TAU);
+            ctx.stroke();
           }
-          ctx.strokeStyle = effect.color;
-          ctx.lineWidth = 1 + alpha * 4;
-          ctx.beginPath(); ctx.arc(point.x, point.y, effect.radius, 0, TAU); ctx.stroke();
         } else {
           ctx.fillStyle = effect.color;
           const size = effect.size * (0.35 + alpha * 0.65);
-          ctx.fillRect(point.x - size / 2, point.y - size / 2, size, size);
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, size * 0.5, 0, TAU);
+          ctx.fill();
         }
       }
       ctx.restore();

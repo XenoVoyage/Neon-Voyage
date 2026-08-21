@@ -176,7 +176,7 @@
 
         <div class="menu-meta">
           <span>Local record <strong id="menu-high-score">000000</strong></span>
-          <span>Version v2026.8.21</span>
+          <span>Version v2026.8.21a</span>
         </div>
       </div>
     </section>
@@ -258,6 +258,21 @@
         <div class="setting-row">
           <div><strong>Sound</strong><span>Synthesized effects and music</span></div>
           <button id="settings-sound-button" class="toggle-button" type="button" aria-pressed="true">On</button>
+        </div>
+        <div class="setting-row">
+          <label for="settings-volume-input"><strong>Volume</strong><span id="settings-volume-description">Master level for all game audio</span></label>
+          <div class="volume-control">
+            <input
+              id="settings-volume-input"
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value="80"
+              aria-describedby="settings-volume-description"
+            >
+            <output id="settings-volume-value" for="settings-volume-input">80%</output>
+          </div>
         </div>
         <div class="setting-row">
           <div><strong>Visual effects</strong><span>Shake, flashes, and particle density</span></div>
