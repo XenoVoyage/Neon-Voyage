@@ -67,7 +67,7 @@ Put new logic in the file that already owns its responsibility. Generalize only 
 
 - The seven-stage journey is finite and config-driven, with authored boss encounters at Stages 5 and 7. Do not hardcode stage-specific behavior that the stage and wave data can express.
 - A stage clears only after its authored spawns, pending/requeued threats, required objectives, descendants, optional hazards, carrier children, and boss escorts are gone.
-- A completed stage first enters a finite, input-locked clear presentation that may advance only bounded final effects. It then enters the existing finite hyperspace sequence, cleans old combat state, and preserves the ship's screen anchor and travel direction.
+- A completed stage first salvages every remaining beneficial field pickup; an Enigma still owns its mandatory choice. It then enters a finite, input-locked clear presentation that may advance only bounded final effects before the existing hyperspace sequence cleans old combat state and preserves the ship's screen anchor and travel direction.
 - Asteroids are ballistic hazards. Asteroid pairs bounce without damaging one another; genuine asteroid-to-alien impacts remain reward-free.
 - Split trees and hard-cull requeues preserve objective ownership and finite state. They must never duplicate, drop, or silently resolve a threat.
 - Campaign checkpoints store bounded weapon loadouts for earned stages, not live battlefield state. Continue starts a fresh Sector 1 field; New Game confirms before replacing campaign progress.

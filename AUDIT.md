@@ -1,8 +1,8 @@
-# Neon Voyage v2026.8.21a — source audit
+# Neon Voyage v2026.8.21b — source audit
 
 - Audited: 2026-08-21
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 190/190 automated source checks**
+- Result: **PASS — 192/192 automated checks on the frozen candidate**
 
 Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins only; Node is not part of the browser game. Automated phone- and tablet-class evidence uses simulated layout boxes, viewports, Pointer Events, DOM behavior, and Canvas calls. It is not physical-device acceptance.
 
@@ -14,10 +14,20 @@ Observed with Node v24.19.0 on Linux x86_64. The harness uses Node built-ins onl
 - Remote runtime requests: **0 by design**
 - Runtime files: local HTML, CSS, JavaScript, nine WebP scenery assets, and 46 transparent WebP gameplay assets
 - Persistent data: separate strict local records for high score/preferences and schema-4 per-stage campaign loadouts
-- Saved-data change in this checkpoint: **optional bounded master-volume preference; historical records without it remain valid**
+- Saved-data change in this checkpoint: **none; storage keys, schema 4, and every historical migration remain unchanged**
 - License: MIT
 
-## v2026.8.21a verified changes
+## v2026.8.21b verified change
+
+### Clean-field reward salvage
+
+- Encounter completion now sends every remaining beneficial field pickup through the existing application path only after every authored spawn, pending/requeued threat, descendant, hazard, carrier child, boss escort, and required objective is gone.
+- Ordinary rewards apply and checkpoint before the locked clear presentation removes combat collections. A salvaged Enigma retains its normal finite slowdown, mandatory accessible three-card choice, neutral-input resume, and checkpoint write; hyperspace remains blocked until that choice resolves.
+- Fixed-seed regressions reproduce the prior loss of a fresh 45-second Rapid Fire pity drop at Stage 1 cleanup and cover a cleared-field Enigma through selection and resumed transition. The complete frozen gate passes with both regressions included.
+
+## Prior v2026.8.21a frozen evidence
+
+The following raster-led and audio contracts were observed in the prior frozen `v2026.8.21a` audit and remain historical context.
 
 Source inspection, renderer call recording, browser-VM preference/audio regressions, the complete gameplay matrix, deterministic stress, and the frozen full-suite gate establish these implemented contracts.
 
@@ -226,9 +236,9 @@ The following properties were observed in the prior frozen `v2026.8.15c` audit (
 
 ## Automated evidence boundary
 
-The frozen run registered and passed 190 checks across configuration/core (13), offline/repository (16), browser VM (4), progress (19), mobile input (46), gameplay (70), visuals (20), and stress (2).
+The frozen `v2026.8.21b` run registered and passed 192 checks across configuration/core (13), offline/repository (16), browser VM (4), progress (19), mobile input (46), gameplay (72), visuals (20), and stress (2). The two added gameplay regressions cover final-pity salvage and mandatory clean-field Enigma resolution.
 
-Current `v2026.8.21a` coverage adds the 80% configured master default, explicit-silence and live-gain behavior, persistent backward-compatible volume preferences, portrait-gated slider interaction, and a raster-led renderer contract for every alien class, charged player shields, magnetic shards, compact impacts, and generic particles. It retains the seven-stage journey, save compaction, expanded-field containment, bounded camera follow, capped clustered off-screen cues, queued quick-tap fire, complete mapped renderer ownership, bounded audio vocabulary, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
+Prior `v2026.8.21a` coverage adds the 80% configured master default, explicit-silence and live-gain behavior, persistent backward-compatible volume preferences, portrait-gated slider interaction, and a raster-led renderer contract for every alien class, charged player shields, magnetic shards, compact impacts, and generic particles. Candidate `v2026.8.21b` retains the seven-stage journey, save compaction, expanded-field containment, bounded camera follow, capped clustered off-screen cues, queued quick-tap fire, complete mapped renderer ownership, bounded audio vocabulary, accessibility, deterministic gameplay, Node-24-native workflow, and Pages-artifact contracts from prior checkpoints.
 
 Retained `v2026.8.20` deterministic coverage exercises shell/viewport disagreement and dynamic resizing; pointer-only reticle rendering; death-effect rendering without ship-owned visuals; clear-versus-travel presentation; terminal-but-delayed game-over focus and effect timing; delayed stationary target acquisition, deterministic tie order, bounded turn and fire; target lock and reacquisition; touch and hybrid-manual takeover; both command ships' live-node protection; and same-landscape orientation cleanup.
 
@@ -243,11 +253,12 @@ node tests/run.js
 sha256sum --check SHA256SUMS
 ```
 
-Observed result for this frozen source tree: `190/190 tests passed`. A separate `sha256sum --check SHA256SUMS` pass verified all 93 manifest entries.
+Observed result for the frozen `v2026.8.21b` candidate: `192/192 tests passed`.
 
 ## Browser and publication boundary
 
-- No prepublication hands-on browser acceptance of the revised overlay motion or perceived loudness is claimed by this source audit. Automated browser-VM and deterministic renderer evidence are reported separately above.
+- A short hands-on desktop session against the still-deployed `v2026.8.21a` baseline observed Play, pointer aim and fire, Void Pulse, pause, the accessible 80% Settings slider, and no page-origin console error. It is baseline evidence, not a candidate preview or a complete human-controlled campaign.
+- No prepublication candidate-preview acceptance or subjective listening of `v2026.8.21b` is claimed by this source audit. Automated browser-VM, deterministic renderer, and source evidence are reported separately above.
 - No post-change physical phone or iPad play is claimed. Two-thumb feel, browser-toolbar behavior on real devices, target selection feel, balance, readability, and audio acceptance remain pending.
 - After protected merge and Pages deployment, acceptance requires opening the exact live repository-subpath URL, confirming the deployed version, selecting **Play**, exercising a short combat interaction, and checking the browser console.
 - This source audit does not itself prove a pull-request check, merge, Pages deployment, immutable tag, GitHub Release, or live Play result. Those are external publication gates.
