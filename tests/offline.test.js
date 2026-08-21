@@ -76,6 +76,32 @@ function markdownReferences(source) {
   }));
 }
 
+function webpDimensions(buffer, label) {
+  assert.equal(buffer.subarray(0, 4).toString("ascii"), "RIFF", `${label} is not a WebP RIFF file`);
+  assert.equal(buffer.subarray(8, 12).toString("ascii"), "WEBP", `${label} is not a WebP file`);
+  for (let offset = 12; offset + 8 <= buffer.length;) {
+    const type = buffer.subarray(offset, offset + 4).toString("ascii");
+    const size = buffer.readUInt32LE(offset + 4);
+    const data = offset + 8;
+    if (type === "VP8 " && data + 10 <= buffer.length) {
+      assert.deepEqual(Array.from(buffer.subarray(data + 3, data + 6)), [0x9d, 0x01, 0x2a], `${label} has an invalid VP8 frame`);
+      return [buffer.readUInt16LE(data + 6) & 0x3fff, buffer.readUInt16LE(data + 8) & 0x3fff];
+    }
+    if (type === "VP8L" && data + 5 <= buffer.length) {
+      assert.equal(buffer[data], 0x2f, `${label} has an invalid VP8L frame`);
+      const bits = buffer.readUInt32LE(data + 1);
+      return [(bits & 0x3fff) + 1, ((bits >>> 14) & 0x3fff) + 1];
+    }
+    if (type === "VP8X" && data + 10 <= buffer.length) {
+      const width = buffer[data + 4] | buffer[data + 5] << 8 | buffer[data + 6] << 16;
+      const height = buffer[data + 7] | buffer[data + 8] << 8 | buffer[data + 9] << 16;
+      return [width + 1, height + 1];
+    }
+    offset = data + size + (size & 1);
+  }
+  assert.fail(`${label} has no supported WebP image chunk`);
+}
+
 module.exports = function register(test) {
   const html = readProject("index.html");
   const css = readProject("styles.css");
@@ -150,9 +176,8 @@ module.exports = function register(test) {
     for (const reference of references) {
       const file = localFile(reference);
       assert.ok(fs.statSync(file).size <= 256 * 1024, `${reference} exceeds the documentation image budget`);
-      const header = fs.readFileSync(file).subarray(0, 12);
-      assert.equal(header.subarray(0, 4).toString("ascii"), "RIFF", `${reference} is not a WebP RIFF file`);
-      assert.equal(header.subarray(8, 12).toString("ascii"), "WEBP", `${reference} is not a WebP file`);
+      const image = fs.readFileSync(file);
+      assert.deepEqual(webpDimensions(image, reference), [1200, 675], `${reference} must stay at the documented capture size`);
     }
 
     const directory = path.join(PROJECT_ROOT, "docs", "assets");
@@ -161,6 +186,17 @@ module.exports = function register(test) {
       .map((file) => path.relative(PROJECT_ROOT, file).split(path.sep).join("/"))
       .sort();
     assert.deepEqual(files, references.slice().sort(), "every README gameplay image must be referenced exactly once");
+  });
+
+  test("canonical visual documentation matches current captures and configured carrier ceilings", () => {
+    const assets = readProject("docs/ASSETS.md");
+    const design = readProject("docs/GAME_DESIGN.md");
+    assert.match(assets, /refreshed on 2026-08-21 from the actual `v2026\.8\.21e` game state and `ND\.Renderer` at 1200×675/);
+    assert.doesNotMatch(assets, /predate(?:s|d)? the `v2026\.8\.20e` complete gameplay-art pass/i,
+      "asset guide still describes the public captures as obsolete");
+    assert.match(design, /Brood Carriers[\s\S]*four-living-child lineage cap through hard-cull requeues/);
+    assert.doesNotMatch(design, /Brood Carriers[\s\S]*six-living-child lineage cap/,
+      "game design drifted from the configured four-child Brood ceiling");
   });
 
   test("README stays concise, player-facing, and connected to the project guides", () => {

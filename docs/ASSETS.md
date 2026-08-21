@@ -78,9 +78,9 @@ The six previously accepted subjects remain byte-for-byte unchanged. The current
 | `docs/assets/neon-voyage-earth-orbit.webp` | README opening-gameplay capture |
 | `docs/assets/neon-voyage-command-arena.webp` | README Harrower encounter capture |
 
-Both captures come from a real local renderer. They predate the `v2026.8.20e` complete gameplay-art pass and the `v2026.8.20f` expanded scrolling-field pass, and remain documentation-only until a fresh real-renderer capture is warranted; they are kept compressed, repository-local, and meaningfully described in the README.
+Both captures were refreshed on 2026-08-21 from the actual `v2026.8.21e` game state and `ND.Renderer` at 1200×675. The opening capture uses deterministic Stage 1 seed 2101 and shows the realistic rock, crystal, and volatile families, the dedicated Rapid turbine, local projectiles, Earth, and readable run state. The command capture uses deterministic Stage 5 seed 5105 and shows the Harrower, its live nodes, a damaged Striker escort, exchanged projectiles, the command-world scene, and boss status. A local capture harness attached the repository's test-browser contract to a real Canvas implementation, decoded only repository-local WebPs, and composed the HUD from the same `ND.game` state and current interface labels; it did not substitute generated scenery or a mock gameplay scene. The untracked QA harness used Node v24.19.0 with runtime-provided `@napi-rs/canvas` and Sharp only to capture and encode documentation evidence; neither library is a project dependency or runtime resource.
 
-The two current captures are 1200×675 WebP files. The audit enforces a 256 KiB maximum per documentation image.
+The two current captures are 1200×675 WebP files. The audit enforces both exact dimensions and a 256 KiB maximum per documentation image.
 
 ## Art direction
 
