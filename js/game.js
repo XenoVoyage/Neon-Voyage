@@ -50,16 +50,7 @@
     amplifierTimer: 112,
     aegisTimer: 112
   });
-  const LEGACY_STAGE_TO_CURRENT = Object.freeze([
-    0,
-    1,
-    2, 2, 2,
-    3, 3, 3,
-    4, 4,
-    5,
-    6, 6, 6, 6, 6,
-    7, 7, 7, 7, 7
-  ]);
+  const SCHEMA_FOUR_STAGE_TO_CURRENT = Object.freeze([0, 1, 5, 6, 9, 10, 18, 20]);
   const TEMPORARY_KIND_BY_TIMER = Object.freeze(Object.fromEntries(
     Object.entries(TEMPORARY_TIMER_BY_KIND).map(([kind, timer]) => [timer, kind])
   ));
@@ -259,8 +250,12 @@
     return validCheckpointProgress(value, 3, 20, validSchemaThreeCheckpoint);
   }
 
+  function validSchemaFourProgress(value) {
+    return validCheckpointProgress(value, 4, 7, validCheckpoint);
+  }
+
   function validProgress(value) {
-    return validCheckpointProgress(value, 4, ENCOUNTER_COUNT, validCheckpoint);
+    return validCheckpointProgress(value, 5, ENCOUNTER_COUNT, validCheckpoint);
   }
 
   function newProgress(maxUnlockedStage, lastPlayedStage) {
@@ -269,18 +264,13 @@
     const last = clamp(Math.floor(Number(lastPlayedStage) || 1), 1, unlocked);
     const checkpoints = {};
     for (let stage = 1; stage <= unlocked; stage += 1) checkpoints[String(stage)] = baseCheckpoint();
-    return { schema: 4, maxUnlockedStage: unlocked, lastPlayedStage: last, checkpoints };
+    return { schema: 5, maxUnlockedStage: unlocked, lastPlayedStage: last, checkpoints };
   }
 
   function copyProgress(value) {
     const copy = newProgress(value.maxUnlockedStage, value.lastPlayedStage);
     for (const key of Object.keys(copy.checkpoints)) copy.checkpoints[key] = cloneCheckpoint(value.checkpoints[key]);
     return copy;
-  }
-
-  function legacyStageToCurrent(stage) {
-    const legacyStage = clamp(Math.floor(Number(stage) || 1), 1, 20);
-    return LEGACY_STAGE_TO_CURRENT[legacyStage] || ENCOUNTER_COUNT;
   }
 
   function mergeLegacyCheckpoint(target, source, moduleIds, timerIds) {
@@ -298,18 +288,35 @@
   }
 
   function migrateCheckpointProgress(value, moduleIds, timerIds) {
-    const unlocked = legacyStageToCurrent(value.maxUnlockedStage);
-    const last = clamp(legacyStageToCurrent(value.lastPlayedStage), 1, unlocked);
+    const unlocked = clamp(Math.floor(Number(value.maxUnlockedStage) || 1), 1, ENCOUNTER_COUNT);
+    const last = clamp(Math.floor(Number(value.lastPlayedStage) || 1), 1, unlocked);
     const migrated = newProgress(unlocked, last);
     for (const key of Object.keys(value.checkpoints).sort((first, second) => Number(first) - Number(second))) {
-      const target = migrated.checkpoints[String(legacyStageToCurrent(key))];
+      const target = migrated.checkpoints[String(clamp(Math.floor(Number(key) || 1), 1, unlocked))];
       mergeLegacyCheckpoint(target, value.checkpoints[key], moduleIds, timerIds);
+    }
+    return migrated;
+  }
+
+  function expandSchemaFourProgress(value) {
+    const unlocked = SCHEMA_FOUR_STAGE_TO_CURRENT[value.maxUnlockedStage] || ENCOUNTER_COUNT;
+    const last = clamp(SCHEMA_FOUR_STAGE_TO_CURRENT[value.lastPlayedStage] || 1, 1, unlocked);
+    const migrated = newProgress(unlocked, last);
+    let previousTarget = 0;
+    for (let legacyStage = 1; legacyStage <= value.maxUnlockedStage; legacyStage += 1) {
+      const targetStage = Math.min(unlocked, SCHEMA_FOUR_STAGE_TO_CURRENT[legacyStage] || unlocked);
+      const source = value.checkpoints[String(legacyStage)];
+      for (let stage = previousTarget + 1; stage <= targetStage; stage += 1) {
+        migrated.checkpoints[String(stage)] = cloneCheckpoint(source);
+      }
+      previousTarget = targetStage;
     }
     return migrated;
   }
 
   function migrateProgress(value) {
     if (validProgress(value)) return copyProgress(value);
+    if (validSchemaFourProgress(value)) return expandSchemaFourProgress(value);
     if (validSchemaThreeProgress(value)) {
       return migrateCheckpointProgress(value, MODULE_ORDER, SCHEMA_THREE_TEMP_WEAPON_TIMERS);
     }
@@ -317,10 +324,7 @@
       return migrateCheckpointProgress(value, LEGACY_MODULE_ORDER, LEGACY_TEMP_WEAPON_TIMERS);
     }
     if (validSchemaOneProgress(value)) {
-      return newProgress(
-        legacyStageToCurrent(value.maxUnlockedStage),
-        legacyStageToCurrent(value.lastPlayedStage)
-      );
+      return newProgress(value.maxUnlockedStage, value.lastPlayedStage);
     }
     return newProgress(1, 1);
   }
@@ -346,10 +350,10 @@
     damageFlash: saved.settings.damageFlash === true
   };
   const savedProgress = Core.safeReadJSON(null, PROGRESS_STORAGE_KEY, null, (value) =>
-    validProgress(value) || validSchemaThreeProgress(value) || validSchemaTwoProgress(value) ||
+    validProgress(value) || validSchemaFourProgress(value) || validSchemaThreeProgress(value) || validSchemaTwoProgress(value) ||
       validSchemaOneProgress(value), PROGRESS_STORAGE_LIMIT);
   const progress = migrateProgress(savedProgress);
-  if (savedProgress && savedProgress.schema !== 4) {
+  if (savedProgress && savedProgress.schema !== 5) {
     Core.safeWriteJSON(null, PROGRESS_STORAGE_KEY, progress, validProgress, PROGRESS_STORAGE_LIMIT);
   }
   let highScore = Math.floor(saved.highScore);
@@ -3893,7 +3897,7 @@
 
   function performBossAttack(boss, attack) {
     if (!attack) return;
-    const color = boss.type === "leviathan" ? "#b77cff" : "#ff59d2";
+    const color = boss.type === "sovereign" ? "#d88cff" : boss.type === "leviathan" ? "#b77cff" : "#ff59d2";
     if (attack.type === "sweepingBeam") {
       boss.action = "beamWarning";
       boss.actionConfig = attack;
@@ -3902,6 +3906,20 @@
       boss.actionAngle = Math.atan2(lead.y - boss.y, lead.x - boss.x);
     } else if (attack.type === "crossVolley") {
       fireEnemyAt(boss.x, boss.y, state.ship.x, state.ship.y, attack.speed, attack.damage, attack.projectiles, attack.spread, color, boss.type);
+    } else if (attack.type === "radialBarrage") {
+      const count = Math.min(24, Math.max(1, Math.floor(Number(attack.projectiles) || 1)));
+      const offset = boss.rotation + boss.phase * 0.17;
+      for (let index = 0; index < count; index += 1) {
+        spawnEnemyBullet(
+          boss.x,
+          boss.y,
+          offset + index / count * TAU,
+          attack.speed,
+          attack.damage,
+          color
+        );
+      }
+      audio.bossWeapon("volley");
     } else if (attack.type === "dashVolley") {
       fireEnemyAt(boss.x, boss.y, state.ship.x, state.ship.y, attack.speed, attack.damage, attack.projectiles, attack.spread, color, boss.type);
       const dashAngle = Math.atan2(state.ship.y - boss.y, state.ship.x - boss.x);

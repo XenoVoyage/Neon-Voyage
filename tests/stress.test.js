@@ -193,8 +193,8 @@ module.exports = function register(test) {
   test("twenty-minute deterministic arcade stress stays finite and within every enforced collection cap", () => {
     const run = stress(440044, 1200);
     assert.ok(run.stageChanges >= 14, `stress run exercised only ${run.stageChanges} stage changes`);
-    assert.deepEqual(run.visitedStages, Array.from({ length: 7 }, (_, index) => index + 1));
-    assert.deepEqual(run.bossTypes, ["harrower", "leviathan"]);
+    assert.deepEqual(run.visitedStages, Array.from({ length: 20 }, (_, index) => index + 1));
+    assert.deepEqual(run.bossTypes, ["harrower", "leviathan", "sovereign"]);
     for (const kind of ["auricColossus", "auricShard", "corona"]) {
       assert.ok(run.asteroidKinds.includes(kind), `stress run never exercised ${kind}`);
     }

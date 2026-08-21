@@ -191,12 +191,14 @@ module.exports = function register(test) {
   test("canonical visual documentation matches current captures and configured carrier ceilings", () => {
     const assets = readProject("docs/ASSETS.md");
     const design = readProject("docs/GAME_DESIGN.md");
-    assert.match(assets, /refreshed on 2026-08-21 from the actual `v2026\.8\.21e` game state and `ND\.Renderer` at 1200×675/);
+    assert.match(assets, /refreshed on 2026-08-21 from the actual `v2026\.8\.21f` game state and `ND\.Renderer` at 1200×675/);
+    assert.match(assets, /deterministic Stage 20 seed 20105[\s\S]*giant Sovereign, all five live nodes/);
     assert.doesNotMatch(assets, /predate(?:s|d)? the `v2026\.8\.20e` complete gameplay-art pass/i,
       "asset guide still describes the public captures as obsolete");
     assert.match(design, /Brood Carriers[\s\S]*four-living-child lineage cap through hard-cull requeues/);
     assert.doesNotMatch(design, /Brood Carriers[\s\S]*six-living-child lineage cap/,
       "game design drifted from the configured four-child Brood ceiling");
+    assert.match(design, /\| 20 \| Sovereign \| Defeat the giant five-node mothership/);
   });
 
   test("README stays concise, player-facing, and connected to the project guides", () => {
@@ -333,14 +335,14 @@ module.exports = function register(test) {
     for (const script of scripts) childProcess.execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
   });
 
-  test("runtime metadata and public documentation agree on version v2026.8.21e", () => {
+  test("runtime metadata and public documentation agree on version v2026.8.21f", () => {
     const version = readProject("VERSION.txt").trim();
-    assert.equal(version, "Neon Voyage v2026.8.21e");
-    assert.match(readProject("js/config.js"), /version:\s*["']v2026\.8\.21e["']/);
-    assert.match(readProject("index.html"), />Version v2026\.8\.21e</);
-    assert.match(readProject("README.md"), /Version v2026\.8\.21e/);
-    assert.match(readProject("CHANGELOG.md"), /^## \[v2026\.8\.21e\] — 2026-08-21$/m);
-    assert.match(readProject("AUDIT.md"), /^# Neon Voyage v2026\.8\.21e/m);
+    assert.equal(version, "Neon Voyage v2026.8.21f");
+    assert.match(readProject("js/config.js"), /version:\s*["']v2026\.8\.21f["']/);
+    assert.match(readProject("index.html"), />Version v2026\.8\.21f</);
+    assert.match(readProject("README.md"), /Version v2026\.8\.21f/);
+    assert.match(readProject("CHANGELOG.md"), /^## \[v2026\.8\.21f\] — 2026-08-21$/m);
+    assert.match(readProject("AUDIT.md"), /^# Neon Voyage v2026\.8\.21f/m);
     assert.ok(fs.existsSync(path.join(PROJECT_ROOT, "AGENTS.md")), "project contributor instructions are required");
   });
 

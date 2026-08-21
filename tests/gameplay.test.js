@@ -1137,7 +1137,11 @@ module.exports = function register(test) {
 
   test("stage APIs expose ordered finite goals and a required survivor prevents premature wave clear", () => {
     const { game, CONFIG } = boot(401);
-    const expected = ["waves", "titan", "waves", "waves", "boss", "waves", "boss"];
+    const expected = [
+      "waves", "waves", "waves", "waves", "titan", "waves", "waves", "waves", "waves", "boss",
+      "waves", "waves", "waves", "waves", "boss", "waves", "waves", "waves", "waves", "boss"
+    ];
+    const bossTypes = new Map([[10, "harrower"], [15, "leviathan"], [20, "sovereign"]]);
     expected.forEach((goal, index) => {
       const snapshot = game.setStage(index + 1, 1);
       assert.equal(snapshot.encounter, index + 1);
@@ -1149,7 +1153,7 @@ module.exports = function register(test) {
         assert.equal(snapshot.objective.waveCount, CONFIG.sector.encounters[index].waves.length);
         assert.ok(snapshot.objective.waveRequiredTotal > 0);
       } else {
-        assert.equal(CONFIG.sector.encounters[index].bossType, index === 4 ? "harrower" : "leviathan");
+        assert.equal(CONFIG.sector.encounters[index].bossType, bossTypes.get(index + 1));
       }
     });
     game.setStage(1, 1);
@@ -1255,11 +1259,14 @@ module.exports = function register(test) {
     const data = state.encounterData;
     data.pendingSpawns.length = 0;
     data.requeue.length = 0;
+    data.waveIndex = data.waveCount - 1;
+    data.waveNumber = data.waveCount;
     data.waveSpawned = true;
     data.waveRequiredTotal = 1;
     data.waveRequiredCleared = 1;
     data.stageRequiredTotal = 1;
     data.stageRequiredCleared = 1;
+    data.goalProgress = data.goalTarget - 1;
     game.spawnPickup(state.ship.x + 180, state.ship.y, "enigma");
 
     game.step(CONFIG.world.fixedStep);
@@ -1279,18 +1286,26 @@ module.exports = function register(test) {
     const queuedKinds = (seed) => {
       const runtime = boot(seed, { width: 1280, height: 720 });
       runtime.game.setSeed(seed);
-      runtime.game.setStage(2, 1);
+      runtime.game.setStage(5, 1);
       return Array.from(living(runtime.game.state), (entity) => entity.kind)
         .concat(Array.from(runtime.game.state.encounterData.pendingSpawns, (entry) => entry.kind));
     };
-    assert.deepEqual(queuedKinds(611), queuedKinds(611), "the same seed changed the finite Titan Breach order");
+    const authoredQueue = queuedKinds(611);
+    assert.deepEqual(authoredQueue, queuedKinds(611), "the same seed changed the finite Titan Breach order");
+    assert.equal(authoredQueue.length, 8);
+    assert.equal(authoredQueue.filter((kind) => kind === "rock").length, 2);
+    assert.equal(authoredQueue.filter((kind) => kind === "crystal").length, 2);
+    assert.equal(authoredQueue.filter((kind) => kind === "volatile").length, 1);
+    assert.equal(authoredQueue.filter((kind) => kind === "armored").length, 1);
+    assert.equal(authoredQueue.filter((kind) => kind === "colossal").length, 1);
+    assert.equal(authoredQueue.filter((kind) => kind === "titan").length, 1);
 
     const { browser, game, CONFIG } = boot(611, { width: 1280, height: 720 });
     game.setSeed(611);
-    game.setStage(2, 1);
+    game.setStage(5, 1);
     const state = game.state;
     const data = state.encounterData;
-    const release = CONFIG.sector.encounters[1].waves[0].reinforcements;
+    const release = CONFIG.sector.encounters[4].waves[0].reinforcements;
     const pressure = () => living(state).reduce((total, entity) =>
       total + Math.max(1, Number(entity.threatCost) || 0), 0);
     let maximumLiving = living(state).length;
@@ -1316,49 +1331,49 @@ module.exports = function register(test) {
     };
 
     assert.equal(data.waveCount, 1);
-    assert.equal(data.waveRequiredTotal, 10);
-    assert.equal(browser.elements.get("objective-status").textContent, "Destroy all threats · 10");
+    assert.equal(data.waveRequiredTotal, 8);
+    assert.equal(browser.elements.get("objective-status").textContent, "Destroy all threats · 8");
     assert.equal(living(state).length, release.initialBatch);
-    assert.equal(data.pendingSpawns.length, 10 - release.initialBatch);
+    assert.equal(data.pendingSpawns.length, 8 - release.initialBatch);
     assert.ok(pressure() <= release.activePressure);
     assert.equal(living(state).some((entity) => entity.kind === "colossal"), false,
       "the Colossal arrived before the opening formation");
 
-    const openingCrystal = living(state).find((entity) => entity.kind === "crystal");
-    assert.ok(openingCrystal);
-    game.killThreat(openingCrystal, "player");
     const pendingBeforePressureDrop = data.pendingSpawns.length;
     waitForRelease();
     assert.equal(data.pendingSpawns.length, pendingBeforePressureDrop,
       "reinforcements ignored the active pressure threshold");
 
-    destroyAllLiving();
-    assert.equal(releaseOneBatch(), release.batchSize);
+    const openingCrystal = living(state).find((entity) => entity.kind === "crystal");
+    assert.ok(openingCrystal);
+    game.killThreat(openingCrystal, "player");
+    assert.equal(releaseOneBatch(), release.batchSize,
+      "the first reserve pair did not refill the reduced opening pressure");
     assert.equal(living(state).some((entity) => entity.kind === "colossal"), false,
       "the Colossal skipped the authored opening reserve");
 
     destroyAllLiving();
-    assert.equal(releaseOneBatch(), release.batchSize);
+    assert.equal(releaseOneBatch(), 1, "the pressure cap must introduce the Colossal before the Titan");
     const colossal = living(state).find((entity) => entity.kind === "colossal");
     assert.ok(colossal, "the mid-surge Colossal did not arrive");
+    assert.equal(living(state).some((entity) => entity.kind === "titan"), false,
+      "the Titan bypassed the active-pressure gate while the Colossal lived");
     approximately(colossal.maxHealth,
-      CONFIG.asteroids.colossal.baseHealth * CONFIG.difficulty.healthScale(1, 2) * 0.72,
+      CONFIG.asteroids.colossal.baseHealth * CONFIG.difficulty.healthScale(1, 5) * 0.72,
       1e-9, "Titan Breach Colossal durability");
     assert.ok(pressure() <= release.activePressure, "the Colossal release exceeded its bounded pressure");
-    assert.ok(data.pendingSpawns.length > 0, "the Colossal incorrectly exhausted the finite reserve");
+    assert.equal(data.pendingSpawns.length, 1, "the authored Titan reserve was lost after the Colossal release");
     assert.equal(data.complete, false);
 
     destroyAllLiving();
-    const pendingBeforeInterval = data.pendingSpawns.length;
-    runSteps(game, release.intervalSeconds * 0.5, CONFIG.world.fixedStep);
-    assert.equal(data.pendingSpawns.length, pendingBeforeInterval, "the finite release interval was bypassed");
-
-    for (let cycle = 0; cycle < 40 && data.pendingSpawns.length; cycle += 1) {
-      const released = releaseOneBatch();
-      assert.ok(released > 0 && released <= release.batchSize, "a reinforcement batch escaped its configured bound");
-      maximumLiving = Math.max(maximumLiving, living(state).length);
-      destroyAllLiving();
-    }
+    assert.equal(releaseOneBatch(), 1, "the final Titan did not release after the Colossal tree cleared");
+    const titan = living(state).find((entity) => entity.kind === "titan");
+    assert.ok(titan, "the final Titan did not arrive");
+    approximately(titan.maxHealth,
+      CONFIG.asteroids.titan.baseHealth * CONFIG.difficulty.healthScale(1, 5) * 0.7,
+      1e-9, "Titan Breach Titan durability");
+    assert.equal(data.pendingSpawns.length, 0, "the final Titan did not exhaust its finite reserve");
+    destroyAllLiving();
     game.step(CONFIG.world.fixedStep);
     if (state.upgradeDraft.phase !== "idle") {
       advanceEnigmaToChoice(game, CONFIG);
@@ -1442,13 +1457,15 @@ module.exports = function register(test) {
     }
   });
 
-  test("all five ordinary stages safely place or defer every compact-screen opening threat", () => {
+  test("all seventeen ordinary stages safely place or defer every compact-screen opening threat", () => {
     const viewports = [
       { width: 568, height: 320 },
       { width: 667, height: 375 }
     ];
-    const stages = [1, 2, 3, 4, 6];
-    const seeds = 1024;
+    const stages = boot(11999).CONFIG.sector.encounters
+      .filter((stage) => !stage.bossType)
+      .map((stage) => stage.index);
+    const seeds = 128;
     for (const viewport of viewports) {
       const { browser, game, CONFIG, Core } = boot(12000 + viewport.width, viewport);
       const state = game.state;
@@ -1510,7 +1527,7 @@ module.exports = function register(test) {
     const hazardKinds = ["prismatic", "razor"];
     const anomalyHazards = (seed, sector) => {
       game.setSeed(seed);
-      game.setStage(6, sector || 1);
+      game.setStage(14, sector || 1);
       return game.state.asteroids
         .filter((asteroid) => !asteroid.dead && asteroid.required && hazardKinds.includes(asteroid.kind))
         .map((asteroid) => asteroid.kind)
@@ -1521,7 +1538,7 @@ module.exports = function register(test) {
 
     for (let seed = 1; seed <= 256; seed += 1) {
       const kinds = anomalyHazards(seed, 1);
-      assert.equal(kinds.length, 4, `seed ${seed} lost a Stage 6 anomaly root`);
+      assert.equal(kinds.length, 4, `seed ${seed} lost a Stage 14 anomaly root`);
       const counts = hazardKinds.map((kind) => kinds.filter((entry) => entry === kind).length);
       assert.ok(Math.max(...counts) - Math.min(...counts) <= 1,
         `seed ${seed} produced an unbalanced mixed hazard group: ${counts.join("/")}`);
@@ -1531,8 +1548,8 @@ module.exports = function register(test) {
     const second = anomalyHazards(77, 1);
     assert.deepEqual(second, first, "the same seed changed balanced hazard order");
     const capped = anomalyHazards(77, 37);
-    assert.equal(capped.length, 6);
-    assert.deepEqual(hazardKinds.map((kind) => capped.filter((entry) => entry === kind).length), [3, 3]);
+    assert.equal(capped.length, 4);
+    assert.deepEqual(hazardKinds.map((kind) => capped.filter((entry) => entry === kind).length), [2, 2]);
   });
 
   test("stage clear waits for an optional asteroid, then protects a one-hull ship through hyperspace", () => {
@@ -1788,9 +1805,9 @@ module.exports = function register(test) {
   test("destroying the Titan completes its stage once every accompanying asteroid is clear", () => {
     const { game, CONFIG } = boot(590);
     const state = game.state;
-    game.setStage(2, 1);
+    game.setStage(5, 1);
     const data = state.encounterData;
-    assert.equal(data.waveRequiredTotal, 10, "Titan Breach must include ten authored roots");
+    assert.equal(data.waveRequiredTotal, 8, "Titan Breach must include eight authored roots");
     let titan = null;
     for (let cycle = 0; cycle < 20 && !titan; cycle += 1) {
       let targets = living(state).filter((entity) => entity.kind !== "titan");
@@ -1800,12 +1817,12 @@ module.exports = function register(test) {
       }
       titan = living(state).find((entity) => entity.kind === "titan") || null;
       if (!titan) runSteps(game,
-        CONFIG.sector.encounters[1].waves[0].reinforcements.intervalSeconds + CONFIG.world.fixedStep * 2,
+        CONFIG.sector.encounters[4].waves[0].reinforcements.intervalSeconds + CONFIG.world.fixedStep * 2,
         CONFIG.world.fixedStep);
     }
     assert.ok(titan, "Titan wave did not release its required Titan");
     approximately(titan.maxHealth,
-      CONFIG.asteroids.titan.baseHealth * CONFIG.difficulty.healthScale(1, 2) * 0.68,
+      CONFIG.asteroids.titan.baseHealth * CONFIG.difficulty.healthScale(1, 5) * 0.7,
       1e-9, "Titan Breach durability");
     const escort = game.spawnAsteroid("rock", {
       x: state.ship.x + 180,
@@ -1830,8 +1847,8 @@ module.exports = function register(test) {
     assert.equal(data.waveRequiredCleared, data.waveRequiredTotal);
     assert.equal(data.complete, true);
     assert.equal(state.mode, "transition", "Titan destruction did not enter hyperspace immediately");
-    assert.equal(state.cinematic.fromEncounter, 2);
-    assert.equal(state.cinematic.toEncounter, 3);
+    assert.equal(state.cinematic.fromEncounter, 5);
+    assert.equal(state.cinematic.toEncounter, 6);
   });
 
   test("Rapid Fire and Tri-Shot coexist, stack additively, and expire independently", () => {
@@ -2547,8 +2564,8 @@ module.exports = function register(test) {
       return runtime;
     }
 
-    const slowed = prepare(1, true);
-    const control = prepare(1, false);
+    const slowed = prepare(2, true);
+    const control = prepare(2, false);
     const fixedStep = slowed.CONFIG.world.fixedStep;
     const steps = Math.ceil(slowed.CONFIG.powerups.enigma.slowdownSeconds / fixedStep) + 1;
     const scales = [];
@@ -2663,9 +2680,9 @@ module.exports = function register(test) {
   test("Enigma defers an in-flight boss-core reward until its advertised tier is applied", () => {
     const { game, CONFIG } = boot(2396);
     const state = game.state;
-    game.setStage(5, 1);
+    game.setStage(10, 1);
     runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
-    assert.equal(state.boss && state.boss.type, "harrower", "Harrower did not enter the Stage 5 field");
+    assert.equal(state.boss && state.boss.type, "harrower", "Harrower did not enter the Stage 10 field");
     clearEntities(state);
     for (const id of Object.keys(state.ship.modules)) state.ship.modules[id] = CONFIG.weapons.maxModuleTier;
     state.ship.modules.homingSalvo = 0;
@@ -2692,6 +2709,7 @@ module.exports = function register(test) {
       dead: false
     });
 
+    game.setSeed(1);
     game.applyPickup(game.spawnPickup(state.ship.x, state.ship.y, "enigma"));
     const slowingDraft = game.snapshot().enigma;
     const permanentIndex = slowingDraft.choices.findIndex((choice) => choice.kind === "module");
@@ -2813,7 +2831,7 @@ module.exports = function register(test) {
     data.waveRequiredTotal = 0;
     data.waveRequiredCleared = 0;
     data.goalProgress = data.goalTarget - 1;
-    game.setSeed(1);
+    game.setSeed(2);
     game.applyPickup(game.spawnPickup(0, 0, "enigma"));
     const draft = advanceEnigmaToChoice(game, CONFIG);
     assert.equal(data.complete, false, "stage clear stranded the draft during slowdown");
@@ -2919,8 +2937,8 @@ module.exports = function register(test) {
     assert.ok(CONFIG.voidPulse.radius < 0.5 * Math.hypot(1280, 720), "pulse retained a screen-wide radius");
   });
 
-  test("natural pickup pools follow seven-stage gates while each drop band owns its frequent pity cadence", () => {
-    const samples = [1, 2, 3, 4, 5, 6, 7];
+  test("natural pickup pools follow twenty-stage gates while each drop band owns its frequent pity cadence", () => {
+    const samples = Array.from({ length: 20 }, (_, index) => index + 1);
     const definitions = {
       shield: "shield",
       rapid: "rapid",
@@ -2980,7 +2998,7 @@ module.exports = function register(test) {
   });
 
   test("module caches obey unlock stages and drop-band tier caps while Sector 2 exposes Mk V", () => {
-    for (const stage of [1, 2, 3, 4, 5, 6, 7]) {
+    for (const stage of Array.from({ length: 20 }, (_, index) => index + 1)) {
       const { game, CONFIG } = boot(7100 + stage);
       game.setStage(stage, 1);
       clearEntities(game.state);
@@ -3090,7 +3108,7 @@ module.exports = function register(test) {
   test("boss stages use the normal rectangular field for extreme positions and dash velocity", () => {
     const { game, CONFIG } = boot(901);
     const state = game.state;
-    game.setStage(5, 1);
+    game.setStage(10, 1);
     state.arena.active = true;
     state.arena.locked = true;
     state.arena.warning = 0;
@@ -3105,9 +3123,9 @@ module.exports = function register(test) {
     assert.ok(state.ship.y >= top - 1e-7 && state.ship.vy >= 0, "boss field kept outward vertical velocity");
   });
 
-  test("both bosses reuse the responsive normal combat field", () => {
+  test("all three bosses reuse the responsive normal combat field", () => {
     for (const layout of [{ width: 1280, height: 720 }, { width: 568, height: 320 }, { width: 1024, height: 768 }]) {
-      for (const stage of [5, 7]) {
+      for (const stage of [10, 15, 20]) {
         const { browser, game, CONFIG } = boot(9000 + stage + layout.width, layout);
         const state = game.state;
         game.setStage(stage, 1);
@@ -3156,7 +3174,7 @@ module.exports = function register(test) {
       { width: 1280, height: 720, label: "desktop" }
     ];
     for (const [layoutIndex, layout] of layouts.entries()) {
-      for (const stage of [5, 7]) {
+      for (const stage of [10, 15, 20]) {
         const { game, CONFIG } = boot(9019 + layoutIndex * 30 + stage, layout);
         const state = game.state;
         game.setStage(stage, 1);
@@ -3193,7 +3211,7 @@ module.exports = function register(test) {
   test("Leviathan reflects only direct body bullets while live nodes govern shield damage and HUD weakness", () => {
     const { browser, game, CONFIG } = boot(9020);
     const state = game.state;
-    game.setStage(7, 1);
+    game.setStage(15, 1);
     runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
     const boss = state.boss;
     assert.ok(boss && boss.type === "leviathan");
@@ -3241,7 +3259,7 @@ module.exports = function register(test) {
     const reflected = state.enemyBullets.find((bullet) => bullet.kind === "reflected");
     assert.ok(reflected, "active Leviathan did not reflect a direct body bullet");
     assert.equal(reflected.sourceBoss, "leviathan");
-    approximately(reflected.damage, values.damage * CONFIG.difficulty.damageScale(1, 7), 1e-9,
+    approximately(reflected.damage, values.damage * CONFIG.difficulty.damageScale(1, 15), 1e-9,
       "reflected bullet damage");
     assert.equal(reflected.life, values.life);
     approximately(Math.hypot(reflected.vx, reflected.vy), values.speed, 1e-9, "reflected bullet speed");
@@ -3287,14 +3305,78 @@ module.exports = function register(test) {
       "boss HUD retained a disabled reflector weakness");
   });
 
-  test("both authored bosses wait for every surviving field escort before hyperspace", () => {
-    for (const [stage, bossType] of [[5, "harrower"], [7, "leviathan"]]) {
+  test("Sovereign radial barrages form a deterministic bounded ring and obey the shared projectile cap", () => {
+    const radialRun = (seed) => {
+      const { game, CONFIG } = boot(seed);
+      const state = game.state;
+      game.setStage(20, 1);
+      runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
+      const boss = state.boss;
+      assert.ok(boss && boss.type === "sovereign", "Sovereign did not enter the Stage 20 field");
+      clearEntities(state);
+      boss.phase = 1;
+      boss.health = boss.maxHealth * 0.5;
+      boss.rotation = 0.37;
+      boss.rotationSpeed = 0;
+      boss.vx = 0;
+      boss.vy = 0;
+      boss.action = null;
+      boss.attackTimer = 0;
+      boss.secondaryTimer = Infinity;
+      game.step(CONFIG.world.fixedStep);
+      const bullets = state.enemyBullets.slice();
+      assert.equal(bullets.length, CONFIG.bosses.sovereign.phases[1].attacks[0].projectiles);
+      for (const bullet of bullets) {
+        approximately(Math.hypot(bullet.vx, bullet.vy), 270, 1e-9, "Sovereign radial projectile speed");
+        approximately(bullet.damage, 14 * CONFIG.difficulty.damageScale(1, 20), 1e-9,
+          "Sovereign radial projectile damage");
+      }
+      const angles = Array.from(bullets, (bullet) => Math.atan2(bullet.vy, bullet.vx));
+      const gaps = Array.from(angles, (angle, index) => {
+        const next = angles[(index + 1) % angles.length];
+        return (next - angle + Math.PI * 2) % (Math.PI * 2);
+      });
+      for (const gap of gaps) approximately(gap, Math.PI * 2 / bullets.length, 1e-9, "Sovereign radial spacing");
+      return { game, CONFIG, state, boss, angles };
+    };
+
+    const first = radialRun(9021);
+    const second = radialRun(9021);
+    assert.equal(JSON.stringify(second.angles), JSON.stringify(first.angles),
+      "fixed seed changed Sovereign radial geometry");
+
+    while (first.state.enemyBullets.length < first.CONFIG.caps.enemyProjectiles - 5) {
+      first.state.enemyBullets.push({
+        id: 994000 + first.state.enemyBullets.length,
+        x: first.state.ship.x + 80,
+        y: first.state.ship.y + 80,
+        px: first.state.ship.x + 80,
+        py: first.state.ship.y + 80,
+        vx: 0,
+        vy: 0,
+        radius: 1,
+        damage: 0,
+        life: 10,
+        maxLife: 10,
+        dead: false
+      });
+    }
+    first.boss.action = null;
+    first.boss.attackTimer = 0;
+    first.boss.secondaryTimer = Infinity;
+    first.game.step(first.CONFIG.world.fixedStep);
+    assert.equal(first.state.enemyBullets.length, first.CONFIG.caps.enemyProjectiles,
+      "Sovereign radial barrage exceeded or failed to fill the shared projectile cap");
+  });
+
+  test("all three authored bosses wait for every surviving field escort before hyperspace", () => {
+    for (const [stage, bossType] of [[10, "harrower"], [15, "leviathan"], [20, "sovereign"]]) {
       const { game, CONFIG } = boot(875 + stage);
       const state = game.state;
       game.setStage(stage, 1);
       runSteps(game, CONFIG.bossArena.warningSeconds + 0.1, CONFIG.world.fixedStep);
       assert.equal(state.boss && state.boss.type, bossType, `${bossType} did not enter its authored field`);
-      const escort = game.spawnAlien(stage === 7 ? "lancer" : "scout", {
+      const escort = game.spawnAlien(stage >= 15 ? "lancer" : "scout", {
         x: state.ship.x + 120,
         y: state.ship.y,
         health: 30,
@@ -3324,7 +3406,7 @@ module.exports = function register(test) {
     const tolerance = 1;
 
     for (const [layoutIndex, layout] of layouts.entries()) {
-      for (const stage of [5, 7]) {
+      for (const stage of [10, 15, 20]) {
         const { browser, game, CONFIG } = boot(951 + layoutIndex * 30 + stage, layout);
         const state = game.state;
         game.setStage(stage, 1);
@@ -3371,7 +3453,7 @@ module.exports = function register(test) {
     }
   });
 
-  test("boss-sector wrap preserves every legal field-edge screen anchor on narrow viewports", () => {
+  test("final-boss sector wrap preserves every legal field-edge screen anchor on narrow viewports", () => {
     const layouts = [
       { width: 568, height: 320, label: "landscape" },
       { width: 320, height: 568, label: "portrait" }
@@ -3382,12 +3464,12 @@ module.exports = function register(test) {
       for (const [edgeIndex, [edgeX, edgeY]] of edges.entries()) {
         const { browser, game, CONFIG } = boot(980 + layoutIndex * 10 + edgeIndex, layout);
         const state = game.state;
-        game.setStage(7, 1);
+        game.setStage(20, 1);
         clearEntities(state);
         state.arena.warning = CONFIG.world.fixedStep * 0.5;
         state.ship.invulnerable = 1e9;
         game.step(CONFIG.world.fixedStep);
-        assert.equal(state.boss && state.boss.type, "leviathan", `${layout.label} Leviathan did not spawn`);
+        assert.equal(state.boss && state.boss.type, "sovereign", `${layout.label} Sovereign did not spawn`);
 
         const legalX = Math.max(0, state.arena.halfWidth - state.ship.radius);
         const legalY = Math.max(0, state.arena.halfHeight - state.ship.radius);
@@ -3403,7 +3485,7 @@ module.exports = function register(test) {
 
         game.damageBoss(state.boss.maxHealth * 10);
         assert.equal(state.mode, "transition", `${context} did not enter hyperspace`);
-        assert.equal(state.cinematic.fromEncounter, 7);
+        assert.equal(state.cinematic.fromEncounter, 20);
         assert.equal(state.cinematic.toEncounter, 1);
         assert.equal(state.cinematic.fromSector, 1);
         assert.equal(state.cinematic.toSector, 2);
@@ -3438,7 +3520,7 @@ module.exports = function register(test) {
     }
   });
 
-  test("deterministic full-build weapon fire traverses all seven stages, both bosses, and the sector wrap within caps", () => {
+  test("deterministic full-build weapon fire traverses all twenty stages, three bosses, and the sector wrap within caps", () => {
     const { game, CONFIG } = boot(918273, { width: 1280, height: 720 });
     const state = game.state;
     const visited = new Set([state.encounter]);
@@ -3500,11 +3582,11 @@ module.exports = function register(test) {
       assert.ok(state.ship.drones.length <= CONFIG.caps.drones, "drones exceeded their cap during full journey");
       assert.ok(state.ship.orbitBlades.length <= 12, "Orbit Blades exceeded their runtime bound during full journey");
     }
-    assert.equal(state.sector, 2, "weapon-driven journey did not wrap after Stage 7");
+    assert.equal(state.sector, 2, "weapon-driven journey did not wrap after Stage 20");
     assert.equal(state.encounter, 1);
-    assert.deepEqual(Array.from(visited).sort((a, b) => a - b), Array.from({ length: 7 }, (_, index) => index + 1));
-    assert.deepEqual(Array.from(bossTypes).sort(), ["harrower", "leviathan"]);
-    assert.equal(state.bossesDefeated, 2, "both authored bosses were not defeated by weapon fire");
+    assert.deepEqual(Array.from(visited).sort((a, b) => a - b), Array.from({ length: 20 }, (_, index) => index + 1));
+    assert.deepEqual(Array.from(bossTypes).sort(), ["harrower", "leviathan", "sovereign"]);
+    assert.equal(state.bossesDefeated, 3, "all three authored bosses were not defeated by weapon fire");
   });
 };
 

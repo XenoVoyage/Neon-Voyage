@@ -41,8 +41,10 @@
     alienBroodCarrier: "assets/alien-brood-carrier.webp",
     bossHarrower: "assets/boss-harrower.webp",
     bossLeviathan: "assets/boss-leviathan.webp",
+    bossSovereign: "assets/boss-sovereign.webp",
     bossNodeHarrower: "assets/boss-node-harrower.webp",
     bossNodeLeviathan: "assets/boss-node-leviathan.webp",
+    bossNodeSovereign: "assets/boss-node-sovereign.webp",
     playerPlasma: "assets/player-plasma.webp",
     playerMissile: "assets/player-missile.webp",
     playerRailSlug: "assets/player-rail-slug.webp",
@@ -99,7 +101,18 @@
   });
   const BOSS_DRAW_SIZES = Object.freeze({
     harrower: Object.freeze([190, 119]),
-    leviathan: Object.freeze([220, 138])
+    leviathan: Object.freeze([220, 138]),
+    sovereign: Object.freeze([310, 194])
+  });
+  const BOSS_ASSET_KEYS = Object.freeze({
+    harrower: "bossHarrower",
+    leviathan: "bossLeviathan",
+    sovereign: "bossSovereign"
+  });
+  const BOSS_NODE_ASSET_KEYS = Object.freeze({
+    harrower: "bossNodeHarrower",
+    leviathan: "bossNodeLeviathan",
+    sovereign: "bossNodeSovereign"
   });
   const PROJECTILE_ART = Object.freeze({
     bolt: Object.freeze(["playerPlasma", 36, 12]),
@@ -198,31 +211,78 @@
       Object.freeze({ id: "earth", type: "earth", x: 0.88, y: 0.58, size: 0.62, alpha: 0.92, hue: 205 }),
       Object.freeze({ id: "mars", type: "mars", x: 0.07, y: 0.16, size: 0.025, alpha: 0.025, hue: 18 })
     ]) }),
-    Object.freeze({ depth: 0.38, hue: 34, bodies: Object.freeze([
-      Object.freeze({ id: "mars", type: "mars", x: 0.9, y: 0.18, size: 0.12, alpha: 0.24, hue: 18 }),
-      Object.freeze({ id: "titan-gate", type: "titan-world", x: 0.15, y: 0.62, size: 0.54, alpha: 0.8, hue: 36 })
+    Object.freeze({ depth: 0.18, hue: 25, bodies: Object.freeze([
+      Object.freeze({ id: "earth", type: "earth", x: 0.08, y: 0.82, size: 0.14, alpha: 0.28, hue: 205 }),
+      Object.freeze({ id: "mars", type: "mars", x: 0.8, y: 0.25, size: 0.27, alpha: 0.72, hue: 18 })
     ]) }),
-    Object.freeze({ depth: 0.68, hue: 144, bodies: Object.freeze([
-      Object.freeze({ id: "signal-world", type: "signal-world", x: 0.82, y: 0.3, size: 0.38, alpha: 0.7, hue: 142 }),
-      Object.freeze({ id: "frontier-scout", type: "frontier-world", x: 0.08, y: 0.8, size: 0.12, alpha: 0.24, hue: 184 })
+    Object.freeze({ depth: 0.3, hue: 142, bodies: Object.freeze([
+      Object.freeze({ id: "mars", type: "mars", x: 0.06, y: 0.86, size: 0.07, alpha: 0.14, hue: 18 }),
+      Object.freeze({ id: "signal-moon", type: "signal-world", x: 0.84, y: 0.22, size: 0.22, alpha: 0.58, hue: 142 })
     ]) }),
-    Object.freeze({ depth: 0.96, hue: 286, bodies: Object.freeze([
-      Object.freeze({ id: "shattered-world", type: "shard-world", x: 0.12, y: 0.7, size: 0.34, alpha: 0.65, hue: 304 }),
-      Object.freeze({ id: "raid-world", type: "fleet-world", x: 0.84, y: 0.26, size: 0.28, alpha: 0.5, hue: 256 })
+    Object.freeze({ depth: 0.42, hue: 174, bodies: Object.freeze([
+      Object.freeze({ id: "frontier", type: "frontier-world", x: 0.82, y: 0.72, size: 0.33, alpha: 0.64, hue: 174 })
     ]) }),
-    Object.freeze({ depth: 1.24, hue: 340, bodies: Object.freeze([
-      Object.freeze({ id: "harrower-world", type: "command-world", x: 0.54, y: 0.18, size: 0.43, alpha: 0.82, hue: 344 }),
-      Object.freeze({ id: "harrower-fleet", type: "fleet-world", x: 0.06, y: 0.82, size: 0.14, alpha: 0.25, hue: 256 })
+    Object.freeze({ depth: 0.54, hue: 36, bodies: Object.freeze([
+      Object.freeze({ id: "titan-gate", type: "titan-world", x: 0.16, y: 0.33, size: 0.5, alpha: 0.76, hue: 36 })
     ]) }),
-    Object.freeze({ depth: 1.58, hue: 178, bodies: Object.freeze([
-      Object.freeze({ id: "anomaly-frontier", type: "frontier-world", x: 0.84, y: 0.74, size: 0.34, alpha: 0.58, hue: 174 }),
-      Object.freeze({ id: "anomaly-shard", type: "shard-world", x: 0.1, y: 0.2, size: 0.2, alpha: 0.38, hue: 304 }),
-      Object.freeze({ id: "anomaly-signal", type: "signal-world", x: 0.62, y: 0.12, size: 0.1, alpha: 0.2, hue: 142 })
+    Object.freeze({ depth: 0.66, hue: 154, bodies: Object.freeze([
+      Object.freeze({ id: "signal-front", type: "signal-world", x: 0.78, y: 0.24, size: 0.3, alpha: 0.56, hue: 148 }),
+      Object.freeze({ id: "frontier-wing", type: "frontier-world", x: 0.08, y: 0.8, size: 0.14, alpha: 0.24, hue: 184 })
     ]) }),
-    Object.freeze({ depth: 1.96, hue: 264, bodies: Object.freeze([
+    Object.freeze({ depth: 0.78, hue: 304, bodies: Object.freeze([
+      Object.freeze({ id: "shard-world", type: "shard-world", x: 0.12, y: 0.76, size: 0.31, alpha: 0.66, hue: 304 })
+    ]) }),
+    Object.freeze({ depth: 0.88, hue: 256, bodies: Object.freeze([
+      Object.freeze({ id: "fleet-world", type: "fleet-world", x: 0.74, y: 0.63, size: 0.46, alpha: 0.72, hue: 256 })
+    ]) }),
+    Object.freeze({ depth: 0.96, hue: 285, bodies: Object.freeze([
+      Object.freeze({ id: "command-screen", type: "fleet-world", x: 0.18, y: 0.28, size: 0.33, alpha: 0.6, hue: 277 }),
+      Object.freeze({ id: "command-beacon", type: "shard-world", x: 0.9, y: 0.76, size: 0.16, alpha: 0.34, hue: 318 })
+    ]) }),
+    Object.freeze({ depth: 1.04, hue: 344, bodies: Object.freeze([
+      Object.freeze({ id: "harrower-world", type: "command-world", x: 0.52, y: 0.16, size: 0.39, alpha: 0.82, hue: 344 })
+    ]) }),
+    Object.freeze({ depth: 1.12, hue: 32, bodies: Object.freeze([
+      Object.freeze({ id: "ion-remnant", type: "titan-world", x: 0.08, y: 0.72, size: 0.24, alpha: 0.42, hue: 28 }),
+      Object.freeze({ id: "ion-moon", type: "frontier-world", x: 0.82, y: 0.18, size: 0.1, alpha: 0.2, hue: 202 })
+    ]) }),
+    Object.freeze({ depth: 1.2, hue: 292, bodies: Object.freeze([
+      Object.freeze({ id: "prism-primary", type: "shard-world", x: 0.86, y: 0.48, size: 0.51, alpha: 0.72, hue: 298 }),
+      Object.freeze({ id: "prism-secondary", type: "signal-world", x: 0.12, y: 0.16, size: 0.12, alpha: 0.26, hue: 166 })
+    ]) }),
+    Object.freeze({ depth: 1.28, hue: 226, bodies: Object.freeze([
+      Object.freeze({ id: "gravity-anchor", type: "command-world", x: 0.06, y: 0.28, size: 0.22, alpha: 0.36, hue: 222 }),
+      Object.freeze({ id: "gravity-shear", type: "frontier-world", x: 0.88, y: 0.82, size: 0.31, alpha: 0.48, hue: 184 })
+    ]) }),
+    Object.freeze({ depth: 1.38, hue: 118, bodies: Object.freeze([
+      Object.freeze({ id: "anomaly-crown", type: "signal-world", x: 0.48, y: 0.58, size: 0.62, alpha: 0.7, hue: 122 })
+    ]) }),
+    Object.freeze({ depth: 1.48, hue: 264, bodies: Object.freeze([
       Object.freeze({ id: "leviathan-well", type: "signal-world", x: 0.5, y: 0.18, size: 0.48, alpha: 0.72, hue: 266 }),
       Object.freeze({ id: "leviathan-remnant", type: "titan-world", x: 0.07, y: 0.9, size: 0.28, alpha: 0.38, hue: 26 }),
       Object.freeze({ id: "leviathan-command", type: "command-world", x: 0.92, y: 0.78, size: 0.17, alpha: 0.3, hue: 326 })
+    ]) }),
+    Object.freeze({ depth: 1.58, hue: 353, bodies: Object.freeze([
+      Object.freeze({ id: "vanguard-muster", type: "fleet-world", x: 0.14, y: 0.64, size: 0.42, alpha: 0.62, hue: 350 }),
+      Object.freeze({ id: "vanguard-signal", type: "signal-world", x: 0.84, y: 0.16, size: 0.15, alpha: 0.3, hue: 145 })
+    ]) }),
+    Object.freeze({ depth: 1.68, hue: 168, bodies: Object.freeze([
+      Object.freeze({ id: "halo-core", type: "frontier-world", x: 0.54, y: 0.24, size: 0.38, alpha: 0.58, hue: 166 }),
+      Object.freeze({ id: "halo-shard-left", type: "shard-world", x: 0.05, y: 0.82, size: 0.09, alpha: 0.19, hue: 312 }),
+      Object.freeze({ id: "halo-shard-right", type: "shard-world", x: 0.94, y: 0.68, size: 0.13, alpha: 0.24, hue: 326 })
+    ]) }),
+    Object.freeze({ depth: 1.78, hue: 208, bodies: Object.freeze([
+      Object.freeze({ id: "null-bastion", type: "titan-world", x: 0.82, y: 0.3, size: 0.43, alpha: 0.66, hue: 212 }),
+      Object.freeze({ id: "null-shard", type: "shard-world", x: 0.1, y: 0.78, size: 0.18, alpha: 0.28, hue: 292 })
+    ]) }),
+    Object.freeze({ depth: 1.88, hue: 322, bodies: Object.freeze([
+      Object.freeze({ id: "sovereign-gate", type: "command-world", x: 0.92, y: 0.5, size: 0.58, alpha: 0.78, hue: 326 }),
+      Object.freeze({ id: "sovereign-guard", type: "fleet-world", x: 0.18, y: 0.7, size: 0.24, alpha: 0.4, hue: 256 })
+    ]) }),
+    Object.freeze({ depth: 2, hue: 284, bodies: Object.freeze([
+      Object.freeze({ id: "sovereign-throne", type: "command-world", x: 0.5, y: 0.18, size: 0.56, alpha: 0.84, hue: 292 }),
+      Object.freeze({ id: "sovereign-well", type: "signal-world", x: 0.08, y: 0.86, size: 0.24, alpha: 0.38, hue: 258 }),
+      Object.freeze({ id: "sovereign-fleet", type: "fleet-world", x: 0.9, y: 0.76, size: 0.18, alpha: 0.32, hue: 330 })
     ]) })
   ]);
 
@@ -440,6 +500,13 @@
     return ratio < 0.18 ? 3 : ratio < 0.35 ? 2 : ratio < 0.6 ? 1 : 0;
   }
 
+  function bossDamageStage(boss) {
+    const health = Number(boss && boss.health);
+    const maximum = Number(boss && boss.maxHealth);
+    const ratio = maximum > 0 && Number.isFinite(health) ? clamp(health / maximum, 0, 1) : 1;
+    return ratio < 0.2 ? 3 : ratio < 0.4 ? 2 : ratio < 0.65 ? 1 : 0;
+  }
+
   function pickupIdentity(kind) {
     return Object.freeze({
       color: PICKUP_COLORS[kind] || "#ffffff",
@@ -587,10 +654,10 @@
       : [];
     if (boss && !boss.dead && Number(boss.health) > 0) {
       if (livingNodes.length) {
-        const nodeAsset = boss.type === "leviathan" ? "bossNodeLeviathan" : "bossNodeHarrower";
+        const nodeAsset = BOSS_NODE_ASSET_KEYS[boss.type] || "bossNodeHarrower";
         for (const node of livingNodes) append(node, "bossNode", nodeAsset, 0, "#c6afff");
       } else {
-        append(boss, "boss", boss.type === "leviathan" ? "bossLeviathan" : "bossHarrower", 0, "#ff72dd");
+        append(boss, "boss", BOSS_ASSET_KEYS[boss.type] || "bossHarrower", 0, "#ff72dd");
       }
     }
     for (const alien of state.aliens || []) {
@@ -1051,6 +1118,7 @@
     asteroidFracturePattern,
     playerDamageStage,
     alienDamageStage,
+    bossDamageStage,
     pickupIdentity,
     assetSource,
     gameplayAssetSource,
@@ -1221,7 +1289,7 @@
             bossY,
             Math.max(this.width, this.height) * 0.52
           );
-          const hueOffset = bossType === "leviathan" ? 58 : -34;
+          const hueOffset = bossType === "sovereign" ? 92 : bossType === "leviathan" ? 58 : -34;
           bossNebula.addColorStop(0, `hsla(${mod(sceneHue + hueOffset, 360)}, 92%, 66%, 0.15)`);
           bossNebula.addColorStop(0.42, `hsla(${mod(sceneHue + hueOffset * 0.5, 360)}, 78%, 44%, 0.055)`);
           bossNebula.addColorStop(1, `hsla(${sceneHue}, 68%, 28%, 0)`);
@@ -2361,12 +2429,12 @@
       ctx.save();
       ctx.translate(point.x, point.y);
       ctx.rotate(boss.angle || 0);
-      const bossAssetKey = boss.type === "leviathan" ? "bossLeviathan" : "bossHarrower";
+      const bossAssetKey = BOSS_ASSET_KEYS[boss.type] || "bossHarrower";
       const bossArt = readyImage(this.assets[bossAssetKey]) ? this.assets[bossAssetKey] : null;
       if (bossArt) {
         const drawSize = BOSS_DRAW_SIZES[boss.type] || [boss.radius * 2.25, boss.radius * 1.42];
         ctx.drawImage(bossArt, -drawSize[0] / 2, -drawSize[1] / 2, drawSize[0], drawSize[1]);
-      } else if (boss.type === "leviathan") {
+      } else if (boss.type === "leviathan" || boss.type === "sovereign") {
         const radius = boss.radius;
         const pulse = 0.88 + Math.sin(time * 2.4) * 0.08;
         ctx.fillStyle = "rgba(8, 9, 27, 0.99)";
@@ -2429,26 +2497,57 @@
         ctx.ellipse(boss.radius * 0.08, 0, boss.radius * 0.3, boss.radius * 0.14, 0, 0, TAU);
         ctx.fill();
       }
+      const damageStage = bossDamageStage(boss);
+      if (damageStage > 0) {
+        const radius = Math.max(1, Number(boss.radius) || 1);
+        const identity = mod(Math.abs(Number(boss.id) || 0) * 0.37, TAU);
+        const smokeCount = this.reduced ? Math.min(2, damageStage) : 1 + damageStage;
+        ctx.fillStyle = "rgba(24, 29, 39, 0.54)";
+        for (let index = 0; index < smokeCount; index += 1) {
+          const drift = mod(time * (0.19 + index * 0.035) + identity + index * 0.29, 1);
+          const x = radius * (-0.18 + index * 0.12) + Math.sin(time * 2.4 + index) * 4;
+          const y = radius * (0.12 - drift * 0.58);
+          ctx.globalAlpha = (1 - drift) * (this.reduced ? 0.34 : 0.48);
+          ctx.beginPath();
+          ctx.arc(x, y, radius * (0.045 + drift * 0.055), 0, TAU);
+          ctx.fill();
+        }
+        if (damageStage >= 2) {
+          const fireX = -radius * 0.08;
+          const fireY = radius * 0.04;
+          const fireRadius = radius * (0.07 + damageStage * 0.012);
+          const fire = ctx.createRadialGradient(fireX, fireY, 0, fireX, fireY, fireRadius);
+          fire.addColorStop(0, "rgba(255,244,182,0.98)");
+          fire.addColorStop(0.3, "rgba(255,105,48,0.8)");
+          fire.addColorStop(1, "rgba(255,72,36,0)");
+          ctx.globalCompositeOperation = "lighter";
+          ctx.globalAlpha = this.reduced ? 0.5 : 0.68 + Math.sin(time * 19 + identity) * 0.12;
+          ctx.fillStyle = fire;
+          ctx.beginPath();
+          ctx.arc(fireX, fireY, fireRadius, 0, TAU);
+          ctx.fill();
+        }
+      }
       ctx.restore();
 
       this.drawBossReflectionShield(boss, camera, time);
 
       if (boss.nodes) {
-        const leviathan = boss.type === "leviathan";
+        const reflectiveBoss = boss.type === "leviathan" || boss.type === "sovereign";
         for (const node of boss.nodes) {
           if (node.health <= 0) continue;
           const nodePoint = this.worldToScreen(node.x, node.y, camera);
           ctx.save();
           ctx.translate(nodePoint.x, nodePoint.y);
           ctx.rotate(time * 1.4 + node.index);
-          const nodeAssetKey = leviathan ? "bossNodeLeviathan" : "bossNodeHarrower";
+          const nodeAssetKey = BOSS_NODE_ASSET_KEYS[boss.type] || "bossNodeHarrower";
           const nodeArt = readyImage(this.assets[nodeAssetKey]) ? this.assets[nodeAssetKey] : null;
           if (nodeArt) {
             const size = Math.max(32, (Number(node.radius) || 13) * 2.65);
             ctx.drawImage(nodeArt, -size / 2, -size / 2, size, size);
           } else {
-            ctx.strokeStyle = leviathan ? "#b79dff" : "#6fffff";
-            ctx.fillStyle = leviathan ? "rgba(28, 18, 54, 0.92)" : "rgba(12,35,48,0.9)";
+            ctx.strokeStyle = reflectiveBoss ? "#b79dff" : "#6fffff";
+            ctx.fillStyle = reflectiveBoss ? "rgba(28, 18, 54, 0.92)" : "rgba(12,35,48,0.9)";
             ctx.lineWidth = 2;
             ctx.beginPath();
             for (let i = 0; i < 6; i += 1) {
