@@ -9,9 +9,10 @@ module.exports = function register(test) {
     loadRuntimeScripts(browser);
     const audio = new browser.window.ND.AudioEngine({ maxNodes: 999 });
     assert.equal(audio.maxNodes, 24);
+    assert.equal(audio.volume, 0.8, "new sessions did not receive the louder configured mix");
     for (const method of [
       "weapon", "impact", "destruction", "pickup", "upgrade", "dash", "pulse",
-      "playerDamage", "enemyWeapon", "bossWeapon", "bossCue", "arena", "musicTick"
+      "playerDamage", "enemyWeapon", "bossWeapon", "bossCue", "arena", "musicTick", "setVolume"
     ]) assert.equal(typeof audio[method], "function", `missing audio cue ${method}`);
     for (const retired of ["shoot", "hit", "explode", "damage", "alienShot", "weaponSwitch"]) {
       assert.equal(audio[retired], undefined, `retired generic cue remains: ${retired}`);
@@ -30,6 +31,26 @@ module.exports = function register(test) {
       audio.enemyWeapon("gunship");
       audio.bossWeapon("beam");
     }, "locked or unavailable Web Audio must remain optional");
+
+    assert.equal(new browser.window.ND.AudioEngine({ volume: 0 }).volume, 0,
+      "explicit silence was replaced by the default volume");
+    const gainTargets = [];
+    audio.context = { currentTime: 4 };
+    audio.master = {
+      gain: {
+        value: audio.volume,
+        cancelScheduledValues(time) { gainTargets.push(["cancel", time]); },
+        setTargetAtTime(value, time, duration) { gainTargets.push(["target", value, time, duration]); }
+      }
+    };
+    assert.equal(audio.setVolume(0.45), 0.45);
+    assert.deepEqual(gainTargets.at(-1), ["target", 0.45, 4, 0.025]);
+    audio.setMuted(true);
+    assert.equal(audio.setVolume(0.25), 0.25);
+    assert.deepEqual(gainTargets.at(-1), ["target", 0, 4, 0.025], "muted volume change leaked sound");
+    assert.equal(audio.setVolume(9), 1);
+    assert.equal(audio.setVolume(-3), 0);
+    assert.equal(audio.setVolume(Number.NaN), 0, "invalid volume replaced the last valid level");
   });
 
   test("browser VM boots local scripts, renders frames, and starts a run", () => {

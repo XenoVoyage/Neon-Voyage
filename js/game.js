@@ -138,6 +138,8 @@
     soundButton: byId("sound-button"),
     pauseButton: byId("pause-button"),
     settingsSoundButton: byId("settings-sound-button"),
+    settingsVolumeInput: byId("settings-volume-input"),
+    settingsVolumeValue: byId("settings-volume-value"),
     settingsEffectsButton: byId("settings-effects-button"),
     settingsFullscreenButton: byId("settings-fullscreen-button"),
     controlsModal: byId("controls-modal"),
@@ -163,10 +165,12 @@
 
   // Saved records are deliberately smaller and stricter than live simulation state.
   function validSave(value) {
+    const volume = value && value.settings && value.settings.volume;
     return Boolean(value) && typeof value === "object" &&
       Number.isFinite(value.highScore) && value.highScore >= 0 && value.highScore <= MAX_LOCAL_SCORE &&
       Boolean(value.settings) && typeof value.settings === "object" &&
-      typeof value.settings.sound === "boolean" && typeof value.settings.reducedEffects === "boolean";
+      typeof value.settings.sound === "boolean" && typeof value.settings.reducedEffects === "boolean" &&
+      (volume === undefined || Number.isFinite(volume) && volume >= CONFIG.audio.minVolume && volume <= CONFIG.audio.maxVolume);
   }
 
   function exactKeys(value, expected) {
@@ -317,10 +321,14 @@
 
   const saved = Core.safeReadJSON(null, STORAGE_KEY, {
     highScore: 0,
-    settings: { sound: true, reducedEffects: false }
+    settings: { sound: true, volume: CONFIG.audio.defaultVolume, reducedEffects: false }
   }, validSave, 1024);
+  const savedVolume = Number(saved.settings.volume);
   const settings = {
     sound: saved.settings.sound,
+    volume: Number.isFinite(savedVolume)
+      ? clamp(savedVolume, CONFIG.audio.minVolume, CONFIG.audio.maxVolume)
+      : CONFIG.audio.defaultVolume,
     reducedEffects: saved.settings.reducedEffects
   };
   const savedProgress = Core.safeReadJSON(null, PROGRESS_STORAGE_KEY, null, (value) =>
@@ -332,7 +340,11 @@
   }
   let highScore = Math.floor(saved.highScore);
   const renderer = new ND.Renderer(canvas);
-  const audio = new ND.AudioEngine({ muted: !settings.sound, maxNodes: CONFIG.caps.activeAudioNodes });
+  const audio = new ND.AudioEngine({
+    muted: !settings.sound,
+    volume: settings.volume,
+    maxNodes: CONFIG.caps.activeAudioNodes
+  });
   let rng = Core.createRng(Date.now());
   let nextEntityId = 1;
 
@@ -592,7 +604,7 @@
   function saveLocal() {
     Core.safeWriteJSON(null, STORAGE_KEY, {
       highScore,
-      settings: { sound: settings.sound, reducedEffects: settings.reducedEffects }
+      settings: { sound: settings.sound, volume: settings.volume, reducedEffects: settings.reducedEffects }
     }, validSave, 1024);
   }
 
@@ -1063,6 +1075,20 @@
     updateSettingsUI();
   }
 
+  function setVolumeFromControl(persist) {
+    if (!dom.settingsVolumeInput) return;
+    if (orientationBlocked || state.upgradeDraft.phase !== "idle") {
+      updateSettingsUI();
+      return;
+    }
+    const percent = clamp(Number(dom.settingsVolumeInput.value) || 0, 0, 100);
+    settings.volume = clamp(percent / 100, CONFIG.audio.minVolume, CONFIG.audio.maxVolume);
+    audio.setVolume(settings.volume);
+    if (settings.sound) audio.ensure();
+    if (persist) saveLocal();
+    updateSettingsUI();
+  }
+
   function toggleFullscreen() {
     const document = global.document;
     try {
@@ -1107,6 +1133,10 @@
   bindButton("settings-sound-button", toggleSound);
   bindButton("settings-effects-button", toggleEffects);
   bindButton("settings-fullscreen-button", toggleFullscreen);
+  if (dom.settingsVolumeInput) {
+    dom.settingsVolumeInput.addEventListener("input", () => setVolumeFromControl(false));
+    dom.settingsVolumeInput.addEventListener("change", () => setVolumeFromControl(true));
+  }
   if (dom.newGameModal) dom.newGameModal.addEventListener("cancel", (event) => {
     event.preventDefault();
     cancelNewCampaign();
@@ -5439,6 +5469,16 @@
       dom.settingsSoundButton.setAttribute("aria-pressed", String(settings.sound));
       dom.settingsSoundButton.setAttribute("aria-label", settings.sound ? "Turn sound off" : "Turn sound on");
     }
+    const volumePercent = Math.round(settings.volume * 100);
+    if (dom.settingsVolumeInput) {
+      dom.settingsVolumeInput.min = String(Math.round(CONFIG.audio.minVolume * 100));
+      dom.settingsVolumeInput.max = String(Math.round(CONFIG.audio.maxVolume * 100));
+      dom.settingsVolumeInput.step = String(Math.round(CONFIG.audio.volumeStep * 100));
+      dom.settingsVolumeInput.value = String(volumePercent);
+      dom.settingsVolumeInput.setAttribute("aria-valuenow", String(volumePercent));
+      dom.settingsVolumeInput.setAttribute("aria-valuetext", `${volumePercent} percent`);
+    }
+    if (dom.settingsVolumeValue) dom.settingsVolumeValue.textContent = `${volumePercent}%`;
     const effectsText = settings.reducedEffects ? "Reduced" : "Full";
     if (dom.settingsEffectsButton) {
       dom.settingsEffectsButton.textContent = effectsText;

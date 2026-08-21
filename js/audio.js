@@ -14,7 +14,15 @@
       this.failed = false;
       this.activeNodes = 0;
       this.maxNodes = Math.min(24, Math.max(1, Math.floor(config.maxNodes || 24)));
-      this.volume = clamp(Number(config.volume) || 0.32, 0, 1);
+      const configuredVolume = Number(config.volume);
+      const defaultVolume = Number(ND.CONFIG && ND.CONFIG.audio && ND.CONFIG.audio.defaultVolume);
+      this.volume = clamp(
+        Number.isFinite(configuredVolume)
+          ? configuredVolume
+          : Number.isFinite(defaultVolume) ? defaultVolume : 0.8,
+        0,
+        1
+      );
       this.lastCueAt = Object.create(null);
       this.nextAmbientAt = 0;
       this.ambientStep = 0;
@@ -91,6 +99,22 @@
 
     setEnabled(enabled) {
       this.setMuted(!enabled);
+    }
+
+    setVolume(volume) {
+      const next = Number(volume);
+      if (!Number.isFinite(next)) return this.volume;
+      this.volume = clamp(next, 0, 1);
+      if (!this.context || !this.master) return this.volume;
+      const now = this.context.currentTime;
+      const target = this.muted ? 0 : this.volume;
+      try {
+        this.master.gain.cancelScheduledValues(now);
+        this.master.gain.setTargetAtTime(target, now, 0.025);
+      } catch {
+        this.master.gain.value = target;
+      }
+      return this.volume;
     }
 
     canPlay() {

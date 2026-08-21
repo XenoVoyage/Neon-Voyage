@@ -2,6 +2,22 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.21a] — 2026-08-21
+
+### Added
+
+- Added a persistent accessible 0–100% master-volume slider to Settings, with live feedback and exact explicit-silence support.
+
+### Changed
+
+- Raised the default synthesized-audio master level from 32% to 80% while preserving mute behavior, the 24-node ceiling, cue cooldowns, and dependency-free offline playback.
+- Replaced decorative alien engine and aim strokes, raster halos, rotating dashed player shields, magnetic-shard rings, duplicate impact circles, and square debris with attached gradient exhaust, soft state auras, raster-led impacts, and rounded material particles.
+
+### Fixed
+
+- Preserved legacy high-score and sound/effects records without rewriting them on boot; their missing volume preference now safely adopts the louder default and persists only after a settings change.
+- Kept functional warnings, ranges, fracture state, and boss reflection cues distinct from static object art while preventing obsolete procedural decoration from being painted over raster-backed ships and hazards.
+
 ## [v2026.8.21] — 2026-08-21
 
 ### Added

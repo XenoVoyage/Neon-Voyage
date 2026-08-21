@@ -418,6 +418,64 @@ module.exports = function register(test) {
     assert.deepEqual([...new Set(drawn)].sort(), Object.values(expected).sort());
   });
 
+  test("raster-backed gameplay uses material effects instead of legacy decorative line overlays", () => {
+    const browser = loadVisualRuntime();
+    const canvas = browser.elements.get("game");
+    const context = canvas.getContext("2d");
+    const renderer = new browser.window.ND.Renderer(canvas);
+    const camera = { x: 0, y: 0 };
+    let strokes = 0;
+    let rectangles = 0;
+    let rasterDraws = 0;
+    context.stroke = () => { strokes += 1; };
+    context.fillRect = () => { rectangles += 1; };
+    context.drawImage = () => { rasterDraws += 1; };
+
+    for (const type of ["scout", "striker", "bomber", "carrier", "lancer", "gunship", "broodCarrier"]) {
+      strokes = 0;
+      rasterDraws = 0;
+      renderer.drawAlien({
+        x: 0, y: 0, radius: 24, type, heading: 0, phase: 0,
+        aimAngle: Math.PI * 0.25, state: "approach"
+      }, camera, 1);
+      assert.equal(rasterDraws, 1, `${type} did not use its authored raster`);
+      assert.equal(strokes, 0, `${type} retained decorative engine, aim, or outline strokes`);
+    }
+
+    strokes = 0;
+    renderer.drawShip({
+      x: 0, y: 0, angle: 0, engine: 1, invulnerable: 0,
+      hull: 100, maxHull: 100, shield: 80, aegisTimer: 20
+    }, camera, 1, false, {});
+    assert.equal(strokes, 0, "raster player shield retained a rotating dashed line");
+
+    strokes = 0;
+    renderer.drawAsteroid({
+      x: 0, y: 0, radius: 30, kind: "auricShard", hazardVariant: "magnetic",
+      rotation: 0, phase: 0, points: [], health: 3, maxHealth: 3, hitFlash: 0
+    }, camera, 1);
+    assert.equal(strokes, 0, "raster magnetic shard retained a dashed decorative ring");
+
+    strokes = 0;
+    rectangles = 0;
+    renderer.drawEffects([
+      {
+        x: 0, y: 0, type: "ring", layer: "front", color: "#8ffcff",
+        life: 0.2, maxLife: 0.3, radius: 20, startRadius: 4, targetRadius: 48
+      },
+      {
+        x: 10, y: 10, type: "particle", layer: "front", color: "#ff5577",
+        life: 0.2, maxLife: 0.3, size: 5
+      }
+    ], camera, "front");
+    assert.equal(strokes, 0, "authored impact raster retained a duplicate circle");
+    assert.equal(rectangles, 0, "generic debris retained the old square-pixel treatment");
+
+    const source = readProject("js/render.js");
+    assert.doesNotMatch(source, /ctx\.moveTo\(4,\s*0\)[\s\S]{0,180}alien\.radius/,
+      "the obsolete alien aim spine remains in renderer source");
+  });
+
   test("all seven scene handoffs interpolate continuously, including the sector wrap", () => {
     const debug = loadRenderer();
     const activeMap = (scene) => new Map(scene.bodies.filter((body) => body.alpha > 1e-10).map((body) => [body.id, body]));
