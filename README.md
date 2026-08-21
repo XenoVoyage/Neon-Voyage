@@ -1,9 +1,9 @@
 # Neon Voyage
 
-[![Version v2026.8.21b](https://img.shields.io/badge/version-v2026.8.21b-63f7f0)](CHANGELOG.md)
+**Version v2026.8.21b** · [MIT License](LICENSE)
+
 [![Offline audit](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/ci.yml)
 [![GitHub Pages](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml/badge.svg)](https://github.com/XenoVoyage/Neon-Voyage/actions/workflows/pages.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-c8d3e8)](LICENSE)
 
 Neon Voyage is a fast, finite-arena space shooter about leaving Earth, crossing a dangerous asteroid frontier, and surviving first contact with an alien fleet.
 

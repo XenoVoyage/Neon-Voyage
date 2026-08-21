@@ -92,6 +92,7 @@ The right touch stick has one finite gesture state. It starts pending at neutral
 - All runtime resources are repository-local relative paths so direct-file and `/Neon-Voyage/` Pages hosting both work.
 - The CSP rejects network connections, frames, workers, forms, remote code, and dynamic code.
 - The Pages workflow verifies and uploads the repository root without transforming runtime files.
+- GitHub Actions use immutable reviewed commit pins, least-privilege workflow permissions, disabled checkout credentials, and an exact Node.js verification patch. They install no repository package or runtime dependency; the current audit records the reviewed action revisions and licenses.
 - Audio unlock, fullscreen, orientation lock, local storage, and pointer capture may fail; their failure paths must remain safe.
 
 See [`SECURITY.md`](../SECURITY.md) for reporting scope.

@@ -1,8 +1,11 @@
 # Neon Voyage contributor instructions
 
+**Project Engineering Standard:** v1.0
+**Standard Status:** adopting
+
 Read this file at the start of every task, in full, before inspecting or changing the project. Re-read it after changing branches or updating this file. These rules are the canonical handoff for human and AI contributors without access to earlier conversations.
 
-## 1. Priorities
+## 1. Priorities and command contract
 
 Apply these priorities in order:
 
@@ -13,6 +16,16 @@ Apply these priorities in order:
 5. Verify honestly before publishing.
 
 Inspect `git status`, the connected code path, its tests, and the relevant documentation before editing. Preserve unrelated work. Never infer current behavior from filenames, screenshots, or old release notes alone.
+
+| Need | Exact command or action |
+| --- | --- |
+| Play locally | Open `index.html` directly in a modern browser; no server or installation is required |
+| Build | None; the repository root is the deployable artifact |
+| Complete verification | `node tests/run.js` |
+| Frozen-file integrity | `sha256sum --check SHA256SUMS` |
+| Whitespace review | `git diff --check` |
+
+Done means the intended behavior, saved data, accessibility, security, and offline boundaries remain intact; affected canonical owners and regressions are current; applicable rendered/manual evidence is recorded honestly; the complete frozen gate and checksum pass; the full task diff has been reviewed; required pull-request checks and real approvals pass without bypass; and any authorized deployment is verified before branch cleanup.
 
 ## 2. Cold start
 
@@ -60,6 +73,11 @@ Use `CONTRIBUTING.md` as the short public entrypoint, not as a substitute for th
 | Capped synthesized audio | `js/audio.js` |
 | Layout and responsive presentation | `styles.css` |
 | Intended player experience | `docs/GAME_DESIGN.md` |
+| Runtime version | `js/config.js`; intentional mirrors are listed in Section 9 and protected by tests |
+| Current project state | `docs/STATUS.md` |
+| Current frozen evidence | `AUDIT.md` |
+| Asset provenance and limits | `docs/ASSETS.md` |
+| CI and Pages automation | `.github/workflows/`; architecture and the current audit record their boundaries |
 
 Put new logic in the file that already owns its responsibility. Generalize only after current behavior demonstrates reuse.
 
@@ -133,7 +151,7 @@ Report every deleted branch.
 
 Use these terms precisely:
 
-- The **runtime version** is the player-visible build label. `js/config.js` is canonical; the visible UI, `VERSION.txt`, README badge, changelog, audit, and permanent assertions are required mirrors.
+- The **runtime version** is the player-visible build label. `js/config.js` is canonical; the visible UI, `VERSION.txt`, README version line, changelog, audit, and permanent assertions are required mirrors.
 - A **deployment** is a GitHub Pages publication of a `main` commit. It may contain documentation-only changes and does not by itself create a release.
 - A **release** is an intentionally published runtime snapshot with a matching immutable Git tag. A GitHub Release may attach notes and artifacts to that tag; neither a changelog heading nor a version badge proves that it exists.
 
