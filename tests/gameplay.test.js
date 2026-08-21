@@ -685,7 +685,7 @@ module.exports = function register(test) {
   });
 
   test("an Auric Colossus creates an exact one-to-three-to-six mixed hazard tree", () => {
-    const { game } = boot(361);
+    const { game, CONFIG } = boot(361);
     const state = game.state;
     game.setStage(4, 1);
     clearEntities(state);
@@ -696,7 +696,8 @@ module.exports = function register(test) {
     const parent = game.spawnAsteroid("auricColossus", {
       x: 420,
       y: 0,
-      speed: 0,
+      velocityAngle: 0.35,
+      speed: 32,
       health: 1,
       required: true,
       generation: data.generation,
@@ -705,15 +706,37 @@ module.exports = function register(test) {
     });
     data.waveRequiredTotal = 1;
     data.stageRequiredTotal = 1;
+    assert.ok(Math.hypot(parent.vx, parent.vy) > 0, "Auric drift precondition was not established");
 
     game.damageThreat(parent, 2, "player");
     const firstGeneration = state.asteroids.filter((item) => !item.dead);
     assert.equal(firstGeneration.length, 3);
     assert.ok(firstGeneration.every((item) => item.kind === "auricShard" && item.splitRemaining === 1));
+    const firstSplit = CONFIG.asteroids.auricColossus.split;
+    assert.ok(firstGeneration.every((item) => {
+      const relativeVx = item.vx - parent.vx * firstSplit.velocityInheritance;
+      const relativeVy = item.vy - parent.vy * firstSplit.velocityInheritance;
+      const relativeSpeed = Math.hypot(relativeVx, relativeVy);
+      return relativeSpeed >= firstSplit.separationSpeed * 0.72 - 1e-9 &&
+        relativeSpeed <= firstSplit.separationSpeed * 1.22 + 1e-9;
+    }), "Auric Colossus fragments did not inherit its motion with bounded slow separation");
     assert.deepEqual(Array.from(new Set(firstGeneration.map((item) => item.hazardVariant))).sort(), ["explosive", "magnetic"]);
     assert.equal(data.waveRequiredTotal, 4);
 
-    firstGeneration.forEach((item) => game.killThreat(item, "player"));
+    const secondSplit = CONFIG.asteroids.auricShard.split;
+    for (const item of firstGeneration) {
+      const before = state.asteroids.length;
+      game.killThreat(item, "player");
+      const children = state.asteroids.slice(before);
+      assert.equal(children.length, 2);
+      assert.ok(children.every((child) => {
+        const relativeVx = child.vx - item.vx * secondSplit.velocityInheritance;
+        const relativeVy = child.vy - item.vy * secondSplit.velocityInheritance;
+        const relativeSpeed = Math.hypot(relativeVx, relativeVy);
+        return relativeSpeed >= secondSplit.separationSpeed * 0.72 - 1e-9 &&
+          relativeSpeed <= secondSplit.separationSpeed * 1.22 + 1e-9;
+      }), "Auric Shard fragments did not inherit parent motion with bounded slow separation");
+    }
     const finalGeneration = state.asteroids.filter((item) => !item.dead);
     assert.equal(finalGeneration.length, 6);
     assert.ok(finalGeneration.every((item) => item.kind === "auricShard" && item.splitRemaining === 0));

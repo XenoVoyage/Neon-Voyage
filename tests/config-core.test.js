@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.21c configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.21c");
+  test("Neon Voyage v2026.8.21d configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.21d");
     assert.ok(CONFIG.presentation.gameoverEffectDuration >= 1 && CONFIG.presentation.gameoverEffectDuration <= 2);
     assert.ok(CONFIG.mobileControls.autoAimHoldSeconds > 0 && CONFIG.mobileControls.autoAimHoldSeconds <= 0.25);
     assert.deepEqual(JSON.parse(JSON.stringify(CONFIG.audio)), {
@@ -213,10 +213,18 @@ module.exports = function register(test) {
       count: 3,
       into: "auricShard",
       radiusScale: 0.46,
-      generations: 2
+      generations: 2,
+      separationSpeed: 38,
+      velocityInheritance: 0.86
     });
-    assert.equal(CONFIG.asteroids.auricShard.split.count, 2);
-    assert.equal(CONFIG.asteroids.auricShard.split.generations, 1);
+    assert.deepEqual(JSON.parse(JSON.stringify(CONFIG.asteroids.auricShard.split)), {
+      count: 2,
+      into: "auricShard",
+      radiusScale: 0.52,
+      generations: 1,
+      separationSpeed: 26,
+      velocityInheritance: 0.9
+    });
     assert.deepEqual(JSON.parse(JSON.stringify(CONFIG.asteroids.auricShard.variants)), {
       explosive: { blastRadius: 120, damage: 24 },
       magnetic: { range: 300, acceleration: 240, totalAccelerationCap: 360, speedCap: 360 }

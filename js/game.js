@@ -4369,19 +4369,24 @@
     }
   }
 
-  function spawnFragments(parent, count, kind, radius, speed, circular, splitRemaining) {
+  function spawnFragments(parent, count, kind, radius, speed, circular, splitRemaining, velocityInheritance) {
     const available = Math.max(0, CONFIG.caps.asteroids - state.asteroids.length);
     const total = Math.min(count, available);
     const offset = rng.range(0, TAU);
+    const inheritedScale = clamp(Number(velocityInheritance) || 0, 0, 1);
+    const inheritsVelocity = inheritedScale > 0;
+    const inheritedVx = (Number(parent.vx) || 0) * inheritedScale;
+    const inheritedVy = (Number(parent.vy) || 0) * inheritedScale;
     let spawned = 0;
     for (let index = 0; index < total; index += 1) {
       const angle = circular ? offset + index / total * TAU : offset + index / Math.max(1, total) * TAU + rng.range(-0.2, 0.2);
       const spawnDistance = Math.max(parent.radius + radius + 3, radius * (total > 4 ? 2.25 : 1.35));
+      const separationSpeed = speed * rng.range(circular ? 0.96 : 0.72, circular ? 1.04 : 1.22);
       const child = spawnAsteroid(kind, {
         x: parent.x + Math.cos(angle) * spawnDistance,
         y: parent.y + Math.sin(angle) * spawnDistance,
         velocityAngle: angle,
-        speed: speed * rng.range(circular ? 0.96 : 0.72, circular ? 1.04 : 1.22),
+        speed: inheritsVelocity ? 0 : separationSpeed,
         radius,
         health: kind === "auricShard" ? undefined : 1,
         threatCost: 0,
@@ -4393,7 +4398,13 @@
         waveIndex: parent.waveIndex,
         collisionGrace: CONFIG.combatField.asteroidCollisionGraceSeconds
       });
-      if (child) spawned += 1;
+      if (child && inheritsVelocity) {
+        child.vx = inheritedVx + Math.cos(angle) * separationSpeed;
+        child.vy = inheritedVy + Math.sin(angle) * separationSpeed;
+      }
+      if (child) {
+        spawned += 1;
+      }
     }
     // Required descendants expand the finite objective before the parent is credited as cleared.
     if (spawned && parent.required && state.encounterData && parent.generation === state.encounterData.generation) {
@@ -4441,7 +4452,17 @@
       addRing(entity.x, entity.y, "#ff9a45", 5, 0.55, Number(burstData.blastRadius) || 110);
     } else if (entity.kind && definition.split && entity.splitRemaining > 0) {
       const radius = Math.max(14, entity.radius * (definition.split.radiusScale || 0.42));
-      spawnFragments(entity, definition.split.count, definition.split.into || "rock", radius, 135, false, entity.splitRemaining - 1);
+      const separationSpeed = Math.max(1, Number(definition.split.separationSpeed) || 135);
+      spawnFragments(
+        entity,
+        definition.split.count,
+        definition.split.into || "rock",
+        radius,
+        separationSpeed,
+        false,
+        entity.splitRemaining - 1,
+        definition.split.velocityInheritance
+      );
     }
     if (entity.kind && definition.deathShrapnel) {
       const shardCount = spawnAsteroidShrapnel(entity, definition.deathShrapnel);

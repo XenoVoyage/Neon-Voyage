@@ -91,7 +91,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.21c",
+    version: "v2026.8.21d",
 
     world: {
       fixedStep: 1 / 60,
@@ -486,7 +486,14 @@
         contactDamage: 52,
         score: 850,
         threatCost: 11,
-        split: { count: 3, into: "auricShard", radiusScale: 0.46, generations: 2 }
+        split: {
+          count: 3,
+          into: "auricShard",
+          radiusScale: 0.46,
+          generations: 2,
+          separationSpeed: 38,
+          velocityInheritance: 0.86
+        }
       },
       auricShard: {
         label: "Auric Shard",
@@ -496,7 +503,14 @@
         contactDamage: 34,
         score: 210,
         threatCost: 3,
-        split: { count: 2, into: "auricShard", radiusScale: 0.52, generations: 1 },
+        split: {
+          count: 2,
+          into: "auricShard",
+          radiusScale: 0.52,
+          generations: 1,
+          separationSpeed: 26,
+          velocityInheritance: 0.9
+        },
         variants: {
           explosive: { blastRadius: 120, damage: 24 },
           magnetic: { range: 300, acceleration: 240, totalAccelerationCap: 360, speedCap: 360 }

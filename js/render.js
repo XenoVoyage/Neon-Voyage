@@ -60,6 +60,7 @@
     explosionBurst: "assets/explosion-burst.webp",
     shieldGenerator: "assets/shield-generator.webp",
     pickupChassis: "assets/pickup-chassis.webp",
+    pickupOverdrive: "assets/pickup-overdrive.webp",
     guardianDrone: "assets/guardian-drone.webp",
     orbitBlade: "assets/orbit-blade.webp",
     playerMine: "assets/player-mine.webp",
@@ -2701,10 +2702,13 @@
       const shieldArt = pickup.kind === "shield" && readyImage(this.assets.shieldGenerator)
         ? this.assets.shieldGenerator
         : null;
-      const chassisArt = pickup.kind !== "shield" && readyImage(this.assets.pickupChassis)
+      const overdriveArt = pickup.kind === "rapid" && readyImage(this.assets.pickupOverdrive)
+        ? this.assets.pickupOverdrive
+        : null;
+      const chassisArt = pickup.kind !== "shield" && pickup.kind !== "rapid" && readyImage(this.assets.pickupChassis)
         ? this.assets.pickupChassis
         : null;
-      const pickupArt = shieldArt || chassisArt;
+      const pickupArt = shieldArt || overdriveArt || chassisArt;
       const phase = Number(pickup.phase) || 0;
       const pulse = this.reduced ? 1 : 1 + Math.sin(time * 4 + phase) * 0.045;
       if (pickupArt) {
@@ -2740,7 +2744,7 @@
       ctx.fill();
       ctx.globalCompositeOperation = "source-over";
       ctx.globalAlpha = 1;
-      drawPickupGlyph(ctx, pickup.kind, color);
+      if (!overdriveArt) drawPickupGlyph(ctx, pickup.kind, color);
 
       const labelWidth = clamp(label.length * 5.6 + 12, 34, 58);
       ctx.fillStyle = "rgba(2, 8, 18, 0.92)";

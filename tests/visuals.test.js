@@ -410,6 +410,7 @@ module.exports = function register(test) {
       explosionBurst: "assets/explosion-burst.webp",
       shieldGenerator: "assets/shield-generator.webp",
       pickupChassis: "assets/pickup-chassis.webp",
+      pickupOverdrive: "assets/pickup-overdrive.webp",
       guardianDrone: "assets/guardian-drone.webp",
       orbitBlade: "assets/orbit-blade.webp",
       playerMine: "assets/player-mine.webp",
@@ -514,6 +515,15 @@ module.exports = function register(test) {
       rotation: 0, phase: 0, points: [], health: 3, maxHealth: 3, hitFlash: 0
     }, camera, 1);
     assert.equal(strokes, 0, "raster magnetic shard retained a dashed decorative ring");
+
+    strokes = 0;
+    rasterDraws = 0;
+    const rapidDraws = [];
+    context.drawImage = (image) => { rasterDraws += 1; rapidDraws.push(image.src); };
+    renderer.drawPickup({ x: 0, y: 0, kind: "rapid", phase: 0 }, camera, 1);
+    assert.equal(rasterDraws, 1, "Overdrive did not use its authored raster");
+    assert.deepEqual(rapidDraws, ["assets/pickup-overdrive.webp"]);
+    assert.equal(strokes, 0, "ready Overdrive raster retained the legacy three-line glyph");
 
     strokes = 0;
     rectangles = 0;
