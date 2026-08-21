@@ -545,6 +545,64 @@ module.exports = function register(test) {
       "the obsolete alien aim spine remains in renderer source");
   });
 
+  test("alien rasters remain readable at play scale and expose progressive damage without line overlays", () => {
+    const browser = loadVisualRuntime();
+    const debug = browser.window.ND.RenderDebug;
+    assert.equal(typeof debug.alienDamageStage, "function");
+    assert.equal(debug.alienDamageStage({ health: 100, maxHealth: 100 }), 0);
+    assert.equal(debug.alienDamageStage({ health: 59, maxHealth: 100 }), 1);
+    assert.equal(debug.alienDamageStage({ health: 34, maxHealth: 100 }), 2);
+    assert.equal(debug.alienDamageStage({ health: 17, maxHealth: 100 }), 3);
+    assert.equal(debug.alienDamageStage({ health: NaN, maxHealth: 100 }), 0);
+
+    const canvas = browser.elements.get("game");
+    const context = canvas.getContext("2d");
+    const renderer = new browser.window.ND.Renderer(canvas);
+    const camera = { x: 0, y: 0 };
+    const expectedSizes = {
+      scout: [76, 51], striker: [84, 56], bomber: [96, 64], carrier: [122, 81],
+      lancer: [90, 60], gunship: [114, 76], broodCarrier: [154, 103]
+    };
+    const rasterSizes = {};
+    context.drawImage = (image, _x, _y, width, height) => {
+      if (image.src.includes("alien-")) rasterSizes[image.src] = [width, height];
+    };
+    for (const type of Object.keys(expectedSizes)) {
+      renderer.drawAlien({
+        id: 40, x: 0, y: 0, radius: 24, type, heading: 0, phase: 0,
+        health: 100, maxHealth: 100, state: "approach"
+      }, camera, 1);
+      const source = debug.gameplayAssetSource(`alien${type[0].toUpperCase()}${type.slice(1)}`);
+      assert.deepEqual(rasterSizes[source], expectedSizes[type], `${type} play-scale raster size`);
+    }
+
+    let arcs = 0;
+    let radialGradients = 0;
+    let strokes = 0;
+    context.arc = () => { arcs += 1; };
+    context.stroke = () => { strokes += 1; };
+    const createRadialGradient = context.createRadialGradient;
+    context.createRadialGradient = (...args) => {
+      radialGradients += 1;
+      return createRadialGradient(...args);
+    };
+    renderer.drawAlien({
+      id: 41, x: 0, y: 0, radius: 17, type: "scout", heading: 0, phase: 0,
+      health: 100, maxHealth: 100, state: "approach"
+    }, camera, 1);
+    const healthyArcs = arcs;
+    const healthyGradients = radialGradients;
+    arcs = 0;
+    radialGradients = 0;
+    renderer.drawAlien({
+      id: 41, x: 0, y: 0, radius: 17, type: "scout", heading: 0, phase: 0,
+      health: 17, maxHealth: 100, state: "approach"
+    }, camera, 1);
+    assert.ok(arcs >= healthyArcs + 4, "critical alien damage did not add attached smoke and burn emission");
+    assert.ok(radialGradients >= healthyGradients + 1, "critical alien damage did not add its soft internal burn glow");
+    assert.equal(strokes, 0, "alien readability or damage state restored a procedural line overlay");
+  });
+
   test("all seven scene handoffs interpolate continuously, including the sector wrap", () => {
     const debug = loadRenderer();
     const activeMap = (scene) => new Map(scene.bodies.filter((body) => body.alpha > 1e-10).map((body) => [body.id, body]));

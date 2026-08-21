@@ -2,6 +2,17 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.21e] — 2026-08-21
+
+### Added
+
+- Added three progressive smoke-and-internal-fire damage states to every ordinary alien class, attached to the existing realistic raster silhouettes without outlines or decorative line work.
+
+### Changed
+
+- Increased ordinary alien durability and modestly enlarged their on-field presentation so first contact and advanced roles survive long enough to communicate their attacks and damage state.
+- Reduced ordinary Carrier and Brood Carrier living-child ceilings to three and four respectively, keeping the stronger contacts deliberate and bounded instead of increasing screen density.
+
 ## [v2026.8.21d] — 2026-08-21
 
 ### Added
