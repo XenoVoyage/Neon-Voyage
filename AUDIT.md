@@ -1,54 +1,52 @@
 # Neon Voyage v2026.8.21e — source audit
 
 - Audited: 2026-08-21
-- Scope: ordinary-alien durability, density, readability, and progressive damage presentation
+- Scope: current-renderer README captures and canonical visual-documentation accuracy
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 194/194 dependency-free tests and the 94-entry checksum manifest verified**
-- Player-facing behavior change: **yes; runtime label advances from `v2026.8.21d`**
+- Result: **PASS — 195/195 dependency-free tests and the 94-entry checksum manifest verified**
+- Player-facing behavior change: **no; runtime label remains `v2026.8.21e`**
 
-Observed locally with Node v24.19.0 on Linux 6.18.35 x86_64. Node is used only by the dependency-free verification harness and is not part of the browser game.
+Observed locally with Node v24.19.0 on Linux 6.18.35 x86_64. Node is used only by the dependency-free verification and documentation-capture harnesses and is not part of the browser game.
 
 ## Baseline
 
-- Clean `main` started at `22425154a5073b75eb1e8eb880bf65d678a1dc11`, matching `origin/main`.
+- Clean `main` started at `6feb2eae88e0c437e3a5bb8abcbcbf78817cdd34`, matching `origin/main`.
 - GitHub had no open issue or pull request and only the `main` branch.
-- Post-merge Offline audit run `32513844128` and Pages run `32513844025` passed on the baseline commit.
-- The deployed baseline returned HTTP 200 and reported `v2026.8.21d`.
+- Post-merge Offline audit run `32516611426` and Pages run `32516611491` passed on the baseline commit.
+- The deployed baseline returned HTTP 200 and reported `v2026.8.21e`; a real New Game, primary-fire action, Void Pulse action, and Settings inspection completed without a page-origin console error or warning.
 
 ## Substantiated problems
 
-- At Sector 1 Stage 3, the original three-health Scout scaled to 3.30 health and required only four Mk I Pulse hits, about 0.54 seconds between first and lethal shot before the already-earned Homing Salvo was counted. This did not leave enough time for first contact to communicate its attack or damage state.
-- Authored root formations were already small: Stage 3 opens with one Scout and later alien waves use three or four roots. Reducing root counts would create empty pacing rather than solve excess density.
-- Carrier ceilings could add four Scouts or six Lancers to those small root formations. With stronger children, keeping those ceilings would create the crowding the durability pass is intended to avoid.
-- All seven existing alien WebPs were inspected together and at their actual renderer sizes. They already form a distinct violet/green biomechanical family, so replacement art was not substantiated; the smallest dark silhouettes needed stronger play-scale presentation instead.
+- Both README gameplay images were the exact 1200×675 files documented as predating the complete realistic gameplay-art and expanded-field passes. Visual inspection confirmed cyan procedural polygon asteroids in the Earth capture and the obsolete outlined Harrower silhouette in the command capture.
+- `docs/GAME_DESIGN.md` still claimed a six-living-child Brood Carrier lineage cap even though `js/config.js`, architecture documentation, tests, and the deployed `v2026.8.21e` behavior use four.
+- The README alternative text described only generic asteroid and Harrower encounters and did not identify the current raster threats, Rapid device, or boss nodes now shown.
 
-## Candidate behavior
+## Candidate result
 
-### Fewer, tougher contacts
+### Current public gameplay evidence
 
-- Base health is now 7/12/17/30/15/27/60 for Scout, Striker, Bomber, Carrier, Lancer, Gunship, and Brood Carrier. The first Scout therefore requires at least eight unamplified Mk I Pulse hits at Stage 3.
-- Stage roots and their seeded order are unchanged. Ordinary Carrier living children are capped at three and Brood Carrier Lancers at four, including hard-cull requeues and lineage restoration.
-- Contact damage, speeds, cooldowns, attack state machines, rewards, objective ownership, boss definitions, and the global 30-alien cap are unchanged.
+- `docs/assets/neon-voyage-earth-orbit.webp` is a fresh 1200×675 Stage 1 capture from deterministic seed 2101. It shows the realistic rock, crystal, and volatile bodies, the dedicated turbine-shaped Rapid pickup without the rejected three-line glyph, local plasma fire, the Interceptor, Earth, and readable run status.
+- `docs/assets/neon-voyage-command-arena.webp` is a fresh 1200×675 Stage 5 capture from deterministic seed 5105. It shows the realistic Harrower and live nodes, a damaged Striker escort, exchanged raster projectiles, the command-world scene, and readable boss status.
+- Both scenes came from the actual `ND.game` state and `ND.Renderer`. An untracked local QA harness attached the repository test-browser contract to a real Canvas, decoded repository-local WebPs, and composed HUD values from the same game state and current interface labels. Sharp encoded the unchanged composed frames to WebP. No generated or unrelated scene was substituted.
+- README alternative text now describes the depicted action. `docs/ASSETS.md` records the seeds, dimensions, environment, method, dependency boundary, and exact capture contract.
 
-### Raster-led readability and damage
+### Canonical accuracy and regression
 
-- Ordinary alien draw sizes increase by 8–12 pixels in width while collision radii remain unchanged; the Scout is now presented at the same 76×51 px footprint as the player interceptor but retains its unrelated biomechanical silhouette.
-- A localized low-opacity violet/green signature reinforces the existing emissive core. It is a filled radial material glow, not a hard halo, outline, shield ring, or aim line.
-- Health ratios below 60%, 35%, and 18% select three deterministic damage stages. Smoke, filled flame, and a soft internal burn glow stay attached to an ID-derived hull location and use render time only; they write no simulation state and consume no randomness.
-- Reduced effects keep fewer smoke puffs and static/lower emission. Pending or failed alien images still use the established procedural fallback without receiving raster-only overlays.
+- The Brood Carrier design sentence now matches the configured four-child lifetime/lineage ceiling and its hard-cull behavior.
+- Offline coverage parses VP8, VP8L, and VP8X dimensions without an image dependency and freezes both documentation captures at 1200×675, in addition to the existing WebP signature, unique-reference, and 256 KiB checks.
+- A dedicated canonical-documentation regression rejects obsolete capture wording and any return to a six-child Brood claim.
 
 ## Compatibility and boundaries
 
 | Area | Candidate result |
 | --- | --- |
-| Runtime surface | Dependency-free HTML/CSS/classic JavaScript/Canvas/Web Audio architecture preserved; no file or asset added |
-| Offline/security | Restrictive CSP, relative local resources, and zero runtime network requests preserved |
-| Determinism | Health and child ceilings remain frozen config; damage presentation derives only from health, ID, reduced-effects state, and render time |
-| Caps/objectives | Authored root totals, objective accounting, lineage requeues, and global entity caps preserved; child ceilings lowered |
-| Saved progress | Preference key, progress key, strict schema 4, and schema-3/schema-2/schema-1 migrations unchanged |
-| Input/accessibility | Keyboard, mouse, touch, gamepad, focus, orientation, off-screen cues, and reduced effects retained |
-| Visual direction | Existing realistic alien rasters remain authoritative; no generic procedural line, outline, hard halo, or duplicated silhouette added |
-| Audio | Mix, limiter, cues, 80% default, slider, mute, cooldown, and 24-node cap unchanged |
+| Runtime behavior | HTML, CSS, JavaScript, balance, rendering, audio, input, persistence, and runtime assets are byte-for-byte unchanged |
+| Versioning | Documentation-only maintenance keeps `v2026.8.21e`; no changelog heading, tag, or GitHub Release is added |
+| Offline/security | Restrictive CSP, relative local resources, direct-file startup, Pages subpath hosting, and zero runtime network requests are unchanged |
+| Determinism and caps | Fixed-step simulation, seeded state, entity caps, objective accounting, and the complete seven-stage campaign are unchanged |
+| Saved progress | Preference key, progress key, strict schema 4, and schema-3/schema-2/schema-1 migrations are unchanged |
+| Input/accessibility | Keyboard, mouse, touch, gamepad, focus, orientation, reduced effects, feedback options, and meaningful image alternatives remain covered |
+| Repository surface | Exactly two local README WebPs remain; both are 1200×675 and below the 256 KiB per-image limit |
 
 ## Engineering-standard disposition
 
@@ -56,16 +54,15 @@ Standard status remains `adopting` because the active GitHub ruleset reports `re
 
 ## Frozen verification
 
-The first complete candidate pass verified all `194/194` tests with the 94-entry manifest. After this evidence record was finalized, the manifest and entire gate were rerun on the exact frozen candidate.
+The focused offline documentation suite passed `16/17` before manifest regeneration, with only the intentionally stale checksum failing. A complete pre-freeze pass then passed all non-checksum tests and the long deterministic stress run, with only an incorrectly prefixed first manifest generation rejected. After correcting its paths, the complete candidate passed `195/195`. The evidence-inclusive candidate then passed `195/195` again with the exact 94-entry manifest.
 
 | Check | Observed result |
 | --- | --- |
-| Focused config and renderer suites | PASS — `35/35`; includes exact durability/child ceilings, at-least-eight-hit first contact, play-scale raster sizes, all three damage thresholds, filled emission, and zero line overlay |
-| Focused deterministic gameplay suite | PASS — `72/72`; includes carrier lineage/requeue ceilings, all alien attack roles, Stage 1–7 journey, both bosses, caps, and objectives |
-| Actual-size raster inspection | PASS — all seven alien WebPs inspected together and on a dark 880×270 play-scale sheet; distinct biomechanical silhouettes and clean alpha retained |
-| `node tests/run.js` | PASS — `194/194`; includes syntax, offline/security, version and asset integrity, exact alien durability/child ceilings, all alien roles and damage states, saved-data migrations, responsive input/accessibility, Stage 1–7 weapon journey, both bosses, and long deterministic stress |
+| Focused offline documentation suite | PASS — every reference, WebP signature, exact 1200×675 dimension, image-size cap, alternative-text, current-capture, and four-child canonical assertion passed; the expected stale-manifest check was resolved before freeze |
+| Current-renderer visual inspection | PASS — both full-size WebPs were inspected; all named ships, asteroids, projectiles, pickup, boss nodes, effects, worlds, and HUD values are legible, use current raster art, and contain no obsolete decorative line overlays |
+| `node tests/run.js` | PASS — `195/195`; includes syntax, offline/security, exact asset references, saved-data migrations, responsive input/accessibility, deterministic Stage 1–7 weapon journey, Titan/Harrower/Leviathan coverage, entity caps, and long stress |
 | `sha256sum --check SHA256SUMS` | PASS — all 94 release entries verified |
 | `git diff --check` | PASS — no whitespace error |
 | Candidate browser preview | Unavailable; repository workflow publishes Pages only from merged `main` |
 
-No physical phone/iPad session, subjective audio listening, uninterrupted human-controlled seven-stage completion, immutable tag, or GitHub Release is claimed. A public merge still requires the required pull-request audit, post-merge audit, Pages deployment, exact live-version check, one real Play interaction, alien-stage visual inspection, Settings verification, and page-origin console review.
+No physical phone/iPad session, subjective audio listening, uninterrupted human-controlled seven-stage completion, candidate browser preview, immutable tag, or GitHub Release is claimed. A public merge still requires the required pull-request audit, post-merge audit, Pages deployment, live README and image inspection, exact live-version check, one real Play interaction, Settings verification, and page-origin console review.

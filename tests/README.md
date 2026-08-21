@@ -14,7 +14,7 @@ Node.js 22 is the minimum local verification baseline. Both GitHub workflows pin
 | Suite | Responsibility |
 | --- | --- |
 | `config-core.test.js` | Immutable seven-stage configuration and bounded audio mix/limiter values, stage-clear/touch-hold/game-over presentation timing, early Titan/alien novelty, durable alien contacts and child ceilings, two-boss cadence, five reward bands, gated powerups/modules, five milestones, crystal shrapnel, 13 Mk V systems, deterministic math, storage, bounds, and caps |
-| `offline.test.js` | CSP, local resources, repository hygiene, documentation, checksums, and workflows |
+| `offline.test.js` | CSP, local resources, repository hygiene, meaningful README references, exact 1200×675 documentation captures, canonical capture/carrier claims, checksums, and workflows |
 | `browser-smoke.test.js` | Dependency-free browser/DOM/Canvas boot, bounded material/weapon-specific audio vocabulary, lifted voice gain, limiter routing, master-gain clamping, generated Enigma preview integration, and compact accessible touch summaries |
 | `progress.test.js` | Strict schema-4 validation, strongest-loadout schema-3 twenty-to-seven compaction, exact schema-2/schema-1 migration, compatible/persistent volume and impact-feedback preferences, seven Mk V/stacked checkpoints, five milestone rewards, loadout summaries, dialogs, focus, and stage selection |
 | `mobile-input.test.js` | Floating-stick ownership and response, queued ultra-short desktop click/Space taps, delayed stationary auto-aim/manual latch/hybrid-manual priority/target cleanup, ready-only actions, Enigma input blocking, pointer failures, lifecycle cleanup, orientation, and mobile layout |

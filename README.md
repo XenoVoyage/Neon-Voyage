@@ -9,7 +9,7 @@ Neon Voyage is a fast, finite-arena space shooter about leaving Earth, crossing 
 
 ## [▶ Play Neon Voyage in your browser](https://xenovoyage.github.io/Neon-Voyage/)
 
-[![Play Neon Voyage — launch above Earth and fire through an asteroid wave.](docs/assets/neon-voyage-earth-orbit.webp)](https://xenovoyage.github.io/Neon-Voyage/)
+[![Play Neon Voyage — fire through realistic asteroid debris above Earth.](docs/assets/neon-voyage-earth-orbit.webp)](https://xenovoyage.github.io/Neon-Voyage/)
 
 ## At a glance
 
@@ -42,7 +42,7 @@ The voyage now reaches its full escalation in seven distinct stages. A finite Ti
 
 Every ship, asteroid, projectile, pickup, and impact now shares one realistic deep-space art direction. Raster-backed craft use attached gradient exhaust and soft state auras rather than old procedural line decoration; locally synthesized weapon, material-impact, and destruction cues start at an 80% master level and can be adjusted from 0–100% in Settings. Camera shake and full-screen flashes are independent, persistent options that start off.
 
-![The Neon Voyage ship confronting the Harrower across the full battlefield.](docs/assets/neon-voyage-command-arena.webp)
+![The Interceptor firing on the Harrower and its shield nodes in Stage 5.](docs/assets/neon-voyage-command-arena.webp)
 
 ## Run locally
 
