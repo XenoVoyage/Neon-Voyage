@@ -1,55 +1,53 @@
-# Neon Voyage v2026.8.21c — source audit
+# Neon Voyage v2026.8.21d — source audit
 
 - Audited: 2026-08-21
-- Scope: terminal player presentation, independent impact-feedback preferences, and synthesized-audio gain staging
+- Scope: Overdrive raster identity and natural Auric descendant presentation
 - Targets: direct `file://` launch and GitHub Pages repository-subpath hosting
-- Result: **PASS — 193/193 dependency-free tests and the 93-entry checksum manifest verified**
-- Player-facing behavior change: **yes; runtime label advances from `v2026.8.21b`**
+- Result: **PASS — 193/193 dependency-free tests and the 94-entry checksum manifest verified**
+- Player-facing behavior change: **yes; runtime label advances from `v2026.8.21c`**
 
 Observed locally with Node v24.19.0 on Linux 6.18.35 x86_64. Node is used only by the dependency-free verification harness and is not part of the browser game.
 
 ## Baseline
 
-- Clean `main` started at `879cfa2592685851a5af726f44da7c2e2369634e`, matching `origin/main`.
-- The unchanged baseline passed `192/192` tests, all 93 checksum entries, and `git diff --check`.
+- Clean `main` started at `66f25b99291fc77c396280936b2b38dd87bed4f0`, matching `origin/main`.
+- The unchanged baseline passed `193/193` tests, all 93 checksum entries, and `git diff --check` in the preceding published release gate.
 - GitHub had no open issue or pull request and only the `main` branch.
-- Offline audit #59 and Pages #32 passed on the baseline commit.
-- The deployed baseline returned HTTP 200 and reported `v2026.8.21b`.
+- Offline audit #61 and Pages #33 passed on the baseline commit.
+- The deployed baseline returned HTTP 200 and reported `v2026.8.21c`.
 
 ## Verified candidate behavior
 
-### Terminal defeat
+### Overdrive identity
 
-- The renderer now suppresses the player ship, ship fields, drones, orbit blades, and reticle for the complete `gameover` mode. Finishing the 1.2-second death presentation and exposing the dialog can no longer make the ship reappear behind it.
-- The existing logical terminal boundary is unchanged: world simulation, input, director state, score, rewards, projectiles, and randomness remain frozen while only bounded presentation effects advance.
-- A deterministic renderer regression exercises both the pending burst and the visible dialog state, followed by a live-playing positive control.
+- A dedicated local 192×192 Overdrive turbine WebP replaces the shared-chassis-plus-three-lines presentation when the new raster is ready.
+- The short readable pickup label remains, while the physical raster receives no procedural speed stripe or other duplicate silhouette work.
+- Failed or pending image loads still use the established offline procedural fallback.
 
-### Independent impact feedback
+### Natural Auric descendants
 
-- Settings now separates Visual density, Camera shake, and Screen flashes. Shake and flashes are persistent independent buttons with accessible pressed state and labels.
-- New sessions and compatible historical `neon-voyage-v1` records default both new options off. Historical records are accepted without being rewritten on boot; the existing storage key and campaign schema remain unchanged.
-- Renderer regressions prove that nonzero shake/flash state produces no camera offset or viewport fill by default, and that each explicit opt-in restores its bounded presentation path.
-- Portrait-orientation regressions prove the new controls cannot mutate preferences behind the landscape gate.
+- The explosive and magnetic Auric descendant WebPs are now compact irregular basalt-and-gold rocks rather than elongated blade/ship silhouettes. Hazard identity remains confined to amber or cyan fissures and the existing live-state effect.
+- The exact finite 1→3→6 objective tree, mixed hazard variants, health, rewards, caps, requeues, collision grace, magnetic pull, and explosive death radius remain unchanged.
+- Split motion is configuration-owned: the first generation inherits 86% of parent velocity with 38 px/s base separation; the second inherits 90% with 26 px/s base separation. Seeded 0.72×–1.22× variation stays bounded and avoids the prior hard-coded 135 px/s radial burst.
+- Descendants appear immediately with collision grace, so no timer, pending objective, or hidden spawning path was introduced.
 
-### Audio presence and peak control
+### Asset evidence
 
-- Every synthesized voice receives the configured 1.7× internal lift (about +4.6 dB) and remains capped at 0.22 before the master stage.
-- The master feeds one configured `DynamicsCompressorNode` before the destination. Tests verify its routing and threshold, knee, ratio, attack, and release values.
-- The accessible 80% default, 0–100% slider, explicit silence, mute independence, cue cooldowns, source cleanup, and 24-node cap remain unchanged.
-- Web Audio remains optional and repository-local; failure to create or resume a context remains harmless.
+- Three accepted image-generator PNG sources were inspected for real alpha; one opaque checkerboard attempt was rejected and never entered the repository.
+- Accepted objects were cropped by alpha bounds, resized and centered on their existing transparent runtime canvases, and encoded with ImageMagick 6.9 at WebP quality 90 and alpha quality 100.
+- Final standalone inspection confirmed compact silhouettes, transparent padding, no background box, no cast/drop shadow, no text, and no exterior halo. Runtime mapping and Canvas draw regressions verify that the selected files are actually consumed.
 
 ## Compatibility and boundaries
 
 | Area | Candidate result |
 | --- | --- |
-| Runtime surface | Unchanged dependency-free HTML/CSS/classic JavaScript/Canvas/Web Audio architecture |
+| Runtime surface | Dependency-free HTML/CSS/classic JavaScript/Canvas/Web Audio architecture preserved; one local WebP added |
 | Offline/security | Restrictive CSP, relative local resources, and zero runtime network requests preserved |
-| Determinism | Simulation timing and random progression unchanged; new settings are presentation-only |
-| Caps | Existing simulation caps and 24 active-audio-node ceiling preserved |
-| Saved progress | Progress key and strict schema 4 plus schema-3/schema-2/schema-1 migrations unchanged |
-| Local preferences | Existing key preserved; optional shake/flash fields migrate by safe default |
-| Input/accessibility | Keyboard, mouse, touch, gamepad, focus, orientation, and dialog contracts retained |
-| Assets | No runtime or documentation raster changed |
+| Determinism | Existing seeded order retained; new split values are immutable config and fixed-step state only |
+| Caps/objectives | Existing asteroid cap, exact Auric descendant count, and required-objective accounting preserved |
+| Saved progress | Preference key, progress key, strict schema 4, and schema-3/schema-2/schema-1 migrations unchanged |
+| Input/accessibility | Keyboard, mouse, touch, gamepad, focus, orientation, reduced effects, and readable pickup label retained |
+| Audio | Mix, limiter, cues, 80% default, slider, mute, cooldown, and 24-node cap unchanged |
 
 ## Engineering-standard disposition
 
@@ -57,14 +55,15 @@ Standard status remains `adopting` because the active GitHub ruleset reports `re
 
 ## Frozen verification
 
-The initial development run passed every affected behavior while version mirrors and the manifest were intentionally still stale. The first freeze then exposed a test-only strict-comparison mismatch between JavaScript `-0` and `0`; the regression now checks numeric zero displacement without changing runtime behavior. Documentation, version mirrors, tests, and the manifest were frozen together before the complete pass below.
+The first complete candidate pass verified all `193/193` tests with the 94-entry manifest. After this evidence record was finalized, the manifest and entire gate were rerun on the exact frozen candidate.
 
 | Check | Observed result |
 | --- | --- |
-| `node tests/run.js` | PASS — `193/193`; includes syntax, offline/security, preference compatibility, browser VM/rendering, responsive input/accessibility, Stage 1–7 weapon journey, both bosses, audio bounds, and deterministic stress |
-| `sha256sum --check SHA256SUMS` | PASS — all 93 release entries verified |
+| `node tests/run.js` | PASS — `193/193`; includes syntax, offline/security, version/asset integrity, deterministic Auric motion and exact objectives, ready-raster Overdrive drawing, saved-data migrations, responsive input/accessibility, Stage 1–7 weapon journey, both bosses, and long deterministic stress |
+| `sha256sum --check SHA256SUMS` | PASS — all 94 release entries verified |
 | `git diff --check` | PASS — no whitespace error |
-| Automated rendered states | PASS — terminal ship suppression and shake/flash off/on paths exercised through Canvas call recording |
+| Generated-asset inspection | PASS — all three accepted sources and final WebPs inspected at native and actual 40/106 px gameplay scales; real alpha, centered compact silhouettes, restrained internal emission, no box, text, exterior halo, or cast/drop shadow |
+| Automated rendered states | PASS — Canvas call recording verifies dedicated Overdrive raster use without the three-line glyph; both Auric variants and every existing gameplay source remain mapped and drawn |
 | Candidate browser preview | Unavailable; repository workflow publishes Pages only from merged `main` |
 
-No physical phone/iPad session, subjective audio listening, uninterrupted human-controlled seven-stage completion, immutable tag, or GitHub Release is claimed. The automated audio checks establish routing and bounds, not perceived loudness on speakers or headphones. A public merge must still pass the required pull-request audit, post-merge audit, Pages deployment, exact live-version check, Settings inspection, one real Play interaction, and page-origin console review.
+No physical phone/iPad session, subjective audio listening, uninterrupted human-controlled seven-stage completion, immutable tag, or GitHub Release is claimed. A public merge must still pass the required pull-request audit, post-merge audit, Pages deployment, exact live-version check, one real Play interaction, and page-origin console review.

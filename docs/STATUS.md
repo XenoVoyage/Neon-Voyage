@@ -7,8 +7,8 @@ This is the current-state handoff. Enduring engineering rules belong in [`AGENTS
 | Area | Verified state |
 | --- | --- |
 | Product | Complete seven-stage offline browser campaign with Harrower and Leviathan command-ship encounters |
-| Runtime version | `v2026.8.21c`; `js/config.js` is canonical and intentional mirrors are consistency-tested |
-| Runtime surface | Repository-local HTML, CSS, five classic scripts, Canvas, Web Audio, and 55 WebP runtime rasters |
+| Runtime version | `v2026.8.21d`; `js/config.js` is canonical and intentional mirrors are consistency-tested |
+| Runtime surface | Repository-local HTML, CSS, five classic scripts, Canvas, Web Audio, and 56 WebP runtime rasters |
 | Dependencies and build | No runtime or development packages, package manager, installation, or build step |
 | Hosting | Direct `file://` launch and the GitHub Pages `/Neon-Voyage/` repository subpath |
 | Saved data | Unchanged local keys; compatible preferences with default-off shake/flash fields, plus strict schema-4 checkpoints with exact schema-3/schema-2/schema-1 migration |
@@ -23,7 +23,7 @@ The game-design, architecture, asset, security, contributor, and test documents 
 - Automated coverage exercises offline boot, strict CSP and local resources, all supported input families, responsive simulated viewports, accessibility and focus, saved-progress migrations, the complete Stage 1–7 campaign, both bosses, renderer ownership, audio bounds, and deterministic long-run caps.
 - Published desktop smoke is required after every Pages deployment. Candidate previews and hands-on device evidence are reported separately when actually available.
 - No physical phone or iPad session, subjective audio listening, or uninterrupted human-controlled seven-stage completion is currently claimed. Those are product-feel observations, not hidden source-gate results.
-- No immutable Git tag or GitHub Release exists for `v2026.8.21c`. Creating one remains an explicit owner publication decision and is not implied by a changelog heading or Pages deployment.
+- No immutable Git tag or GitHub Release exists for `v2026.8.21d`. Creating one remains an explicit owner publication decision and is not implied by a changelog heading or Pages deployment.
 
 ## Next decision boundary
 

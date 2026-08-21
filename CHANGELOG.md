@@ -2,6 +2,17 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.21d] — 2026-08-21
+
+### Added
+
+- Added a dedicated realistic Overdrive turbine pickup that communicates rapid fire without procedural speed stripes.
+
+### Changed
+
+- Replaced the elongated explosive and magnetic Auric shard art with compact rocky descendants of the Auric Colossus.
+- Made both Auric split generations inherit parent drift and add only low, bounded separation velocity while preserving their exact finite 1→3→6 objective tree and hazard identities.
+
 ## [v2026.8.21c] — 2026-08-21
 
 ### Added
