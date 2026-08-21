@@ -1243,8 +1243,8 @@
         return;
       }
 
-      const shipPresentationVisible = !(state.presentation && state.presentation.gameoverPending);
-      const shake = this.reduced || cinematic.streaks
+      const shipPresentationVisible = state.mode !== "gameover";
+      const shake = !(state.settings && state.settings.cameraShake) || cinematic.streaks
         ? 0
         : clamp(Number(state.shake) || 0, 0, CONFIG.camera.maxShake);
       ctx.save();
@@ -1275,7 +1275,7 @@
 
       this.drawTimeFracture(state);
 
-      if (state.flash > 0) {
+      if (state.settings && state.settings.damageFlash && state.flash > 0) {
         ctx.save();
         ctx.globalAlpha = Math.min(0.2, state.flash * 0.22);
         ctx.fillStyle = state.flashColor || "#ff667a";

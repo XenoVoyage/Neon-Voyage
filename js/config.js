@@ -91,7 +91,7 @@
   }
 
   window.ND.CONFIG = deepFreeze({
-    version: "v2026.8.21b",
+    version: "v2026.8.21c",
 
     world: {
       fixedStep: 1 / 60,
@@ -135,7 +135,14 @@
       defaultVolume: 0.8,
       minVolume: 0,
       maxVolume: 1,
-      volumeStep: 0.05
+      volumeStep: 0.05,
+      mixGain: 1.7,
+      maxVoiceGain: 0.22,
+      limiterThreshold: -8,
+      limiterKnee: 6,
+      limiterRatio: 8,
+      limiterAttack: 0.003,
+      limiterRelease: 0.18
     },
 
     combatField: {

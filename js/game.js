@@ -141,6 +141,8 @@
     settingsVolumeInput: byId("settings-volume-input"),
     settingsVolumeValue: byId("settings-volume-value"),
     settingsEffectsButton: byId("settings-effects-button"),
+    settingsShakeButton: byId("settings-shake-button"),
+    settingsFlashButton: byId("settings-flash-button"),
     settingsFullscreenButton: byId("settings-fullscreen-button"),
     controlsModal: byId("controls-modal"),
     settingsModal: byId("settings-modal"),
@@ -166,11 +168,15 @@
   // Saved records are deliberately smaller and stricter than live simulation state.
   function validSave(value) {
     const volume = value && value.settings && value.settings.volume;
+    const cameraShake = value && value.settings && value.settings.cameraShake;
+    const damageFlash = value && value.settings && value.settings.damageFlash;
     return Boolean(value) && typeof value === "object" &&
       Number.isFinite(value.highScore) && value.highScore >= 0 && value.highScore <= MAX_LOCAL_SCORE &&
       Boolean(value.settings) && typeof value.settings === "object" &&
       typeof value.settings.sound === "boolean" && typeof value.settings.reducedEffects === "boolean" &&
-      (volume === undefined || Number.isFinite(volume) && volume >= CONFIG.audio.minVolume && volume <= CONFIG.audio.maxVolume);
+      (volume === undefined || Number.isFinite(volume) && volume >= CONFIG.audio.minVolume && volume <= CONFIG.audio.maxVolume) &&
+      (cameraShake === undefined || typeof cameraShake === "boolean") &&
+      (damageFlash === undefined || typeof damageFlash === "boolean");
   }
 
   function exactKeys(value, expected) {
@@ -321,7 +327,13 @@
 
   const saved = Core.safeReadJSON(null, STORAGE_KEY, {
     highScore: 0,
-    settings: { sound: true, volume: CONFIG.audio.defaultVolume, reducedEffects: false }
+    settings: {
+      sound: true,
+      volume: CONFIG.audio.defaultVolume,
+      reducedEffects: false,
+      cameraShake: false,
+      damageFlash: false
+    }
   }, validSave, 1024);
   const savedVolume = Number(saved.settings.volume);
   const settings = {
@@ -329,7 +341,9 @@
     volume: Number.isFinite(savedVolume)
       ? clamp(savedVolume, CONFIG.audio.minVolume, CONFIG.audio.maxVolume)
       : CONFIG.audio.defaultVolume,
-    reducedEffects: saved.settings.reducedEffects
+    reducedEffects: saved.settings.reducedEffects,
+    cameraShake: saved.settings.cameraShake === true,
+    damageFlash: saved.settings.damageFlash === true
   };
   const savedProgress = Core.safeReadJSON(null, PROGRESS_STORAGE_KEY, null, (value) =>
     validProgress(value) || validSchemaThreeProgress(value) || validSchemaTwoProgress(value) ||
@@ -604,7 +618,13 @@
   function saveLocal() {
     Core.safeWriteJSON(null, STORAGE_KEY, {
       highScore,
-      settings: { sound: settings.sound, volume: settings.volume, reducedEffects: settings.reducedEffects }
+      settings: {
+        sound: settings.sound,
+        volume: settings.volume,
+        reducedEffects: settings.reducedEffects,
+        cameraShake: settings.cameraShake,
+        damageFlash: settings.damageFlash
+      }
     }, validSave, 1024);
   }
 
@@ -1075,6 +1095,18 @@
     updateSettingsUI();
   }
 
+  function toggleCameraShake() {
+    settings.cameraShake = !settings.cameraShake;
+    saveLocal();
+    updateSettingsUI();
+  }
+
+  function toggleDamageFlash() {
+    settings.damageFlash = !settings.damageFlash;
+    saveLocal();
+    updateSettingsUI();
+  }
+
   function setVolumeFromControl(persist) {
     if (!dom.settingsVolumeInput) return;
     if (orientationBlocked || state.upgradeDraft.phase !== "idle") {
@@ -1132,6 +1164,8 @@
   bindButton("sound-button", toggleSound);
   bindButton("settings-sound-button", toggleSound);
   bindButton("settings-effects-button", toggleEffects);
+  bindButton("settings-shake-button", toggleCameraShake);
+  bindButton("settings-flash-button", toggleDamageFlash);
   bindButton("settings-fullscreen-button", toggleFullscreen);
   if (dom.settingsVolumeInput) {
     dom.settingsVolumeInput.addEventListener("input", () => setVolumeFromControl(false));
@@ -5493,6 +5527,16 @@
       dom.settingsEffectsButton.textContent = effectsText;
       dom.settingsEffectsButton.setAttribute("aria-pressed", String(!settings.reducedEffects));
       dom.settingsEffectsButton.setAttribute("aria-label", settings.reducedEffects ? "Use full visual effects" : "Use reduced visual effects");
+    }
+    if (dom.settingsShakeButton) {
+      dom.settingsShakeButton.textContent = settings.cameraShake ? "On" : "Off";
+      dom.settingsShakeButton.setAttribute("aria-pressed", String(settings.cameraShake));
+      dom.settingsShakeButton.setAttribute("aria-label", settings.cameraShake ? "Turn camera shake off" : "Turn camera shake on");
+    }
+    if (dom.settingsFlashButton) {
+      dom.settingsFlashButton.textContent = settings.damageFlash ? "On" : "Off";
+      dom.settingsFlashButton.setAttribute("aria-pressed", String(settings.damageFlash));
+      dom.settingsFlashButton.setAttribute("aria-label", settings.damageFlash ? "Turn screen flashes off" : "Turn screen flashes on");
     }
     const fullscreen = Boolean(global.document.fullscreenElement);
     if (dom.settingsFullscreenButton) {

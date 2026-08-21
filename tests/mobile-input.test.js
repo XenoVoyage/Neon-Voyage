@@ -1550,11 +1550,14 @@ module.exports = function register(test) {
     const initialSound = game.state.settings.sound;
     const initialVolume = game.state.settings.volume;
     const initialEffects = game.state.settings.reducedEffects;
+    const initialShake = game.state.settings.cameraShake;
+    const initialFlash = game.state.settings.damageFlash;
     const coveredActions = [
       "start-button", "restart-button", "restart-pause-button", "resume-button",
       "pause-button", "pause-menu-button", "menu-button", "controls-button",
       "pause-controls-button", "settings-button", "pause-settings-button",
-      "sound-button", "settings-sound-button", "settings-effects-button", "settings-fullscreen-button",
+      "sound-button", "settings-sound-button", "settings-effects-button", "settings-shake-button",
+      "settings-flash-button", "settings-fullscreen-button",
       "touch-dash", "touch-pulse"
     ];
 
@@ -1569,6 +1572,8 @@ module.exports = function register(test) {
       assert.equal(browser.elements.get("settings-modal").open, false, `${id} opened Settings over the gate`);
       assert.equal(game.state.settings.sound, initialSound, `${id} changed sound in portrait`);
       assert.equal(game.state.settings.reducedEffects, initialEffects, `${id} changed effects in portrait`);
+      assert.equal(game.state.settings.cameraShake, initialShake, `${id} changed camera shake in portrait`);
+      assert.equal(game.state.settings.damageFlash, initialFlash, `${id} changed screen flashes in portrait`);
       assert.equal(browser.document.fullscreenElement, null, `${id} entered fullscreen in portrait`);
       assert.equal(overlay.classList.contains("is-visible"), true);
       assert.equal(overlay.getAttribute("aria-hidden"), "false");
@@ -1594,6 +1599,10 @@ module.exports = function register(test) {
     browser.elements.get("settings-button").click();
     browser.elements.get("settings-effects-button").click();
     assert.equal(game.state.settings.reducedEffects, !initialEffects, "landscape FX remained blocked");
+    browser.elements.get("settings-shake-button").click();
+    browser.elements.get("settings-flash-button").click();
+    assert.equal(game.state.settings.cameraShake, !initialShake, "landscape camera shake remained blocked");
+    assert.equal(game.state.settings.damageFlash, !initialFlash, "landscape screen flashes remained blocked");
     volume.value = "45";
     volume.dispatchEvent({ type: "input" });
     volume.dispatchEvent({ type: "change" });
@@ -1617,6 +1626,8 @@ module.exports = function register(test) {
     const runTime = game.state.runTime;
     const initialSound = game.state.settings.sound;
     const initialEffects = game.state.settings.reducedEffects;
+    const initialShake = game.state.settings.cameraShake;
+    const initialFlash = game.state.settings.damageFlash;
 
     browser.elements.get("settings-button").click();
     assert.equal(browser.elements.get("settings-modal").open, true, "landscape Settings did not open before rotation");
@@ -1628,7 +1639,8 @@ module.exports = function register(test) {
       "start-button", "restart-button", "restart-pause-button", "resume-button",
       "pause-button", "pause-menu-button", "menu-button", "controls-button",
       "pause-controls-button", "settings-button", "pause-settings-button",
-      "sound-button", "settings-sound-button", "settings-effects-button", "settings-fullscreen-button",
+      "sound-button", "settings-sound-button", "settings-effects-button", "settings-shake-button",
+      "settings-flash-button", "settings-fullscreen-button",
       "touch-dash", "touch-pulse"
     ]) {
       browser.elements.get(id).click();
@@ -1642,6 +1654,8 @@ module.exports = function register(test) {
       assert.equal(browser.elements.get("settings-modal").open, false, `${id} opened Settings over the gate`);
       assert.equal(game.state.settings.sound, initialSound, `${id} changed sound in portrait`);
       assert.equal(game.state.settings.reducedEffects, initialEffects, `${id} changed effects in portrait`);
+      assert.equal(game.state.settings.cameraShake, initialShake, `${id} changed camera shake in portrait`);
+      assert.equal(game.state.settings.damageFlash, initialFlash, `${id} changed screen flashes in portrait`);
       assert.equal(browser.document.fullscreenElement, null, `${id} entered fullscreen in portrait`);
     }
 
@@ -1673,6 +1687,8 @@ module.exports = function register(test) {
     assert.equal(browser.elements.get("settings-modal").open, false);
     assert.equal(game.state.settings.sound, initialSound);
     assert.equal(game.state.settings.reducedEffects, initialEffects);
+    assert.equal(game.state.settings.cameraShake, initialShake);
+    assert.equal(game.state.settings.damageFlash, initialFlash);
     assert.equal(browser.document.fullscreenElement, null);
     assert.equal(Object.keys(game.input.keys).length, 0, "portrait keyboard state was buffered");
     assert.equal(Object.keys(game.input.pressed).length, 0, "portrait one-shot input was buffered");

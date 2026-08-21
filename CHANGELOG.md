@@ -2,6 +2,21 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.21c] — 2026-08-21
+
+### Added
+
+- Added independent, persistent Camera shake and Screen flashes controls. Both default off for new and historical preference records while remaining available as explicit opt-ins.
+
+### Changed
+
+- Lifted synthesized action-voice gain by a bounded 1.7× and routed the master mix through a configured dynamics limiter, preserving the 80% default, 0–100% control, mute behavior, cooldowns, and 24-node cap.
+- Renamed the existing visual-effects choice to Visual density so its particle and background-motion role no longer implies that it owns shake or flashes.
+
+### Fixed
+
+- Kept the destroyed player ship and all ship-owned fields, drones, blades, and reticle hidden after the delayed game-over dialog appears.
+
 ## [v2026.8.21b] — 2026-08-21
 
 ### Fixed
