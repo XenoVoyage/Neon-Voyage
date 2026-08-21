@@ -1185,6 +1185,73 @@ module.exports = function register(test) {
     assert.equal(requiredLiving(state).length, 4, "second wave spawned beyond its configured total");
   });
 
+  test("a final pity drop is salvaged before the locked stage-clear cleanup", () => {
+    const { game, CONFIG } = boot(8, { width: 1280, height: 720 });
+    const state = game.state;
+    game.setStage(1, 1);
+    clearEntities(state);
+    const data = state.encounterData;
+    data.pendingSpawns.length = 0;
+    data.requeue.length = 0;
+    data.waveIndex = data.waveCount - 1;
+    data.waveNumber = data.waveCount;
+    data.waveSpawned = true;
+    data.waveRequiredTotal = 1;
+    data.waveRequiredCleared = 0;
+    data.stageRequiredTotal = 1;
+    data.stageRequiredCleared = 0;
+    data.killsSincePowerup = CONFIG.powerups.dropBands[0].pityKills - 1;
+    const finalThreat = game.spawnAsteroid("rock", {
+      required: true,
+      generation: data.generation,
+      waveIndex: data.waveIndex,
+      splitRemaining: 0,
+      health: 1,
+      noDrops: false
+    });
+
+    game.killThreat(finalThreat, "player");
+    assert.equal(state.pickups.length, 1);
+    assert.equal(state.pickups[0].kind, "rapid", "fixed seed no longer reproduces the closing pity drop");
+    assert.equal(state.ship.rapidTimer, 0);
+
+    game.step(CONFIG.world.fixedStep);
+
+    assert.equal(state.mode, "transition");
+    assert.equal(state.cinematic.phase, "clear");
+    assert.equal(state.pickups.length, 0, "salvaged drop leaked into the frozen clear presentation");
+    assert.equal(state.ship.rapidTimer, CONFIG.powerups.rapid.duration,
+      "the closing 45-second weapon pickup was erased instead of salvaged");
+  });
+
+  test("a cleared-field Enigma resolves its mandatory choice before hyperspace", () => {
+    const { game, CONFIG } = boot(18, { width: 1280, height: 720 });
+    const state = game.state;
+    game.setStage(2, 1);
+    clearEntities(state);
+    const data = state.encounterData;
+    data.pendingSpawns.length = 0;
+    data.requeue.length = 0;
+    data.waveSpawned = true;
+    data.waveRequiredTotal = 1;
+    data.waveRequiredCleared = 1;
+    data.stageRequiredTotal = 1;
+    data.stageRequiredCleared = 1;
+    game.spawnPickup(state.ship.x + 180, state.ship.y, "enigma");
+
+    game.step(CONFIG.world.fixedStep);
+
+    assert.equal(state.mode, "playing", "stage clear bypassed the salvaged Enigma choice");
+    assert.equal(state.encounterData.complete, false);
+    assert.equal(state.upgradeDraft.phase, "slowing");
+    advanceEnigmaToChoice(game, CONFIG);
+    assert.equal(game.chooseEnhancement(0), true);
+    game.step(CONFIG.world.fixedStep);
+    assert.equal(state.mode, "transition", "resolved closing Enigma did not resume stage clear");
+    assert.equal(state.cinematic.phase, "clear");
+    assert.equal(state.pickups.length, 0);
+  });
+
   test("Titan Breach releases one finite deterministic surge without flooding split descendants", () => {
     const queuedKinds = (seed) => {
       const runtime = boot(seed, { width: 1280, height: 720 });
@@ -1270,6 +1337,11 @@ module.exports = function register(test) {
       destroyAllLiving();
     }
     game.step(CONFIG.world.fixedStep);
+    if (state.upgradeDraft.phase !== "idle") {
+      advanceEnigmaToChoice(game, CONFIG);
+      assert.equal(game.chooseEnhancement(0), true, "closing Titan salvage stalled at its Enigma choice");
+      game.step(CONFIG.world.fixedStep);
+    }
     assert.ok(maximumLiving <= 24, "the authored Titan Breach exceeded its split-pressure entity bound");
     assert.equal(data.pendingSpawns.length, 0);
     assert.equal(data.requeue.length, 0);

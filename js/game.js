@@ -2953,10 +2953,19 @@
     announce(message || "Stage clear", Math.max(0.5, clearDuration));
   }
 
+  function salvageClearedFieldPickups() {
+    for (const pickup of state.pickups) {
+      if (pickup.dead) continue;
+      if (!applyPickup(pickup) || state.upgradeDraft.phase !== "idle") return false;
+    }
+    return true;
+  }
+
   function finishEncounter(message) {
     const data = state.encounterData;
     if (!data || data.complete) return;
     if (state.upgradeDraft.phase !== "idle") return;
+    if (!salvageClearedFieldPickups()) return;
     data.complete = true;
     data.goalProgress = data.goalTarget;
     let rewardResult = null;
