@@ -14,8 +14,8 @@ module.exports = function register(test) {
   const configRuntime = loadBrowserScript("js/config.js");
   const CONFIG = configRuntime.window.ND.CONFIG;
 
-  test("Neon Voyage v2026.8.21e configuration is present and deeply immutable", () => {
-    assert.equal(CONFIG.version, "v2026.8.21e");
+  test("Neon Voyage v2026.8.21f configuration is present and deeply immutable", () => {
+    assert.equal(CONFIG.version, "v2026.8.21f");
     assert.ok(CONFIG.presentation.gameoverEffectDuration >= 1 && CONFIG.presentation.gameoverEffectDuration <= 2);
     assert.ok(CONFIG.mobileControls.autoAimHoldSeconds > 0 && CONFIG.mobileControls.autoAimHoldSeconds <= 0.25);
     assert.deepEqual(JSON.parse(JSON.stringify(CONFIG.audio)), {
@@ -64,21 +64,35 @@ module.exports = function register(test) {
     assert.ok(CONFIG.caps.activeAudioNodes <= 24);
   });
 
-  test("seven authored stages reach first contact early and end with two distinct bosses", () => {
+  test("twenty authored stages reach first contact early and end with three distinct command ships", () => {
     const stages = CONFIG.sector.encounters;
-    assert.equal(stages.length, 7);
+    assert.equal(stages.length, 20);
     stages.forEach((stage, index) => assert.equal(stage.index, index + 1));
     assert.deepEqual(Array.from(stages, (stage) => stage.id), [
       "earthOrbit",
-      "titanBreach",
+      "innerBelt",
       "firstContact",
-      "shatteredFront",
+      "deepDrift",
+      "titanGate",
+      "strikeWing",
+      "shatteredFrontier",
+      "raidFleet",
+      "commandScreen",
       "bossHarrower",
-      "anomalySiege",
-      "bossLeviathan"
+      "ionGraveyard",
+      "prismRift",
+      "gravityScar",
+      "anomalyCrown",
+      "bossLeviathan",
+      "vanguardSwarm",
+      "fracturedHalo",
+      "nullPhalanx",
+      "sovereignGuard",
+      "bossSovereign"
     ]);
-    assert.deepEqual(Array.from(stages.filter((stage) => stage.goal.type === "boss"), (stage) => stage.index), [5, 7]);
-    assert.deepEqual(Array.from(stages.filter((stage) => stage.goal.type === "boss"), (stage) => stage.bossType), ["harrower", "leviathan"]);
+    assert.deepEqual(Array.from(stages.filter((stage) => stage.goal.type === "boss"), (stage) => stage.index), [10, 15, 20]);
+    assert.deepEqual(Array.from(stages.filter((stage) => stage.goal.type === "boss"), (stage) => stage.bossType),
+      ["harrower", "leviathan", "sovereign"]);
     for (const stage of stages.filter((stage) => stage.goal.type !== "boss")) {
       assert.ok(["waves", "titan"].includes(stage.goal.type), `${stage.id} needs a finite structural goal`);
       assert.ok(Array.isArray(stage.waves) && stage.waves.length > 0, `${stage.id} needs waves`);
@@ -113,7 +127,7 @@ module.exports = function register(test) {
         }
       }
     }
-    for (const stage of [stages[2], stages[3], stages[5]]) {
+    for (const stage of [stages[2], stages[3], stages[5], stages[7], stages[10], stages[15], stages[18]]) {
       assert.ok(stage.waves.some((wave) => wave.required.some((group) => group.family === "alien")), `${stage.id} lacks required alien spacecraft`);
     }
     const firstWave = stages[0].waves[0];
@@ -122,45 +136,47 @@ module.exports = function register(test) {
     assert.deepEqual(Array.from(firstWave.required[0].kinds), ["rock"]);
     assert.equal(firstWave.required[0].count, 3, "first wave must contain exactly three asteroids");
     assert.equal(firstWave.required[0].cap, 3, "first wave must not scale above three asteroids");
-    assert.equal("minimumSeconds" in stages[1].goal, false, "Titan victory must not be time-gated");
-    assert.ok(stages[1].waves.some((wave) => wave.required.some((group) => group.kinds.includes("titan"))), "Stage 2 lacks its Titan");
+    assert.equal("minimumSeconds" in stages[4].goal, false, "Titan victory must not be time-gated");
+    assert.ok(stages[4].waves.some((wave) => wave.required.some((group) => group.kinds.includes("titan"))), "Stage 5 lacks its Titan");
     assert.deepEqual(Array.from(stages[2].waves[0].required[0].kinds), ["scout"]);
     assert.equal(stages[2].waves[0].required[0].count, 1, "Stage 3 must open with one alien contact");
     assert.ok(stages[3].waves.every((wave) => wave.required.some((group) => group.family === "alien")), "Stage 4 must sustain mixed alien combat");
     assert.ok(CONFIG.bossArena.warningSeconds > 0);
 
-    const beltSurge = stages[1].waves;
-    assert.equal(beltSurge.length, 1, "Titan Breach must play as one continuous finite surge");
-    assert.equal(beltSurge[0].label, "TITAN BREACH");
-    assert.deepEqual(JSON.parse(JSON.stringify(beltSurge[0].reinforcements)), {
+    const titanSurge = stages[4].waves;
+    assert.equal(titanSurge.length, 1, "Titan Gate must play as one continuous finite surge");
+    assert.equal(titanSurge[0].label, "TITAN BREACH");
+    assert.deepEqual(JSON.parse(JSON.stringify(titanSurge[0].reinforcements)), {
       activePressure: 12,
       refillAtPressure: 4,
-      initialBatch: 5,
+      initialBatch: 4,
       batchSize: 2,
       intervalSeconds: 0.4
     });
-    assert.equal(beltSurge[0].required.reduce((total, group) => total + group.count, 0), 10);
-    assert.equal(beltSurge[0].required.filter((group) => group.kinds.includes("colossal"))
+    assert.equal(titanSurge[0].required.reduce((total, group) => total + group.count, 0), 8);
+    assert.equal(titanSurge[0].required.filter((group) => group.kinds.includes("colossal"))
       .reduce((total, group) => total + group.count, 0), 1);
-    assert.equal(beltSurge[0].required.filter((group) => group.kinds.includes("titan"))
+    assert.equal(titanSurge[0].required.filter((group) => group.kinds.includes("titan"))
       .reduce((total, group) => total + group.count, 0), 1);
 
     const authoredCounts = stages.map((stage) => stage.waves ? stage.waves.reduce((stageTotal, wave) =>
       stageTotal + wave.required.concat(wave.hazards || []).reduce((waveTotal, group) => waveTotal + group.count, 0), 0) : null);
-    assert.deepEqual(Array.from(authoredCounts), [7, 10, 11, 13, null, 14, null]);
+    assert.deepEqual(Array.from(authoredCounts), [7, 9, 11, 11, 8, 10, 10, 11, 10, null, 11, 11, 11, 10, null, 9, 10, 10, 13, null]);
+    assert.ok(authoredCounts.filter(Number.isFinite).every((count) => count >= 7 && count <= 13),
+      "normal stages must stay substantial without becoming swarms");
 
     const firstAuthoredStage = (family, kind) => stages.find((stage) => (stage.waves || []).some((wave) =>
       wave.required.concat(wave.hazards || []).some((group) => group.family === family && group.kinds.includes(kind))
     ))?.index;
-    assert.equal(firstAuthoredStage("asteroid", "auricColossus"), 4);
-    assert.equal(firstAuthoredStage("asteroid", "corona"), 6);
+    assert.equal(firstAuthoredStage("asteroid", "auricColossus"), 7);
+    assert.equal(firstAuthoredStage("asteroid", "corona"), 14);
     assert.equal(firstAuthoredStage("alien", "scout"), 3);
     assert.equal(firstAuthoredStage("alien", "striker"), 3);
     assert.equal(firstAuthoredStage("alien", "bomber"), 4);
-    assert.equal(firstAuthoredStage("alien", "carrier"), 4);
-    assert.equal(firstAuthoredStage("alien", "lancer"), 6);
-    assert.equal(firstAuthoredStage("alien", "gunship"), 4);
-    assert.equal(firstAuthoredStage("alien", "broodCarrier"), 6);
+    assert.equal(firstAuthoredStage("alien", "carrier"), 7);
+    assert.equal(firstAuthoredStage("alien", "lancer"), 11);
+    assert.equal(firstAuthoredStage("alien", "gunship"), 8);
+    assert.equal(firstAuthoredStage("alien", "broodCarrier"), 18);
 
     const milestoneRewards = JSON.parse(JSON.stringify(stages
       .filter((stage) => stage.guaranteedReward)
@@ -170,7 +186,12 @@ module.exports = function register(test) {
       [2, { type: "moduleUpgrade", module: "tractorField", tiers: 1 }],
       [3, { type: "moduleUpgrade", module: "drone", tiers: 1 }],
       [4, { type: "moduleUpgrade", module: "radialArray", tiers: 1 }],
-      [6, { type: "moduleUpgrade", module: "seeker", tiers: 1 }]
+      [6, { type: "moduleUpgrade", module: "prism", tiers: 1 }],
+      [9, { type: "moduleUpgrade", module: "shieldReactor", tiers: 1 }],
+      [12, { type: "moduleUpgrade", module: "teslaCoil", tiers: 1 }],
+      [14, { type: "moduleUpgrade", module: "overclock", tiers: 1 }],
+      [16, { type: "moduleUpgrade", module: "seeker", tiers: 1 }],
+      [18, { type: "moduleUpgrade", module: "mineLayer", tiers: 1 }]
     ], "campaign milestones must deliver utility before and between bosses");
   });
 
@@ -263,8 +284,9 @@ module.exports = function register(test) {
       distance: 300,
       multiplier: 0.3
     });
-    assert.ok(Object.keys(CONFIG.bosses).length >= 2);
+    assert.equal(Object.keys(CONFIG.bosses).length, 3);
     assert.notEqual(CONFIG.bosses.harrower.label, CONFIG.bosses.leviathan.label);
+    assert.notEqual(CONFIG.bosses.leviathan.label, CONFIG.bosses.sovereign.label);
     assert.equal("arenaShape" in CONFIG.bosses.harrower, false);
     assert.equal("arenaShape" in CONFIG.bosses.leviathan, false);
     assert.deepEqual(JSON.parse(JSON.stringify(CONFIG.bosses.leviathan.reflectionShield)), {
@@ -276,16 +298,31 @@ module.exports = function register(test) {
       life: 2.4,
       damageMultiplier: 0.25
     });
+    assert.equal(CONFIG.bosses.sovereign.nodeCount, 5);
+    assert.ok(CONFIG.bosses.sovereign.radius > CONFIG.bosses.leviathan.radius);
+    assert.ok(CONFIG.bosses.sovereign.baseHealth > CONFIG.bosses.leviathan.baseHealth);
+    assert.ok(CONFIG.bosses.sovereign.phases.slice(1).every((phase) =>
+      phase.attacks.some((attack) => attack.type === "radialBarrage")));
+    for (const phase of CONFIG.bosses.sovereign.phases) {
+      assert.equal(phase.attacks.length, 2);
+      for (const attack of phase.attacks) {
+        assert.ok(Number.isFinite(attack.baseCooldown) && attack.baseCooldown > 0);
+        if (attack.type === "radialBarrage") {
+          assert.ok(Number.isSafeInteger(attack.projectiles) && attack.projectiles >= 12 && attack.projectiles <= 24);
+          assert.ok(attack.speed > 0 && attack.damage > 0);
+        }
+      }
+    }
   });
 
-  test("field rewards are frequent, long-lived, and span five bounded seven-stage bands", () => {
+  test("field rewards are frequent, long-lived, and span five bounded twenty-stage bands", () => {
     const powerups = CONFIG.powerups;
     assert.deepEqual(JSON.parse(JSON.stringify(powerups.dropBands)), [
       { minStage: 1, dropChance: 0.44, pityKills: 3, moduleWeight: 0, permanentDraftChance: 0, rewardTierCap: 1 },
       { minStage: 2, dropChance: 0.48, pityKills: 2, moduleWeight: 10, permanentDraftChance: 0.35, rewardTierCap: 2 },
-      { minStage: 3, dropChance: 0.52, pityKills: 2, moduleWeight: 16, permanentDraftChance: 0.5, rewardTierCap: 3 },
-      { minStage: 5, dropChance: 0.56, pityKills: 2, moduleWeight: 22, permanentDraftChance: 0.72, rewardTierCap: 4 },
-      { minStage: 7, dropChance: 0.6, pityKills: 2, moduleWeight: 28, permanentDraftChance: 0.9, rewardTierCap: 5 }
+      { minStage: 6, dropChance: 0.52, pityKills: 2, moduleWeight: 16, permanentDraftChance: 0.5, rewardTierCap: 3 },
+      { minStage: 11, dropChance: 0.56, pityKills: 2, moduleWeight: 22, permanentDraftChance: 0.72, rewardTierCap: 4 },
+      { minStage: 16, dropChance: 0.6, pityKills: 2, moduleWeight: 28, permanentDraftChance: 0.9, rewardTierCap: 5 }
     ]);
     for (let index = 1; index < powerups.dropBands.length; index += 1) {
       assert.ok(powerups.dropBands[index].minStage > powerups.dropBands[index - 1].minStage);
@@ -372,16 +409,16 @@ module.exports = function register(test) {
     assert.deepEqual(Object.fromEntries(Object.entries(modules).map(([id, module]) => [id, module.unlockStage])), {
       pulse: 1,
       homingSalvo: 1,
-      radialArray: 2,
-      prism: 4,
-      seeker: 6,
-      massDriver: 6,
+      radialArray: 4,
+      prism: 6,
+      seeker: 16,
+      massDriver: 19,
       drone: 3,
-      teslaCoil: 4,
-      orbitBlades: 4,
-      mineLayer: 5,
-      shieldReactor: 3,
-      overclock: 5,
+      teslaCoil: 12,
+      orbitBlades: 11,
+      mineLayer: 18,
+      shieldReactor: 9,
+      overclock: 14,
       tractorField: 2
     });
     for (const [name, module] of Object.entries(modules)) {

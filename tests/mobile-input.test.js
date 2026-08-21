@@ -500,7 +500,7 @@ module.exports = function register(test) {
   });
 
   test("touch auto aim selects live boss nodes before an eligible command-ship body", () => {
-    for (const [stage, type, pointerId] of [[5, "harrower", 304], [7, "leviathan", 305]]) {
+    for (const [stage, type, pointerId] of [[10, "harrower", 304], [15, "leviathan", 305], [20, "sovereign", 306]]) {
       const { browser, game, CONFIG } = bootMobile();
       const canvas = browser.elements.get("game");
       game.start();

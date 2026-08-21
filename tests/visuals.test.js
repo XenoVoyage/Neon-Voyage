@@ -159,6 +159,11 @@ module.exports = function register(test) {
     assert.equal(baseEntries.some((entry) => entry.id === 31 || entry.id === 12 || entry.id === 13), false,
       "visible, partially visible, or stale-generation targets received an off-screen cue");
 
+    state.boss.type = "sovereign";
+    const sovereignEntries = debug.offscreenIndicators(state, { width, height });
+    assert.equal(sovereignEntries.find((entry) => entry.family === "bossNode").assetKey, "bossNodeSovereign",
+      "Sovereign node indicator did not use its authored raster");
+
     for (let index = 0; index < 12; index += 1) {
       const angle = index / 12 * Math.PI * 2;
       state.aliens.push({
@@ -315,19 +320,23 @@ module.exports = function register(test) {
   test("scene journey leaves Earth for Mars and authored deep-space worlds", () => {
     const debug = loadRenderer();
     assert.ok(debug && typeof debug.sceneFrame === "function" && typeof debug.screenAnchor === "function");
-    const scenes = Array.from({ length: 7 }, (_, index) => debug.sceneFrame(index + 1, 1, 0));
+    const scenes = Array.from({ length: 20 }, (_, index) => debug.sceneFrame(index + 1, 1, 0));
     const body = (scene, id) => scene.bodies.find((item) => item.id === id);
     const earth1 = body(scenes[0], "earth");
     const mars1 = body(scenes[0], "mars");
     const mars2 = body(scenes[1], "mars");
-    const titan2 = body(scenes[1], "titan-gate");
-    const signal3 = body(scenes[2], "signal-world");
+    const titan5 = body(scenes[4], "titan-gate");
+    const signal3 = body(scenes[2], "signal-moon");
     assert.ok(earth1.alpha > 0.8 && earth1.size > 0.5, "Earth is not the prominent Stage 1 origin");
     assert.ok(mars2.alpha > mars1.alpha && mars2.size > mars1.size, "Mars did not become the Stage 2 waypoint");
-    assert.ok(titan2.alpha > 0.7 && titan2.size > 0.5, "Titan is not prominent during its breach");
-    assert.ok(signal3.alpha > 0.6 && signal3.size > 0.3, "First Contact lacks its deep-space signal world");
-    assert.equal(body(scenes[1], "earth"), undefined, "Earth did not leave the frame after Stage 1");
-    assert.equal(body(scenes[2], "mars"), undefined, "Mars did not leave the frame before First Contact");
+    assert.ok(titan5.alpha > 0.7 && titan5.size >= 0.5, "Titan is not prominent during its breach");
+    assert.ok(signal3.alpha > 0.5 && signal3.size > 0.2, "First Contact lacks its deep-space signal world");
+    const earth2 = body(scenes[1], "earth");
+    const mars3 = body(scenes[2], "mars");
+    assert.ok(earth2.alpha < earth1.alpha && earth2.size < earth1.size,
+      "Earth did not recede after Stage 1");
+    assert.ok(mars3.alpha < mars2.alpha && mars3.size < mars2.size,
+      "Mars did not recede before First Contact");
     for (let index = 1; index < scenes.length; index += 1) {
       assert.ok(scenes[index].bodies.some((item) => debug.assetSource(item.type) && item.alpha > 0.4), `Stage ${index + 1} lacks a visible authored world`);
       assert.ok(scenes[index].bodies.every((item) => item.type !== "exotic"), `Stage ${index + 1} retained the old procedural planet type`);
@@ -346,7 +355,7 @@ module.exports = function register(test) {
       "shard-world", "fleet-world", "command-world"
     ];
     const types = new Set();
-    for (let stage = 2; stage <= 7; stage += 1) {
+    for (let stage = 2; stage <= 20; stage += 1) {
       const visible = debug.sceneFrame(stage, 1, 0).visibleBodies.filter((item) => item.alpha > 0.15);
       assert.ok(visible.length > 0, `Stage ${stage} lacks a main authored world`);
       for (const body of visible) {
@@ -354,7 +363,7 @@ module.exports = function register(test) {
         types.add(body.type);
       }
     }
-    for (const type of expected) assert.ok(types.has(type), `${type} never appears in the seven-stage journey`);
+    for (const type of expected) assert.ok(types.has(type), `${type} never appears in the twenty-stage journey`);
     for (const type of ["earth", "mars"].concat(expected)) {
       assert.equal(debug.assetSource(type), `assets/${type}.webp`);
     }
@@ -391,8 +400,10 @@ module.exports = function register(test) {
       alienBroodCarrier: "assets/alien-brood-carrier.webp",
       bossHarrower: "assets/boss-harrower.webp",
       bossLeviathan: "assets/boss-leviathan.webp",
+      bossSovereign: "assets/boss-sovereign.webp",
       bossNodeHarrower: "assets/boss-node-harrower.webp",
       bossNodeLeviathan: "assets/boss-node-leviathan.webp",
+      bossNodeSovereign: "assets/boss-node-sovereign.webp",
       playerPlasma: "assets/player-plasma.webp",
       playerMissile: "assets/player-missile.webp",
       playerRailSlug: "assets/player-rail-slug.webp",
@@ -440,8 +451,9 @@ module.exports = function register(test) {
     for (const type of ["scout", "striker", "bomber", "carrier", "lancer", "gunship", "broodCarrier"]) {
       renderer.drawAlien({ x: 0, y: 0, radius: 24, type, heading: 0, phase: 0 }, camera, 1);
     }
-    for (const type of ["harrower", "leviathan"]) renderer.drawBoss({
-      x: 0, y: 0, radius: type === "leviathan" ? 96 : 82, type, angle: 0,
+    for (const type of ["harrower", "leviathan", "sovereign"]) renderer.drawBoss({
+      x: 0, y: 0, radius: type === "sovereign" ? 132 : type === "leviathan" ? 96 : 82, type, angle: 0,
+      id: 90, health: 100, maxHealth: 100,
       nodes: [{ x: 12, y: 0, radius: 13, index: 0, health: 1 }]
     }, camera, 1);
     renderer.drawProjectiles([
@@ -603,13 +615,53 @@ module.exports = function register(test) {
     assert.equal(strokes, 0, "alien readability or damage state restored a procedural line overlay");
   });
 
-  test("all seven scene handoffs interpolate continuously, including the sector wrap", () => {
+  test("capital-ship rasters expose deterministic progressive damage without geometric overlays", () => {
+    const browser = loadVisualRuntime();
+    const debug = browser.window.ND.RenderDebug;
+    assert.equal(typeof debug.bossDamageStage, "function");
+    assert.equal(debug.bossDamageStage({ health: 100, maxHealth: 100 }), 0);
+    assert.equal(debug.bossDamageStage({ health: 64, maxHealth: 100 }), 1);
+    assert.equal(debug.bossDamageStage({ health: 39, maxHealth: 100 }), 2);
+    assert.equal(debug.bossDamageStage({ health: 19, maxHealth: 100 }), 3);
+    assert.equal(debug.bossDamageStage({ health: NaN, maxHealth: 100 }), 0);
+
+    const canvas = browser.elements.get("game");
+    const context = canvas.getContext("2d");
+    const renderer = new browser.window.ND.Renderer(canvas);
+    const camera = { x: 0, y: 0 };
+    let arcs = 0;
+    let radialGradients = 0;
+    let strokes = 0;
+    context.arc = () => { arcs += 1; };
+    context.stroke = () => { strokes += 1; };
+    const createRadialGradient = context.createRadialGradient;
+    context.createRadialGradient = (...args) => {
+      radialGradients += 1;
+      return createRadialGradient(...args);
+    };
+    const boss = {
+      id: 90, x: 0, y: 0, radius: 132, type: "sovereign", angle: 0,
+      health: 100, maxHealth: 100, nodes: [], reflectionShield: null
+    };
+    renderer.drawBoss(boss, camera, 1);
+    const healthyArcs = arcs;
+    const healthyGradients = radialGradients;
+    arcs = 0;
+    radialGradients = 0;
+    boss.health = 15;
+    renderer.drawBoss(boss, camera, 1);
+    assert.ok(arcs >= healthyArcs + 4, "critical Sovereign damage did not add attached smoke and burn emission");
+    assert.ok(radialGradients >= healthyGradients + 1, "critical Sovereign damage did not add its soft internal burn glow");
+    assert.equal(strokes, 0, "capital-ship damage restored a procedural line overlay over its raster");
+  });
+
+  test("all twenty scene handoffs interpolate continuously, including the sector wrap", () => {
     const debug = loadRenderer();
     const activeMap = (scene) => new Map(scene.bodies.filter((body) => body.alpha > 1e-10).map((body) => [body.id, body]));
-    for (let stage = 1; stage <= 7; stage += 1) {
+    for (let stage = 1; stage <= 20; stage += 1) {
       const sector = 1;
-      const nextStage = stage === 7 ? 1 : stage + 1;
-      const nextSector = stage === 7 ? 2 : sector;
+      const nextStage = stage === 20 ? 1 : stage + 1;
+      const nextSector = stage === 20 ? 2 : sector;
       const start = debug.sceneFrame(stage, sector, 0, nextStage, nextSector);
       const middle = debug.sceneFrame(stage, sector, 0.5, nextStage, nextSector);
       const end = debug.sceneFrame(stage, sector, 1, nextStage, nextSector);
@@ -632,7 +684,7 @@ module.exports = function register(test) {
       }
     }
     assert.equal(debug.sceneFrame(-20, -4, -1).fromStage, 1);
-    assert.equal(debug.sceneFrame(99, 1, 99).fromStage, 7);
+    assert.equal(debug.sceneFrame(99, 1, 99).fromStage, 20);
     assert.equal(debug.sceneFrame(1, 1, Infinity).progress, 1);
     assert.equal(debug.sceneFrame(1, 1, NaN).progress, 0);
   });
@@ -945,6 +997,7 @@ module.exports = function register(test) {
     assert.match(renderer, /state\.ship\s*&&\s*state\.ship\.orbitBlades/);
     assert.match(renderer, /mine\.owner\s*===\s*"player"/);
     assert.match(renderer, /boss\.type\s*===\s*"leviathan"/);
+    assert.match(renderer, /boss\.type\s*===\s*"sovereign"/);
     assert.match(renderer, /this\.drawCombatField\(state, time\)/,
       "boss stages cannot reuse the normal field cues");
     assert.doesNotMatch(renderer, /drawArena\s*\(/,

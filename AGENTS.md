@@ -83,7 +83,7 @@ Put new logic in the file that already owns its responsibility. Generalize only 
 
 ## 6. Gameplay invariants
 
-- The seven-stage journey is finite and config-driven, with authored boss encounters at Stages 5 and 7. Do not hardcode stage-specific behavior that the stage and wave data can express.
+- The twenty-stage journey is finite and config-driven, with authored boss encounters at Stages 10, 15, and 20. Do not hardcode stage-specific behavior that the stage and wave data can express.
 - A stage clears only after its authored spawns, pending/requeued threats, required objectives, descendants, optional hazards, carrier children, and boss escorts are gone.
 - A completed stage first salvages every remaining beneficial field pickup; an Enigma still owns its mandatory choice. It then enters a finite, input-locked clear presentation that may advance only bounded final effects before the existing hyperspace sequence cleans old combat state and preserves the ship's screen anchor and travel direction.
 - Asteroids are ballistic hazards. Asteroid pairs bounce without damaging one another; genuine asteroid-to-alien impacts remain reward-free.
@@ -100,7 +100,7 @@ See `docs/GAME_DESIGN.md` for product intent and `tests/README.md` for the stabl
 
 - Add a deterministic regression for every bug fix. Fixed seed plus fixed input must reproduce equivalent state.
 - Run focused tests while iterating, then run the complete `node tests/run.js` suite on the frozen candidate.
-- Release coverage must include the rendered browser smoke, a weapon-driven Stage 1–7 journey through both bosses, the long deterministic stress run, entity caps, storage failure, responsive layouts, and input cleanup.
+- Release coverage must include the rendered browser smoke, a weapon-driven Stage 1–20 journey through all three bosses, the long deterministic stress run, entity caps, storage failure, responsive layouts, and input cleanup.
 - Before deleting or moving repository content, inventory tracked files and search all code, test, HTML, CSS, and Markdown references.
 - Verify every runtime script and test suite is registered once, every local link resolves, every asset is referenced, and the checksum manifest covers the complete frozen source tree.
 - Review `git diff --check`, JavaScript syntax, the full diff, and any generated evidence before publication.

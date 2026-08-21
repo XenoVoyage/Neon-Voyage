@@ -2,6 +2,24 @@
 
 All notable user-facing changes to Neon Voyage are documented here. A heading records a runtime version; Git and GitHub history remain the evidence for its deployment, tag, and GitHub Release status. Starting with `v2026.8.13`, the first runtime label on a day uses `vYYYY.M.D` without leading zeroes; additional same-day runtime labels append `a`, `b`, `c`, and so on. Earlier semantic-version labels remain unchanged as historical records.
 
+## [v2026.8.21f] — 2026-08-21
+
+### Added
+
+- Expanded the complete voyage to 20 authored stages with first contact at Stage 3, the Titan Gate at Stage 5, the Harrower at Stage 10, the Leviathan at Stage 15, and the giant five-node Sovereign mothership at Stage 20.
+- Added the Sovereign's original realistic mothership and node art, progressive raster-attached damage states, node-dependent reflection, bounded radial barrages, mine arcs, sweeping beam phases, and distinct off-screen objective cues.
+- Added ten guaranteed module milestones spread across the campaign and deterministic full-journey, Sovereign, persistence, visual, opening-placement, and long-stress regressions.
+
+### Changed
+
+- Rebalanced seventeen ordinary stages into three escalating arcs with seven-to-thirteen finite authored roots, compact pressure-bounded openings, fewer durable alien contacts, earlier build identity, and five reward bands spanning the longer journey.
+- Moved the Titan to its own Stage 5 eight-root breach and distributed evolved asteroid, Gunship, Lancer, Corona, Brood Carrier, and late-command vocabulary across the full campaign.
+- Replaced the spacecraft-like Razor sprite with an unmistakably rocky jagged asteroid and refreshed both README captures with the current renderer, including the Stage 20 Sovereign encounter.
+
+### Fixed
+
+- Expanded valid seven-stage schema-4 checkpoints into equivalent schema-5 twenty-stage progress while preserving exact one-to-one schema-3, schema-2, and schema-1 compatibility at their historical bounds.
+
 ## [v2026.8.21e] — 2026-08-21
 
 ### Added
